@@ -109,7 +109,7 @@ export default {
       selectedMonth: new Date().toISOString().slice(0, 7), // Default to current month (YYYY-MM)
       currentPage: 1,
       itemsPerPage: 5,
-      payslipGenerationStatus: {},
+      payslipGenerationStatus: {}, // Plain object initialized in data
       isLoading: false,
       statusMessage: ''
     };
@@ -164,17 +164,15 @@ export default {
       const baseEarnings = (employee.earnings?.travelExpenses || 0) + (employee.earnings?.otherEarnings || 0);
       const payheadEarnings = employee.payheads
         ?.filter(p => p.type === 'Earnings')
-        .reduce((sum, p) => sum + p.amount, 0) || 0;
-      return employee.salary + baseEarnings + payheadEarnings;
+        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      return (employee.salary || 0) + baseEarnings + payheadEarnings;
     },
     calculateTotalDeductions(employee) {
-      const baseDeductions = (employee.deductions?.sss || 0) + 
-                            (employee.deductions?.philhealth || 0) + 
-                            (employee.deductions?.pagibig || 0);
+      // Only include payheads with type 'Deductions'
       const payheadDeductions = employee.payheads
         ?.filter(p => p.type === 'Deductions')
-        .reduce((sum, p) => sum + p.amount, 0) || 0;
-      return baseDeductions + payheadDeductions;
+        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      return payheadDeductions;
     },
     calculateNetSalary(employee) {
       return this.calculateTotalEarnings(employee) - this.calculateTotalDeductions(employee);
@@ -184,22 +182,25 @@ export default {
       return `${monthNum}/01/${year}`; // Format as MM/DD/YYYY starting at 1st of month
     },
     async generatePayslip(employee) {
-      this.$set(this.payslipGenerationStatus, employee.id, { generating: true });
+      this.payslipGenerationStatus[employee.id] = { generating: true };
       this.statusMessage = '';
       try {
         const doc = new jsPDF();
         doc.setFontSize(16);
         doc.text('Payslip', 20, 20);
         doc.setFontSize(12);
-        doc.text(`Employee ID: ${employee.id}`, 20, 40);
-        doc.text(`Name: ${employee.name}`, 20, 50);
-        doc.text(`Position: ${employee.position}`, 20, 60);
-        doc.text(`Salary Month: ${employee.salaryMonth}`, 20, 70);
+        doc.text(`Employee ID: ${employee.id}`, 20, 30);
+        doc.text(`Name: ${employee.name}`, 20, 40);
+        doc.text(`Position: ${employee.position}`, 20, 50);
+        doc.text(`Salary Month: ${employee.salaryMonth}`, 20, 60);
+        doc.text(`SSS ID: ${employee.rawData.sss || 'Not provided'}`, 20, 70);
+        doc.text(`PhilHealth ID: ${employee.rawData.philhealth || 'Not provided'}`, 20, 80);
+        doc.text(`Pag-IBIG ID: ${employee.rawData.pagibig || 'Not provided'}`, 20, 90);
         
         // Detailed Earnings
-        doc.text('Earnings:', 20, 90);
-        let yPos = 100;
-        doc.text(`Base Salary: ₱${employee.rawData.salary.toLocaleString()}`, 20, yPos);
+        doc.text('Earnings:', 20, 110);
+        let yPos = 120;
+        doc.text(`Base Salary: ₱${(employee.rawData.salary || 0).toLocaleString()}`, 20, yPos);
         yPos += 10;
         if (employee.rawData.earnings.travelExpenses) {
           doc.text(`Travel Expenses: ₱${employee.rawData.earnings.travelExpenses.toLocaleString()}`, 20, yPos);
@@ -216,21 +217,9 @@ export default {
         doc.text(`Total Earnings: ₱${employee.totalEarnings.toLocaleString()}`, 20, yPos);
         yPos += 20;
 
-        // Detailed Deductions
+        // Detailed Deductions (Only payheads)
         doc.text('Deductions:', 20, yPos);
         yPos += 10;
-        if (employee.rawData.deductions.sss) {
-          doc.text(`SSS: ₱${employee.rawData.deductions.sss.toLocaleString()}`, 20, yPos);
-          yPos += 10;
-        }
-        if (employee.rawData.deductions.philhealth) {
-          doc.text(`PhilHealth: ₱${employee.rawData.deductions.philhealth.toLocaleString()}`, 20, yPos);
-          yPos += 10;
-        }
-        if (employee.rawData.deductions.pagibig) {
-          doc.text(`Pag-IBIG: ₱${employee.rawData.deductions.pagibig.toLocaleString()}`, 20, yPos);
-          yPos += 10;
-        }
         employee.rawData.payheads?.filter(p => p.type === 'Deductions').forEach(payhead => {
           doc.text(`${payhead.name}: ₱${payhead.amount.toLocaleString()}`, 20, yPos);
           yPos += 10;
@@ -245,35 +234,40 @@ export default {
 
         const pdfBlob = doc.output('blob');
         const reader = new FileReader();
-        reader.readAsDataURL(pdfBlob);
-        reader.onloadend = async () => {
-          const base64data = reader.result;
-          localStorage.setItem(`payslip_${employee.id}_${employee.salaryMonth}`, base64data);
+        
+        // Return a promise to ensure payslipData is set before proceeding
+        const base64data = await new Promise((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(pdfBlob);
+        });
 
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(pdfBlob);
-          link.download = `payslip-${employee.name}-${employee.salaryMonth}.pdf`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+        console.log('Generated payslipData:', base64data.slice(0, 50) + '...');
+        localStorage.setItem(`payslip_${employee.id}_${employee.salaryMonth}`, base64data);
 
-          await axios.post('http://localhost:7777/api/payslips/generate', {
-            employeeId: employee.id,
-            payslipData: base64data,
-            salaryMonth: employee.salaryMonth
-          });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(pdfBlob);
+        link.download = `payslip-${employee.name}-${employee.salaryMonth}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-          this.showSuccessMessage(`Payslip generated for ${employee.name}`);
-          this.$set(this.payslipGenerationStatus, employee.id, { generating: false });
-        };
+        await axios.post('http://localhost:7777/api/payslips/generate', {
+          employeeId: employee.id,
+          payslipData: base64data,
+          salaryMonth: employee.salaryMonth
+        });
+
+        this.showSuccessMessage(`Payslip generated for ${employee.name}`);
       } catch (error) {
         console.error('Error generating payslip:', error);
         this.showErrorMessage(`Failed to generate payslip for ${employee.name}`);
-        this.$set(this.payslipGenerationStatus, employee.id, { generating: false });
+      } finally {
+        this.payslipGenerationStatus[employee.id] = { generating: false };
       }
     },
     async sendPayslipEmail(employee) {
-      this.$set(this.payslipGenerationStatus, employee.id, { sending: true });
+      this.payslipGenerationStatus[employee.id] = { sending: true };
       this.statusMessage = '';
       try {
         const payslipKey = `payslip_${employee.id}_${employee.salaryMonth}`;
@@ -282,6 +276,14 @@ export default {
         if (!payslipData) {
           await this.generatePayslip(employee);
           payslipData = localStorage.getItem(payslipKey);
+        }
+
+        // Debug the payslipData format
+        console.log('Payslip data being sent:', payslipData ? payslipData.slice(0, 50) + '...' : 'null');
+
+        // Ensure payslipData is valid
+        if (!payslipData || typeof payslipData !== 'string' || !payslipData.startsWith('data:application/pdf;base64,')) {
+          throw new Error('Invalid or missing payslipData');
         }
 
         const response = await axios.post('http://localhost:7777/api/payslips/send-email', {
@@ -296,9 +298,14 @@ export default {
         }
       } catch (error) {
         console.error('Error sending payslip email:', error);
-        this.showErrorMessage(`Failed to send payslip email to ${employee.name}`);
+        if (error.response) {
+          console.error('Server response:', error.response.data);
+          this.showErrorMessage(`Failed to send payslip email to ${employee.name}: ${error.response.data.message || 'Unknown error'}`);
+        } else {
+          this.showErrorMessage(`Failed to send payslip email to ${employee.name}: ${error.message}`);
+        }
       } finally {
-        this.$set(this.payslipGenerationStatus, employee.id, { sending: false });
+        this.payslipGenerationStatus[employee.id] = { sending: false };
       }
     },
     nextPage() {

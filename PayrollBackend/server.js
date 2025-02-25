@@ -1,3 +1,4 @@
+// C:\Users\ASUS\Desktop\Payroll_system\PayrollBackend\server.js
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -16,6 +17,10 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Log environment variables for debugging
+console.log('EMAIL_USER:', process.env.EMAIL_USER);
+console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'Not set');
 
 // Connect to MongoDB
 connectDB();
