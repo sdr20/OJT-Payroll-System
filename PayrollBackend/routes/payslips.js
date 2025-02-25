@@ -1,4 +1,3 @@
-// C:\Users\ASUS\Desktop\Payroll_system\PayrollBackend\routes\payslips.js
 const express = require('express');
 const router = express.Router();
 const Payslip = require('../models/Payslip');
@@ -8,8 +7,8 @@ const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, // Load from .env
-    pass: process.env.EMAIL_PASS  // Load from .env
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
