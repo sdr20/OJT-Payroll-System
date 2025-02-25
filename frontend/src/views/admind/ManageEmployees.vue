@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50 p-4">
     <div class="flex gap-6">
-      <!-- Left side - Employee List  -->
+      <!-- Left side - Employee List -->
       <div class="flex-1">
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">
           <div class="p-6 flex justify-between items-center">
@@ -118,7 +118,7 @@
               <div class="space-y-2">
                 <p class="text-sm font-medium text-gray-700">Position Applied</p>
                 <select v-if="isEditingRequest" v-model="selectedRequest.positionApplied" 
-                        class="w-full p-2 border border-guard-200 rounded-lg" required>
+                        class="w-full p-2 border border-gray-200 rounded-lg" required>
                   <option v-for="position in adminPositions" :key="position" :value="position">
                     {{ position }}
                   </option>
@@ -636,7 +636,7 @@ export default {
     async approveRequest(request) {
       try {
         const newEmployee = {
-          id: request.id, // Use the same ID as the pending request
+          id: request.id,
           firstName: request.name.split(' ')[0],
           lastName: request.name.split(' ').slice(1).join(' ') || '',
           position: request.positionApplied,
@@ -650,7 +650,7 @@ export default {
             travelExpenses: request.earnings?.travelExpenses || 0,
             otherEarnings: request.earnings?.otherEarnings || 0 
           },
-          payheads: [], // Assuming empty initially
+          payheads: [],
           username: request.username,
           password: request.password
         };
@@ -663,11 +663,16 @@ export default {
           this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
           this.showRequestModal = false;
           this.showSuccessMessage('Employee approved and added successfully');
-          this.nextEmployeeId = Math.max(...this.employees.map(e => e.id), 0) + 1; // Update next ID
+          this.nextEmployeeId = Math.max(...this.employees.map(e => e.id), 0) + 1;
         }
       } catch (error) {
         console.error('Error approving request:', error);
-        this.showErrorMessage('Error approving employee. Please try again.');
+        if (error.response) {
+          console.error('Server error details:', error.response.data);
+          this.showErrorMessage(`Error approving employee: ${error.response.data.message || 'Unknown server error'}`);
+        } else {
+          this.showErrorMessage('Error approving employee. Please check server connection.');
+        }
       }
     },
 

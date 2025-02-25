@@ -1,0 +1,134 @@
+Salary slip . vue
+
+
+<template>
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div class="max-w-6xl mx-auto">
+      <!-- Search Input -->
+      <div class="flex justify-between items-center mb-4">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search Employee..."
+          class="border rounded-lg px-4 py-2 w-1/3"
+        />
+      </div>
+
+      <!-- Salary Table -->
+      <div class="bg-white p-5 rounded-xl shadow-md">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Earnings</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Deductions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Salary</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salary Month</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="employee in paginatedEmployees" :key="employee.id">
+              <td class="px-6 py-4 text-sm text-gray-900">{{ employee.name }}</td>
+              <td class="px-6 py-4 text-sm text-gray-900">P{{ employee.totalEarnings.toLocaleString() }}</td>
+              <td class="px-6 py-4 text-sm text-gray-900">P{{ employee.totalDeductions.toLocaleString() }}</td>
+              <td class="px-6 py-4 text-sm text-gray-900">P{{ employee.totalSalary.toLocaleString() }}</td>
+              <td class="px-6 py-4 text-sm text-gray-900">{{ employee.salaryMonth }}</td>
+              <td class="px-6 py-4 text-sm font-medium flex gap-2">
+                <button @click="generatePayslip(employee.id)" class="bg-green-50 text-green-600 font-semibold py-1.5 px-3 rounded-lg hover:bg-green-100 transition-all duration-200 flex items-center gap-2 text-xs">
+                  <span class="material-icons text-green-600">description</span> Generate
+                </button>
+                <button @click="sendPayslipEmail(employee.id)" class="bg-blue-50 text-blue-600 font-semibold py-1.5 px-3 rounded-lg hover:bg-blue-100 transition-all duration-200 flex items-center gap-2 text-xs">
+                  <span class="material-icons text-blue-600">email</span> Send Email
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div class="flex justify-center items-center mt-4 gap-4">
+        <button 
+          @click="prevPage"
+          :disabled="currentPage === 1"
+          class="bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition disabled:opacity-50"
+        >
+          <span class="material-icons">chevron_left</span>
+        </button>
+        
+        <span class="text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+        
+        <button 
+          @click="nextPage"
+          :disabled="currentPage === totalPages"
+          class="bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition disabled:opacity-50"
+        >
+          <span class="material-icons">chevron_right</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'SalarySlips',
+  data() {
+    return {
+      employees: [
+        { id: 1, name: 'John Doe', totalEarnings: 50000, totalDeductions: 5000, totalSalary: 45000, salaryMonth: '02/20/2025' },
+        { id: 2, name: 'allen Kalbo', totalEarnings: 60000, totalDeductions: 7000, totalSalary: 53000, salaryMonth: '02/22/2025' },
+        { id: 3, name: 'Adrian d Grate', totalEarnings: 52000, totalDeductions: 4000, totalSalary: 48000, salaryMonth: '02/25/2025' },
+        { id: 4, name: 'Glenn d dragon', totalEarnings: 58000, totalDeductions: 6000, totalSalary: 52000, salaryMonth: '02/28/2025' },
+        { id: 5, name: 'Emjay Uzumaki', totalEarnings: 49000, totalDeductions: 3000, totalSalary: 46000, salaryMonth: '02/15/2025' },
+        { id: 6, name: 'Steven Uchiha', totalEarnings: 62000, totalDeductions: 8000, totalSalary: 54000, salaryMonth: '02/10/2025' },
+        { id: 7, name: 'Jake D Bojek', totalEarnings: 56000, totalDeductions: 5000, totalSalary: 51000, salaryMonth: '02/05/2025' },
+        { id: 8, name: 'Deo D dancer', totalEarnings: 61000, totalDeductions: 7500, totalSalary: 53500, salaryMonth: '02/18/2025' },
+      ],
+      searchQuery: '',
+      currentPage: 1,
+      itemsPerPage: 10,
+    };
+  },
+  computed: {
+    filteredEmployees() {
+      return this.employees.filter((employee) =>
+        employee.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+      );
+    },
+    totalPages() {
+      return Math.ceil(this.filteredEmployees.length / this.itemsPerPage);
+    },
+    paginatedEmployees() {
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      const end = start + this.itemsPerPage;
+      return this.filteredEmployees.slice(start, end);
+    },
+  },
+  methods: {
+    generatePayslip(employeeId) {
+      console.log(`Generating payslip for employee ID: ${employeeId}`);
+      alert(`Payslip generated for Employee ID: ${employeeId}`);
+    },
+    sendPayslipEmail(employeeId) {
+      console.log(`Sending payslip email for employee ID: ${employeeId}`);
+      alert(`Payslip email sent to Employee ID: ${employeeId}`);
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+</style>
