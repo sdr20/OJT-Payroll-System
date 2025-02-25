@@ -17,7 +17,7 @@
       <!-- Employee Payroll Information -->
       <EmployeePayrollTable :employees="employees" @addPayhead="openAddPayheadModal" />
 
-      <!-- Add Payhead to Employee Modal -->
+      <!-- Add/Edit Payhead to Employee Modal -->
       <AddPayheadModal v-if="showAddPayheadModal" 
                        @close="showAddPayheadModal = false" 
                        @save="savePayheads" 
@@ -25,7 +25,9 @@
                        :selectedEmployeePayheads="selectedEmployeePayheads" 
                        @addPayhead="addPayheadToEmployee" 
                        @removePayhead="removePayheadFromEmployee" 
-                       :totalPayableSalary="totalPayableSalary" />
+                       @updatePayhead="updatePayheadInEmployee"
+                       :totalPayableSalary="totalPayableSalary" 
+                       :selectedEmployee="selectedEmployee" />
     </div>
 
     <!-- Status Message -->
@@ -78,9 +80,13 @@ export default {
   },
   computed: {
     totalPayableSalary() {
-      const earnings = this.selectedEmployeePayheads.filter(p => p.type === 'Earnings').reduce((sum, p) => sum + p.amount, 0);
-      const deductions = this.selectedEmployeePayheads.filter(p => p.type === 'Deductions').reduce((sum, p) => sum + p.amount, 0);
-      return earnings - deductions;
+      const earnings = this.selectedEmployeePayheads
+        .filter(p => p.type === 'Earnings')
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+      const deductions = this.selectedEmployeePayheads
+        .filter(p => p.type === 'Deductions')
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+      return this.selectedEmployee ? (this.selectedEmployee.salary || 0) + earnings - deductions : 0;
     }
   },
   async created() {
@@ -102,9 +108,12 @@ export default {
         const response = await axios.get('http://localhost:7777/api/employees');
         this.employees = response.data.map(emp => ({
           ...emp,
-          totalEarnings: this.calculateNetSalary(emp),
-          totalDeduction: (emp.deductions?.sss || 0) + (emp.deductions?.philhealth || 0) + (emp.deductions?.pagibig || 0),
-          totalSalary: emp.salary
+          name: `${emp.firstName} ${emp.lastName}`, // Compute full name
+          position: emp.position || 'N/A',
+          totalEarnings: this.calculateEarnings(emp.payheads || []),
+          totalDeduction: this.calculateDeductions(emp.payheads || []),
+          totalSalary: (emp.salary || 0) + this.calculateEarnings(emp.payheads || []) - this.calculateDeductions(emp.payheads || []),
+          payheads: emp.payheads || []
         })) || [];
       } catch (error) {
         console.error('Error fetching employees:', error);
@@ -134,6 +143,7 @@ export default {
           this.payHeads.splice(index, 1, response.data);
           this.showUpdateModal = false;
           this.showSuccessMessage('Pay head updated successfully!');
+          await this.fetchEmployees(); // Refresh employees to reflect updated payheads
         }
       } catch (error) {
         console.error('Error updating pay head:', error);
@@ -145,46 +155,74 @@ export default {
         await axios.delete(`http://localhost:7777/api/payheads/${id}`);
         this.payHeads = this.payHeads.filter(payHead => payHead.id !== id);
         this.showSuccessMessage('Pay head deleted successfully!');
+        await this.fetchEmployees(); // Refresh employees to reflect deleted payheads
       } catch (error) {
         console.error('Error deleting pay head:', error);
         this.showErrorMessage('Failed to delete pay head.');
       }
     },
     openAddPayheadModal(employee) {
-      this.selectedEmployee = employee;
-      this.selectedEmployeePayheads = []; // Reset or fetch existing payheads for employee from backend if implemented
-      this.availablePayheads = [...this.payHeads];
+      this.selectedEmployee = { ...employee };
+      this.selectedEmployeePayheads = [...(employee.payheads || [])]; // Load existing payheads
+      this.availablePayheads = [...this.payHeads]; // Keep all payheads available
       this.showAddPayheadModal = true;
     },
     addPayheadToEmployee(payhead) {
-      this.selectedEmployeePayheads.push(payhead);
-      this.availablePayheads = this.availablePayheads.filter(p => p.id !== payhead.id);
+      // Add a copy of the payhead with a unique identifier to allow duplicates
+      const newPayhead = { ...payhead, uniqueId: Date.now() + Math.random() }; // Temporary unique ID
+      this.selectedEmployeePayheads.push(newPayhead);
+      // No need to remove from availablePayheads since we want it to stay
     },
     removePayheadFromEmployee(payhead) {
-      this.selectedEmployeePayheads = this.selectedEmployeePayheads.filter(p => p.id !== payhead.id);
-      this.availablePayheads.push(payhead);
+      this.selectedEmployeePayheads = this.selectedEmployeePayheads.filter(p => p.uniqueId !== payhead.uniqueId);
+    },
+    updatePayheadInEmployee(updatedPayhead) {
+      const index = this.selectedEmployeePayheads.findIndex(p => p.uniqueId === updatedPayhead.uniqueId);
+      if (index !== -1) {
+        this.selectedEmployeePayheads.splice(index, 1, { ...updatedPayhead });
+      }
     },
     async savePayheads() {
       try {
-        // Assuming backend has an endpoint to save payheads for an employee
-        await axios.put(`http://localhost:7777/api/employees/${this.selectedEmployee.id}/payheads`, {
-          payheads: this.selectedEmployeePayheads
-        });
+        // Remove temporary uniqueId before saving to backend
+        const payheadsToSave = this.selectedEmployeePayheads.map(ph => ({
+          id: ph.id,
+          name: ph.name,
+          amount: ph.amount,
+          type: ph.type
+        }));
+
+        const updatedEmployee = {
+          ...this.selectedEmployee,
+          payheads: payheadsToSave,
+          totalEarnings: this.calculateEarnings(payheadsToSave),
+          totalDeduction: this.calculateDeductions(payheadsToSave),
+          totalSalary: (this.selectedEmployee.salary || 0) + this.calculateEarnings(payheadsToSave) - this.calculateDeductions(payheadsToSave)
+        };
+
+        await axios.put(`http://localhost:7777/api/employees/${this.selectedEmployee.id}`, updatedEmployee);
+
+        const employeeIndex = this.employees.findIndex(e => e.id === this.selectedEmployee.id);
+        if (employeeIndex !== -1) {
+          this.employees.splice(employeeIndex, 1, updatedEmployee);
+        }
+
         this.showAddPayheadModal = false;
         this.showSuccessMessage('Payheads saved to employee successfully!');
-        await this.fetchEmployees(); // Refresh employee list to reflect changes
       } catch (error) {
         console.error('Error saving payheads:', error);
         this.showErrorMessage('Failed to save payheads.');
       }
     },
-    calculateNetSalary(employee) {
-      const totalDeductions = (employee.deductions?.sss || 0) + 
-                              (employee.deductions?.philhealth || 0) + 
-                              (employee.deductions?.pagibig || 0);
-      const totalEarnings = (employee.earnings?.travelExpenses || 0) + 
-                            (employee.earnings?.otherEarnings || 0);
-      return employee.salary + totalEarnings - totalDeductions;
+    calculateEarnings(payheads) {
+      return payheads
+        .filter(p => p.type === 'Earnings')
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+    },
+    calculateDeductions(payheads) {
+      return payheads
+        .filter(p => p.type === 'Deductions')
+        .reduce((sum, p) => sum + Number(p.amount), 0);
     },
     showSuccessMessage(message) {
       this.statusMessage = message;
