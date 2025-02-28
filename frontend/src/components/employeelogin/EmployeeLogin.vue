@@ -1,11 +1,28 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center p-4">
+  <div
+    class="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center p-4"
+  >
     <div class="w-full max-w-md">
-      <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 space-y-6">
+      <div
+        class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 space-y-6"
+      >
         <div class="text-center space-y-2">
-          <div class="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <div
+            class="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-8 h-8 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
             </svg>
           </div>
           <h1 class="text-2xl font-bold text-gray-900">Employee Portal</h1>
@@ -14,13 +31,58 @@
 
         <form @submit.prevent="login" class="space-y-4">
           <div class="space-y-1">
-            <label for="username" class="text-sm font-medium text-gray-700">Username</label>
-            <input v-model="username" type="text" id="username" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your username" required>
+            <label for="username" class="text-sm font-medium text-gray-700"
+              >Username</label
+            >
+            <input
+              v-model="username"
+              type="text"
+              id="username"
+              class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your username"
+              required
+            />
           </div>
 
           <div class="space-y-1">
-            <label for="password" class="text-sm font-medium text-gray-700">Password</label>
-            <input v-model="password" type="password" id="password" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your password" required>
+            <label for="password" class="text-sm font-medium text-gray-700"
+              >Password</label
+            >
+            <div class="relative">
+              <input
+                v-model="password"
+                :type="showLoginPassword ? 'text' : 'password'"
+                id="password"
+                class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                placeholder="Enter your password"
+                required
+              />
+              <button
+                type="button"
+                @click="toggleLoginPasswordVisibility"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-5 h-5 text-gray-500"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                  />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <!-- Error Message -->
@@ -28,51 +90,134 @@
             {{ loginError }}
           </div>
 
-          <button type="submit" class="w-full bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition duration-200" :disabled="isLoggingIn">
+          <button
+            type="submit"
+            class="w-full bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition duration-200"
+            :disabled="isLoggingIn"
+          >
             {{ isLoggingIn ? 'Signing in...' : 'Sign in' }}
           </button>
         </form>
 
         <div class="text-center">
-          <p class="text-sm text-gray-700">Don't have an account? <a href="#" @click="showRegisterModal = true" class="text-blue-500 hover:underline">Request an account</a></p>
+          <p class="text-sm text-gray-700">
+            Don't have an account?
+            <a
+              href="#"
+              @click="showRegisterModal = true"
+              class="text-blue-500 hover:underline"
+              >Request an account</a
+            >
+          </p>
         </div>
       </div>
     </div>
 
     <!-- Register Modal -->
-    <div v-if="showRegisterModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <h2 class="text-2xl font-bold mb-6 text-gray-900">Request Account Creation</h2>
+    <div
+      v-if="showRegisterModal"
+      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+    >
+      <div
+        class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+      >
+        <h2 class="text-2xl font-bold mb-6 text-gray-900">
+          Request Account Creation
+        </h2>
         <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-6">
           <!-- Basic Information -->
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+              Basic Information
+            </h3>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label for="firstName" class="text-sm font-medium text-gray-700">First Name</label>
-                <input v-model="newRequest.firstName" type="text" id="firstName" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your first name" required>
+                <label for="firstName" class="text-sm font-medium text-gray-700"
+                  >First Name</label
+                >
+                <input
+                  v-model="newRequest.firstName"
+                  type="text"
+                  id="firstName"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your first name"
+                  required
+                />
               </div>
               <div class="space-y-1">
-                <label for="lastName" class="text-sm font-medium text-gray-700">Last Name</label>
-                <input v-model="newRequest.lastName" type="text" id="lastName" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your last name" required>
+                <label for="lastName" class="text-sm font-medium text-gray-700"
+                  >Last Name</label
+                >
+                <input
+                  v-model="newRequest.lastName"
+                  type="text"
+                  id="lastName"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your last name"
+                  required
+                />
               </div>
               <div class="space-y-1">
-                <label for="email" class="text-sm font-medium text-gray-700">Email</label>
-                <input v-model="newRequest.email" type="email" id="email" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email" required>
+                <label for="email" class="text-sm font-medium text-gray-700"
+                  >Email</label
+                >
+                <input
+                  v-model="newRequest.email"
+                  type="email"
+                  id="email"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your email"
+                  required
+                />
               </div>
               <div class="space-y-1">
-                <label for="contactNumber" class="text-sm font-medium text-gray-700">Contact Number</label>
-                <input v-model="newRequest.contactNumber" type="text" id="contactNumber" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="09123456789" required pattern="\d{11}" title="Please enter an 11-digit phone number (e.g., 09123456789)">
+                <label
+                  for="contactNumber"
+                  class="text-sm font-medium text-gray-700"
+                  >Contact Number</label
+                >
+                <input
+                  v-model="newRequest.contactNumber"
+                  type="text"
+                  id="contactNumber"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="09123456789"
+                  required
+                  pattern="\\d{11}"
+                  title="Please enter an 11-digit phone number (e.g., 09123456789)"
+                />
               </div>
               <div class="space-y-1">
-                <label for="positionApplied" class="text-sm font-medium text-gray-700">Position Applying For</label>
-                <select v-model="newRequest.positionApplied" id="positionApplied" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-                  <option v-for="position in positions" :key="position" :value="position">{{ position }}</option>
+                <label
+                  for="positionApplied"
+                  class="text-sm font-medium text-gray-700"
+                  >Position Applying For</label
+                >
+                <select
+                  v-model="newRequest.positionApplied"
+                  id="positionApplied"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option
+                    v-for="position in positions"
+                    :key="position"
+                    :value="position"
+                  >
+                    {{ position }}
+                  </option>
                 </select>
               </div>
               <div class="space-y-1">
-                <label for="civilStatus" class="text-sm font-medium text-gray-700">Civil Status</label>
-                <select v-model="newRequest.civilStatus" id="civilStatus" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                <label for="civilStatus" class="text-sm font-medium text-gray-700"
+                  >Civil Status</label
+                >
+                <select
+                  v-model="newRequest.civilStatus"
+                  id="civilStatus"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
                   <option value="Single">Single</option>
                   <option value="Married">Married</option>
                   <option value="Divorced">Divorced</option>
@@ -81,80 +226,295 @@
               </div>
               <div class="space-y-1">
                 <label for="sss" class="text-sm font-medium text-gray-700">SSS ID</label>
-                <input v-model="newRequest.sss" type="text" id="sss" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="1234567890" pattern="\d{10}" title="Please enter a 10-digit SSS ID (e.g., 1234567890)">
+                <input
+                  v-model="newRequest.sss"
+                  type="text"
+                  id="sss"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="1234567890"
+                  pattern="\\d{10}"
+                  title="Please enter a 10-digit SSS ID (e.g., 1234567890)"
+                />
               </div>
               <div class="space-y-1">
-                <label for="philhealth" class="text-sm font-medium text-gray-700">PhilHealth ID</label>
-                <input v-model="newRequest.philhealth" type="text" id="philhealth" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="123456789012" pattern="\d{12}" title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)">
+                <label
+                  for="philhealth"
+                  class="text-sm font-medium text-gray-700"
+                  >PhilHealth ID</label
+                >
+                <input
+                  v-model="newRequest.philhealth"
+                  type="text"
+                  id="philhealth"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="123456789012"
+                  pattern="\\d{12}"
+                  title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)"
+                />
               </div>
               <div class="space-y-1">
-                <label for="pagibig" class="text-sm font-medium text-gray-700">Pag-IBIG ID</label>
-                <input v-model="newRequest.pagibig" type="text" id="pagibig" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="123456789012" pattern="\d{12}" title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)">
+                <label for="pagibig" class="text-sm font-medium text-gray-700"
+                  >Pag-IBIG ID</label
+                >
+                <input
+                  v-model="newRequest.pagibig"
+                  type="text"
+                  id="pagibig"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="123456789012"
+                  pattern="\\d{12}"
+                  title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)"
+                />
               </div>
               <div class="space-y-1">
                 <label for="tin" class="text-sm font-medium text-gray-700">TIN</label>
-                <input v-model="newRequest.tin" type="text" id="tin" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="123456789" pattern="\d{9,12}" title="Please enter a 9-12 digit TIN (e.g., 123456789)">
+                <input
+                  v-model="newRequest.tin"
+                  type="text"
+                  id="tin"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="123456789"
+                  pattern="\\d{9,12}"
+                  title="Please enter a 9-12 digit TIN (e.g., 123456789)"
+                />
               </div>
             </div>
           </div>
 
           <!-- Financial Information -->
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+              Financial Information
+            </h3>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label for="salary" class="text-sm font-medium text-gray-700">Proposed Monthly Salary</label>
-                <input v-model.number="newRequest.salary" type="number" id="salary" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter proposed salary" required min="0">
+                <label for="salary" class="text-sm font-medium text-gray-700"
+                  >Proposed Monthly Salary</label
+                >
+                <input
+                  v-model.number="newRequest.salary"
+                  type="number"
+                  id="salary"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter proposed salary"
+                  required
+                  min="0"
+                />
               </div>
               <div class="space-y-1">
-                <label for="hourlyRate" class="text-sm font-medium text-gray-700">Hourly Rate (Auto-Calculated)</label>
-                <input v-model="newRequest.hourlyRate" type="number" id="hourlyRate" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+                <label
+                  for="hourlyRate"
+                  class="text-sm font-medium text-gray-700"
+                  >Hourly Rate (Auto-Calculated)</label
+                >
+                <input
+                  v-model="newRequest.hourlyRate"
+                  type="number"
+                  id="hourlyRate"
+                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  disabled
+                />
               </div>
               <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">SSS Contribution (Employee Share)</label>
-                <input :value="calculateSSSContribution(newRequest.salary).toLocaleString()" type="text" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+                <label class="text-sm font-medium text-gray-700"
+                  >SSS Contribution (Employee Share)</label
+                >
+                <input
+                  :value="
+                    calculateSSSContribution(newRequest.salary).toLocaleString()
+                  "
+                  type="text"
+                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  disabled
+                />
               </div>
               <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">PhilHealth Contribution (Employee Share)</label>
-                <input :value="calculatePhilHealthContribution(newRequest.salary).toLocaleString()" type="text" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+                <label class="text-sm font-medium text-gray-700"
+                  >PhilHealth Contribution (Employee Share)</label
+                >
+                <input
+                  :value="
+                    calculatePhilHealthContribution(newRequest.salary).toLocaleString()
+                  "
+                  type="text"
+                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  disabled
+                />
               </div>
               <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">Pag-IBIG Contribution (Employee Share)</label>
-                <input :value="calculatePagIBIGContribution(newRequest.salary).toLocaleString()" type="text" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+                <label class="text-sm font-medium text-gray-700"
+                  >Pag-IBIG Contribution (Employee Share)</label
+                >
+                <input
+                  :value="
+                    calculatePagIBIGContribution(newRequest.salary).toLocaleString()
+                  "
+                  type="text"
+                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  disabled
+                />
               </div>
               <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">Withholding Tax</label>
-                <input :value="calculateWithholdingTax(newRequest.salary).toLocaleString()" type="text" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+                <label class="text-sm font-medium text-gray-700"
+                  >Withholding Tax</label
+                >
+                <input
+                  :value="
+                    calculateWithholdingTax(newRequest.salary).toLocaleString()
+                  "
+                  type="text"
+                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  disabled
+                />
               </div>
             </div>
           </div>
 
           <!-- Credentials -->
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Login Credentials</h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+              Login Credentials
+            </h3>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label for="username" class="text-sm font-medium text-gray-700">Username</label>
-                <input v-model="newRequest.username" type="text" id="username" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Choose a username" required>
+                <label for="newUsername" class="text-sm font-medium text-gray-700"
+                  >Username</label
+                >
+                <input
+                  v-model="newRequest.username"
+                  type="text"
+                  id="newUsername"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Choose a username"
+                  required
+                />
               </div>
               <div class="space-y-1">
-                <label for="password" class="text-sm font-medium text-gray-700">Password</label>
-                <input v-model="newRequest.password" type="password" id="password" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Choose a password" required>
+                <label for="newPassword" class="text-sm font-medium text-gray-700"
+                  >Password</label
+                >
+                <div class="relative">
+                  <input
+                    v-model="newRequest.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    id="newPassword"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                    placeholder="Choose a password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    @click="togglePasswordVisibility"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      class="w-5 h-5 text-gray-500"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <label
+                  for="confirmPassword"
+                  class="text-sm font-medium text-gray-700"
+                  >Confirm Password</label
+                >
+                <div class="relative">
+                  <input
+                    v-model="confirmPassword"
+                    :type="showConfirmPassword ? 'text' : 'password'"
+                    id="confirmPassword"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                    placeholder="Confirm your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    @click="toggleConfirmPasswordVisibility"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      class="w-5 h-5 text-gray-500"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="col-span-2">
+                <div class="text-sm text-gray-600 mt-2">
+                  Password strength: {{ passwordStrength }}
+                </div>
+                <div
+                  class="text-sm text-red-500 mt-1"
+                  v-if="!passwordsMatch"
+                >
+                  Passwords do not match
+                </div>
               </div>
             </div>
           </div>
-
+            
           <!-- Buttons -->
           <div class="col-span-2 flex justify-end space-x-2 mt-6">
-            <button type="button" @click="showRegisterModal = false" class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-200" :disabled="isSubmitting">Cancel</button>
-            <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-200" :disabled="isSubmitting">
+            <button
+              type="button"
+              @click="showRegisterModal = false"
+              class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-200"
+              :disabled="isSubmitting"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-200"
+              :disabled="isSubmitting || !passwordsMatch"
+            >
               {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
             </button>
           </div>
         </form>
-        <div v-if="statusMessage" 
-             :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
-             class="mt-4 p-3 rounded-lg text-center">
+        <div
+          v-if="statusMessage"
+          :class="
+            statusMessage.includes('successfully')
+              ? 'bg-green-50 text-green-700'
+              : 'bg-red-50 text-red-700'
+          "
+          class="mt-4 p-3 rounded-lg text-center"
+        >
           {{ statusMessage }}
         </div>
       </div>
@@ -198,12 +558,29 @@ export default {
       testCredentials: {
         username: 'employee',
         password: 'employee123'
-      }
+      },
+      showLoginPassword: false, // For login password visibility
+      showPassword: false, // For registration password visibility
+      showConfirmPassword: false, // For confirm password visibility
+      confirmPassword: ''
     };
   },
   watch: {
     'newRequest.salary'(newSalary) {
       this.newRequest.hourlyRate = newSalary / (8 * 22); // DOLE: 8-hour workday, 22 days/month
+    }
+  },
+  computed: {
+    passwordStrength() {
+      const password = this.newRequest.password;
+      if (password.length < 8) return 'Weak';
+      if (password.length >= 12 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) {
+        return 'Strong';
+      }
+      return 'Medium';
+    },
+    passwordsMatch() {
+      return this.newRequest.password === this.confirmPassword;
     }
   },
   methods: {
@@ -235,7 +612,20 @@ export default {
         this.isLoggingIn = false;
       }
     },
+    toggleLoginPasswordVisibility() {
+      this.showLoginPassword = !this.showLoginPassword;
+    },
+    togglePasswordVisibility() {
+      this.showPassword = !this.showPassword;
+    },
+    toggleConfirmPasswordVisibility() {
+      this.showConfirmPassword = !this.showConfirmPassword;
+    },
     async submitRequest() {
+      if (!this.passwordsMatch) {
+        this.statusMessage = 'Passwords do not match';
+        return;
+      }
       this.isSubmitting = true;
       this.statusMessage = '';
       try {
@@ -274,40 +664,16 @@ export default {
           this.showSuccessMessage('Account request submitted successfully! Please wait for admin approval.');
         }
       } catch (error) {
-        console.error('Failed to submit request:', error);
+        console.error('Request submission error:', error);
         if (error.response) {
           console.error('Error details:', error.response.data);
-          this.showErrorMessage(`Endpoint failed: ${error.response.config.url} with status ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+          this.statusMessage = error.response.data.error || 'Failed to submit request. Please try again.';
         } else {
-          this.showErrorMessage('Failed to connect to server. Ensure backend is running on port 7777.');
+          this.statusMessage = 'Failed to connect to server. Please try again.';
         }
       } finally {
         this.isSubmitting = false;
       }
-    },
-    calculateSSSContribution(salary) {
-      const monthlySalaryCredit = Math.min(Math.max(salary, 5000), 35000); // SSS MSC cap at ₱35,000 in 2025
-      const employeeShareRate = 0.05; // 5% employee share per SSS Circular 2024-06
-      return Math.round(monthlySalaryCredit * employeeShareRate); // Rounded employee share
-    },
-    calculatePhilHealthContribution(salary) {
-      const rate = 0.05; // 5% total rate in 2025 per PhilHealth Circular
-      const monthlySalary = Math.min(salary, 100000); // Cap at ₱100,000
-      return Math.round((monthlySalary * rate) / 2); // 2.5% employee share
-    },
-    calculatePagIBIGContribution(salary) {
-      const rate = 0.02; // 2% employee share per Pag-IBIG Circular 460
-      const cappedSalary = Math.min(salary, 10000); // Cap at ₱10,000
-      return Math.round(cappedSalary * rate); // Max ₱200
-    },
-    calculateWithholdingTax(salary) {
-      // Simplified BIR tax table for 2025 (TRAIN Law, RA 10963)
-      const taxableIncome = salary - (this.calculateSSSContribution(salary) + this.calculatePhilHealthContribution(salary) + this.calculatePagIBIGContribution(salary));
-      if (taxableIncome <= 20833) return 0; // Bracket 1: No tax
-      if (taxableIncome <= 33333) return (taxableIncome - 20833) * 0.15; // Bracket 2: 15% over ₱20,833
-      if (taxableIncome <= 66667) return 1875 + (taxableIncome - 33333) * 0.20; // Bracket 3: ₱1,875 + 20% over ₱33,333
-      // Add more brackets as needed per BIR table
-      return 0; // Placeholder for higher brackets
     },
     resetNewRequest() {
       this.newRequest = {
@@ -328,42 +694,32 @@ export default {
         earnings: { travelExpenses: 0, otherEarnings: 0 },
         status: 'pending'
       };
+      this.confirmPassword = '';
+      this.showPassword = false;
+      this.showConfirmPassword = false;
     },
     showSuccessMessage(message) {
       this.statusMessage = message;
-      setTimeout(() => this.statusMessage = '', 3000);
+      setTimeout(() => {
+        this.statusMessage = '';
+      }, 5000);
     },
-    showErrorMessage(message) {
-      this.statusMessage = message;
-      setTimeout(() => this.statusMessage = '', 3000);
+    calculateSSSContribution(salary) {
+      // Replace with your actual SSS contribution calculation logic
+      return (salary * 0.045).toFixed(2); // Example calculation
+    },
+    calculatePhilHealthContribution(salary) {
+      // Replace with your actual PhilHealth contribution calculation logic
+      return (salary * 0.015).toFixed(2); // Example calculation
+    },
+    calculatePagIBIGContribution(salary) {
+      // Replace with your actual Pag-IBIG contribution calculation logic
+      return Math.min(100, salary * 0.02).toFixed(2); // Example calculation, max 100
+    },
+    calculateWithholdingTax(salary) {
+      // Replace with your actual withholding tax calculation logic
+      return (salary * 0.10).toFixed(2); // Example calculation
     }
   }
 };
 </script>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-input, select {
-  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-
-input:focus, select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-</style>

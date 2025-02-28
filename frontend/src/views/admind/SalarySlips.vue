@@ -112,7 +112,6 @@
                   <span class="material-icons">visibility</span>
                   View
                 </button>
-
               </td>
             </tr>
             <tr v-if="paginatedEmployees.length === 0 && !isLoading">
@@ -287,6 +286,7 @@ export default {
           salaryMonth: this.formatSalaryMonth(this.selectedMonth),
           email: employee.email,
           position: employee.position,
+          payheads: employee.payheads || [], // Include payheads from backend
           rawData: employee
         }));
         this.showSuccessMessage('Employees loaded successfully!');
@@ -305,9 +305,20 @@ export default {
       const monthlySalary = (employee.salary || 0) || 0; // Ensure salary is a number, default to 0
       const holidayPay = this.calculateHolidayPay(employee) || 0;
       const overtimePay = this.calculateOvertimePay(employee) || 0;
+      const payheadEarnings = this.calculatePayheadEarnings(employee.payheads) || 0;
       const taxableSupplementary = (this.calculateSupplementaryIncome(employee)?.taxable || 0) || 0;
 
-      return monthlySalary + baseEarnings + holidayPay + overtimePay + taxableSupplementary || 0;
+      return monthlySalary + baseEarnings + holidayPay + overtimePay + payheadEarnings + taxableSupplementary || 0;
+    },
+    calculatePayheadEarnings(payheads) {
+      return payheads
+        .filter(p => p.type === 'Earnings')
+        .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
+    },
+    calculatePayheadDeductions(payheads) {
+      return payheads
+        .filter(p => p.type === 'Deductions')
+        .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
     },
     calculateSupplementaryIncome(employee) {
       const commission = (employee.commission || 0) || 0;
@@ -371,8 +382,9 @@ export default {
       const philhealthContribution = (this.calculatePhilHealthContribution(employee.salary) || 0) || 0;
       const pagibigContribution = (this.calculatePagIBIGContribution(employee.salary) || 0) || 0;
       const withholdingTax = (this.calculateWithholdingTax(employee) || 0) || 0;
+      const payheadDeductions = this.calculatePayheadDeductions(employee.payheads) || 0;
 
-      return sssContribution + philhealthContribution + pagibigContribution + withholdingTax || 0;
+      return sssContribution + philhealthContribution + pagibigContribution + withholdingTax + payheadDeductions || 0;
     },
     calculateNetSalary(employee) {
       const totalEarnings = (this.calculateTotalEarnings(employee) || 0) || 0;
@@ -488,7 +500,8 @@ export default {
         absencesDays: absencesDays || 0,
         paidLeavesAmount: this.formatNumber(paidLeavesAmount),
         absencesAmount: this.formatNumber(absencesAmount),
-        withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0)
+        withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0),
+        payheads: employee.payheads || [] // Include dynamic payheads
       };
     },
     formatNumber(value) {
@@ -562,23 +575,27 @@ export default {
       y += lineHeight; addFormattedText(doc, 'Philhealth', leftMargin, y); addFormattedText(doc, `Php${payslipData.philhealthDeduction}`, leftMargin + 50, y);
       y += lineHeight; addFormattedText(doc, 'HDMF', leftMargin, y); addFormattedText(doc, `Php${payslipData.hdmfDeduction}`, leftMargin + 50, y);
 
-      // Miscellaneous Computations (left-aligned, table remains left-aligned by default)
+      // Miscellaneous Computations (dynamic table based on payheads)
       y += lineHeight + 5;
       addFormattedText(doc, 'Miscellaneous', leftMargin, y, { fontSize: 14, fontStyle: 'bold' });
       y += lineHeight; addFormattedText(doc, 'Computations', leftMargin, y);
+
+      const miscTableData = payslipData.payheads.map(payhead => [
+        payhead.name,
+        payhead.type === 'Earnings' ? `${payhead.amount} day(s)` : '', // Customize description2 based on type
+        `Php${this.formatNumber(payhead.amount)}`
+      ]);
+
       doc.autoTable({
         startY: y + 5,
         head: [['Description', 'description2', 'Amount']],
-        body: [
-          ['Paid Leaves', `${payslipData.paidLeavesDays} day(s)`, `Php${payslipData.paidLeavesAmount}`],
-          ['Absences', `${payslipData.absencesDays} day(s)`, `Php${payslipData.absencesAmount}`]
-        ],
+        body: miscTableData,
         theme: 'grid',
         styles: { fontSize: 12, cellPadding: 3 },
         columnStyles: {
-          0: { cellWidth: 70 }, // Wider description column
-          1: { cellWidth: 50 }, // Narrower description2 column
-          2: { cellWidth: 50, halign: 'right' } // Wider amount column
+          0: { cellWidth: 70 }, // Description column
+          1: { cellWidth: 50 }, // description2 column (optional for Earnings)
+          2: { cellWidth: 50, halign: 'right' } // Amount column
         }
       });
 
@@ -655,7 +672,7 @@ export default {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined');
 
 button:disabled {
   cursor: not-allowed;
