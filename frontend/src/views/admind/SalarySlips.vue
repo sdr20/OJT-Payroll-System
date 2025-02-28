@@ -1,202 +1,186 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-    <div class="max-w-6xl mx-auto">
-      <div class="flex justify-between items-center mb-4 gap-4">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search Employee..."
-          class="border rounded-lg px-4 py-2 w-1/3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-        />
-        <input
-          v-model="selectedMonth"
-          type="month"
-          class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-          @change="fetchEmployees"
-        />
-        <button
-          @click="refreshData"
-          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200"
-          :disabled="isLoading"
-        >
-          {{ isLoading ? 'Refreshing...' : 'Refresh' }}
-        </button>
-      </div>
-
-      <div class="bg-white p-5 rounded-xl shadow-md">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Employee Name
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Hourly Rate
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Total Earnings
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Total Deductions
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Net Salary
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Salary Month
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr
-              v-for="employee in paginatedEmployees"
-              :key="employee.id"
-              class="hover:bg-gray-50"
-            >
-              <td class="px-6 py-4 text-sm text-gray-900">
-                {{ employee.name }}
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-900">
-                ₱{{ employee.hourlyRate.toLocaleString() }}
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-900">
-                ₱{{ employee.totalEarnings.toLocaleString() }}
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-900">
-                ₱{{ employee.totalDeductions.toLocaleString() }}
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-900 font-bold">
-                ₱{{ employee.totalSalary.toLocaleString() }}
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-900">
-                {{ employee.salaryMonth }}
-              </td>
-              <td class="px-6 py-4 text-sm font-medium flex gap-2">
-                <button
-                  @click="generatePayslip(employee)"
-                  class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200"
-                  :disabled="
-                    payslipGenerationStatus[employee.id]?.generating ||
-                    isLoading
-                  "
-                >
-                  <span class="material-icons">description</span>
-                  {{
-                    payslipGenerationStatus[employee.id]?.generating
-                      ? 'Generating...'
-                      : 'Generate'
-                  }}
-                </button>
-                <button
-                  @click="viewPayslip(employee)"
-                  class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200"
-                  :disabled="isLoading || !hasPayslip(employee)"
-                >
-                  <span class="material-icons">visibility</span>
-                  View
-                </button>
-              </td>
-            </tr>
-            <tr v-if="paginatedEmployees.length === 0 && !isLoading">
-              <td
-                colspan="7"
-                class="px-6 py-4 text-center text-sm text-gray-500"
-              >
-                No employees found for this month.
-              </td>
-            </tr>
-            <tr v-if="isLoading">
-              <td
-                colspan="7"
-                class="px-6 py-4 text-center text-sm text-gray-500"
-              >
-                Loading employees...
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="flex justify-center items-center mt-4 gap-4">
-        <button
-          @click="prevPage"
-          :disabled="currentPage === 1 || isLoading"
-          class="bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span class="material-icons">chevron_left</span>
-        </button>
-        <span class="text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
-        <button
-          @click="nextPage"
-          :disabled="currentPage === totalPages || isLoading"
-          class="bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span class="material-icons">chevron_right</span>
-        </button>
-      </div>
-
-      <!-- Payslip Viewer Modal -->
-      <div
-        v-if="showPayslipModal"
-        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-      >
-        <div
-          class="bg-white rounded-xl shadow-xl w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto"
-        >
-          <div class="p-6 border-b flex justify-between items-center">
-            <h2 class="text-2xl font-bold text-gray-800">
-              Payslip for {{ selectedEmployee.name }} -
-              {{ selectedEmployee.salaryMonth }}
-            </h2>
-            <button
-              @click="showPayslipModal = false"
-              class="text-gray-500 hover:text-gray-700"
-            >
-              <span class="material-icons-outlined">close</span>
-            </button>
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+    <div class="max-w-7xl mx-auto">
+      <!-- Header Section -->
+      <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Search Box -->
+          <div class="relative">
+            <span class="material-icons absolute left-2 top-2 text-gray-400 text-sm">search</span>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search employee by name..."
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+            />
           </div>
-          <div class="p-6">
-            <iframe
-              :src="payslipDataUrl"
-              class="w-full h-[70vh]"
-              frameborder="0"
-              @load="onIframeLoad"
-              @error="onIframeError"
-            ></iframe>
-            <p v-if="iframeError" class="text-red-500 text-sm mt-2">
-              Error loading payslip. Please ensure the payslip is generated
-              correctly or try again.
-            </p>
+
+          <!-- Month Selector -->
+          <div class="relative">
+            <span class="material-icons absolute left-2 top-2 text-gray-400 text-sm">calendar_today</span>
+            <input
+              v-model="selectedMonth"
+              type="month"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-400"
+              @change="fetchEmployees"
+            />
+          </div>
+
+          <!-- Refresh Button -->
+          <button
+            @click="refreshData"
+            class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-md"
+            :disabled="isLoading"
+          >
+            <span class="material-icons text-sm">{{ isLoading ? 'sync' : 'refresh' }}</span>
+            {{ isLoading ? 'Refreshing...' : 'Refresh Data' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th v-for="header in tableHeaders" :key="header.key"
+                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
+                  <div class="flex items-center gap-1">
+                    <span class="material-icons text-gray-400 text-sm">{{ header.icon }}</span>
+                    {{ header.label }}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="employee in paginatedEmployees" 
+                  :key="employee.id"
+                  class="hover:bg-blue-50 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="material-icons text-gray-400 text-sm">person</span>
+                    <div>
+                      <div class="text-sm font-medium text-gray-900">{{ employee.name }}</div>
+                      <div class="text-xs text-gray-500">ID: {{ employee.empNo }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-900">₱{{ employee.hourlyRate.toLocaleString() }}</td>
+                <td class="px-4 py-3 text-sm text-green-600">₱{{ employee.totalEarnings.toLocaleString() }}</td>
+                <td class="px-4 py-3 text-sm text-red-600">₱{{ employee.totalDeductions.toLocaleString() }}</td>
+                <td class="px-4 py-3 text-sm text-blue-600 font-medium">₱{{ employee.totalSalary.toLocaleString() }}</td>
+                <td class="px-4 py-3 text-sm">{{ employee.salaryMonth }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex gap-2">
+                    <button
+                      @click="generatePayslip(employee)"
+                      class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                      :disabled="payslipGenerationStatus[employee.id]?.generating"
+                    >
+                      <span class="material-icons text-sm">description</span>
+                      {{ payslipGenerationStatus[employee.id]?.generating ? 'Generating...' : 'Generate' }}
+                    </button>
+                    <button
+                      @click="viewPayslip(employee)"
+                      class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600"
+                      :disabled="!hasPayslip(employee)"
+                    >
+                      <span class="material-icons text-sm">visibility</span>
+                      View
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Empty State -->
+              <tr v-if="paginatedEmployees.length === 0 && !isLoading">
+                <td colspan="7" class="px-4 py-8 text-center">
+                  <div class="flex flex-col items-center gap-2">
+                    <span class="material-icons text-gray-400 text-3xl">search_off</span>
+                    <p class="text-sm text-gray-500">No employees found for this month.</p>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Loading State -->
+              <tr v-if="isLoading">
+                <td colspan="7" class="px-4 py-8 text-center">
+                  <div class="flex flex-col items-center gap-2">
+                    <span class="material-icons text-blue-500 animate-spin text-3xl">sync</span>
+                    <p class="text-sm text-gray-500">Loading employees...</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between px-4 py-3 bg-gray-50">
+          <div class="text-xs text-gray-700">
+            Showing page {{ currentPage }} of {{ totalPages }}
+          </div>
+          <div class="flex gap-2">
+            <button
+              @click="prevPage"
+              :disabled="currentPage === 1 || isLoading"
+              class="inline-flex items-center px-3 py-1 text-xs bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              <span class="material-icons text-sm mr-1">chevron_left</span>
+              Previous
+            </button>
+            <button
+              @click="nextPage"
+              :disabled="currentPage === totalPages || isLoading"
+              class="inline-flex items-center px-3 py-1 text-xs bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Next
+              <span class="material-icons text-sm ml-1">chevron_right</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <div
-        v-if="statusMessage"
-        :class="
-          statusMessage.includes('successfully')
-            ? 'bg-green-50 text-green-700'
-            : 'bg-red-50 text-red-700'
-        "
-        class="fixed bottom-4 right-4 p-4 rounded-lg shadow-md z-50"
-      >
+      <!-- Payslip Modal -->
+      <div v-if="showPayslipModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl">
+          <div class="flex items-center justify-between p-4 border-b">
+            <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
+              <span class="material-icons text-sm">description</span>
+              Payslip - {{ selectedEmployee?.name }}
+            </h2>
+            <button
+              @click="showPayslipModal = false"
+              class="p-1 hover:bg-gray-100 rounded-full"
+            >
+              <span class="material-icons text-sm">close</span>
+            </button>
+          </div>
+          <div class="p-4">
+            <iframe
+              :src="payslipDataUrl"
+              class="w-full h-[60vh] rounded border"
+              @load="onIframeLoad"
+              @error="onIframeError"
+            ></iframe>
+            <div v-if="iframeError" class="mt-3 p-3 bg-red-50 text-red-700 rounded text-sm flex items-center gap-1">
+              <span class="material-icons text-sm">error</span>
+              Error loading payslip. Please try again.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Messages -->
+      <div v-if="statusMessage"
+           :class="[
+             statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
+             'fixed bottom-4 right-4 p-3 rounded shadow-lg z-50 flex items-center gap-1 animate-fade-in text-sm'
+           ]">
+        <span class="material-icons text-sm">
+          {{ statusMessage.includes('successfully') ? 'check_circle' : 'error' }}
+        </span>
         {{ statusMessage }}
       </div>
     </div>
@@ -206,8 +190,8 @@
 <script>
 import axios from 'axios';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // Use default import for compatibility
-import moment from 'moment'; // Import moment.js for date formatting
+import autoTable from 'jspdf-autotable';
+import moment from 'moment';
 
 // Extend jsPDF with autoTable plugin
 jsPDF.prototype.autoTable = autoTable.default;
@@ -230,12 +214,21 @@ export default {
       selectedEmployee: null,
       payslipDataUrl: '',
       iframeError: false,
-      payslips: {}, // Store payslip URLs locally for viewing
+      payslips: {},
       regularHolidays: [
         '01/01/2025', '04/09/2025', '04/17/2025', '04/18/2025', '05/01/2025',
         '06/12/2025', '08/25/2025', '11/30/2025', '12/25/2025', '12/30/2025'
       ],
-      specialNonWorkingDays: ['02/08/2025', '04/19/2025', '08/26/2025']
+      specialNonWorkingDays: ['02/08/2025', '04/19/2025', '08/26/2025'],
+      tableHeaders: [
+        { key: 'name', label: 'Employee Name', icon: 'person' },
+        { key: 'rate', label: 'Hourly Rate', icon: 'payments' },
+        { key: 'earnings', label: 'Total Earnings', icon: 'trending_up' },
+        { key: 'deductions', label: 'Total Deductions', icon: 'trending_down' },
+        { key: 'salary', label: 'Net Salary', icon: 'account_balance_wallet' },
+        { key: 'month', label: 'Salary Month', icon: 'event' },
+        { key: 'actions', label: 'Actions', icon: 'more_horiz' },
+      ],
     };
   },
   computed: {
@@ -274,19 +267,19 @@ export default {
           birthDate: employee.birthDate || 'N/A',
           hireDate: employee.hireDate || 'N/A',
           civilStatus: employee.civilStatus || 'SINGLE',
-          dependents: employee.dependents || 0, // Default to 0 if undefined
+          dependents: employee.dependents || 0,
           sss: employee.sss || 'N/A',
           tin: employee.tin || 'N/A',
           philhealth: employee.philhealth || 'N/A',
           hdmf: employee.hdmf || 'N/A',
-          hourlyRate: employee.hourlyRate || (employee.salary / (8 * 22)) || 0, // Default to 0 if undefined
+          hourlyRate: employee.hourlyRate || (employee.salary / (8 * 22)) || 0,
           totalEarnings: employee.totalEarnings || this.calculateTotalEarnings(employee) || 0,
           totalDeductions: employee.totalDeductions || this.calculateTotalDeductions(employee) || 0,
           totalSalary: employee.netSalary || this.calculateNetSalary(employee) || 0,
           salaryMonth: this.formatSalaryMonth(this.selectedMonth),
           email: employee.email,
           position: employee.position,
-          payheads: employee.payheads || [], // Include payheads from backend
+          payheads: employee.payheads || [],
           rawData: employee
         }));
         this.showSuccessMessage('Employees loaded successfully!');
@@ -302,12 +295,11 @@ export default {
     },
     calculateTotalEarnings(employee) {
       const baseEarnings = (employee.earnings?.travelExpenses || 0) + (employee.earnings?.otherEarnings || 0);
-      const monthlySalary = (employee.salary || 0) || 0; // Ensure salary is a number, default to 0
+      const monthlySalary = (employee.salary || 0) || 0;
       const holidayPay = this.calculateHolidayPay(employee) || 0;
       const overtimePay = this.calculateOvertimePay(employee) || 0;
       const payheadEarnings = this.calculatePayheadEarnings(employee.payheads) || 0;
       const taxableSupplementary = (this.calculateSupplementaryIncome(employee)?.taxable || 0) || 0;
-
       return monthlySalary + baseEarnings + holidayPay + overtimePay + payheadEarnings + taxableSupplementary || 0;
     },
     calculatePayheadEarnings(payheads) {
@@ -394,7 +386,7 @@ export default {
     },
     calculateHolidayPay(employee) {
       const dailyRate = ((employee.salary || 0) / 30) || 0;
-      const salaryMonth = this.formatSalaryMonth(this.selectedMonth).split(' ')[0]; // Get month (e.g., "April")
+      const salaryMonth = this.formatSalaryMonth(this.selectedMonth).split(' ')[0];
       const regularHolidays = this.regularHolidays || [];
       const specialNonWorkingDays = this.specialNonWorkingDays || [];
       const isRegularHoliday = regularHolidays.some(holiday => moment(holiday, 'MM/DD/YYYY').format('MMMM') === salaryMonth);
@@ -412,29 +404,29 @@ export default {
       return regularOTPay + holidayOTPay || 0;
     },
     calculateSSSContribution(salary) {
-      const monthlySalaryCredit = Math.min(Math.max((salary || 0), 5000), 35000) || 0; // SSS MSC cap at ₱35,000 in 2025
-      const employeeShareRate = 0.05; // 5% employee share per SSS Circular 2024-06
+      const monthlySalaryCredit = Math.min(Math.max((salary || 0), 5000), 35000) || 0;
+      const employeeShareRate = 0.05;
       return Math.round(monthlySalaryCredit * employeeShareRate) || 0;
     },
     calculatePhilHealthContribution(salary) {
-      const rate = 0.05; // 5% total rate in 2025 per PhilHealth Circular
-      const monthlySalary = Math.min((salary || 0), 100000) || 0; // Cap at ₱100,000
-      return Math.round((monthlySalary * rate) / 2) || 0; // 2.5% employee share
+      const rate = 0.05;
+      const monthlySalary = Math.min((salary || 0), 100000) || 0;
+      return Math.round((monthlySalary * rate) / 2) || 0;
     },
     calculatePagIBIGContribution(salary) {
-      const rate = 0.02; // 2% employee share per Pag-IBIG Circular 460
-      const cappedSalary = Math.min((salary || 0), 10000) || 0; // Cap at ₱10,000
-      return Math.round(cappedSalary * rate) || 0; // Max ₱200
+      const rate = 0.02;
+      const cappedSalary = Math.min((salary || 0), 10000) || 0;
+      return Math.round(cappedSalary * rate) || 0;
     },
     calculateWithholdingTax(employee) {
       const nonTaxable = this.calculateNonTaxableIncome(employee);
       const taxableIncome = ((this.calculateTotalEarnings(employee) || 0) - (nonTaxable.totalNonTaxable || 0)) || 0;
       if (taxableIncome <= 20833) return 0;
-      if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15) || 0; // Bracket 2: 15% over ₱20,833
-      if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20) || 0; // Bracket 3: ₱1,875 + 20% over ₱33,333
-      if (taxableIncome <= 166667) return Math.round(13541.80 + (taxableIncome - 66667) * 0.25) || 0; // Bracket 4: ₱13,541.80 + 25% over ₱66,667
-      if (taxableIncome <= 666667) return Math.round(90841.80 + (taxableIncome - 166667) * 0.30) || 0; // Bracket 5: ₱90,841.80 + 30% over ₱166,667
-      return Math.round(408841.80 + (taxableIncome - 666667) * 0.35) || 0; // Bracket 6: ₱408,841.80 + 35% over ₱666,667
+      if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15) || 0;
+      if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20) || 0;
+      if (taxableIncome <= 166667) return Math.round(13541.80 + (taxableIncome - 66667) * 0.25) || 0;
+      if (taxableIncome <= 666667) return Math.round(90841.80 + (taxableIncome - 166667) * 0.30) || 0;
+      return Math.round(408841.80 + (taxableIncome - 666667) * 0.35) || 0;
     },
     formatSalaryMonth(month) {
       const date = new Date(month + '-01');
@@ -501,11 +493,10 @@ export default {
         paidLeavesAmount: this.formatNumber(paidLeavesAmount),
         absencesAmount: this.formatNumber(absencesAmount),
         withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0),
-        payheads: employee.payheads || [] // Include dynamic payheads
+        payheads: employee.payheads || []
       };
     },
     formatNumber(value) {
-      // Ensure value is a number, default to 0 if NaN or undefined
       const num = Number(value) || 0;
       return num.toFixed(2);
     },
@@ -515,31 +506,26 @@ export default {
         unit: 'mm',
         format: 'a4'
       });
-      const lineHeight = 8; // Increased vertical spacing for better readability
-      const leftMargin = 14; // Standard left margin
+      const lineHeight = 8;
+      const leftMargin = 14;
 
-      // Helper function to add formatted text
       function addFormattedText(doc, text, x, y, options = {}) {
-        doc.setFontSize(options.fontSize || 12); // Default to larger font for readability
+        doc.setFontSize(options.fontSize || 12);
         doc.setFont(undefined, options.fontStyle || 'normal');
-        doc.setTextColor(options.textColor ? options.textColor[0] : 0, options.textColor ? options.textColor[1] : 0, options.textColor ? options.textColor[2] : 0); // Use array for RGB
+        doc.setTextColor(options.textColor ? options.textColor[0] : 0, options.textColor ? options.textColor[1] : 0, options.textColor ? options.textColor[2] : 0);
         doc.text(text, x, y, { align: options.align || 'left' });
       }
 
-      // Header: RIGHTJOB Solutions in green, PAYSLIP centered
       addFormattedText(doc, 'RIGHTJOB Solutions', leftMargin, 15, { fontSize: 16, fontStyle: 'bold', textColor: [0, 128, 0] });
       addFormattedText(doc, 'PAYSLIP', doc.internal.pageSize.getWidth() / 2, 15, { fontSize: 18, align: 'center' });
       addFormattedText(doc, 'Salary Date', 140, 15, { fontSize: 12 });
       addFormattedText(doc, payslipData.salaryDate, 170, 15, { fontSize: 12 });
 
-      // Line Separator
       doc.line(leftMargin, 20, doc.internal.pageSize.getWidth() - leftMargin, 20);
 
-      // Personal Information
       let y = 30;
       addFormattedText(doc, 'Personal Information', leftMargin, 25, { fontSize: 14, fontStyle: 'bold' });
 
-      // Left Column (Employee Details)
       addFormattedText(doc, 'Emp No.', leftMargin, y); addFormattedText(doc, payslipData.empNo, leftMargin + 40, y);
       y += lineHeight; addFormattedText(doc, 'Last Name', leftMargin, y); addFormattedText(doc, payslipData.lastName, leftMargin + 40, y);
       y += lineHeight; addFormattedText(doc, 'Middle Name', leftMargin, y); addFormattedText(doc, payslipData.middleName, leftMargin + 40, y);
@@ -549,7 +535,6 @@ export default {
       y += lineHeight; addFormattedText(doc, 'Position', leftMargin, y); addFormattedText(doc, payslipData.position, leftMargin + 40, y);
       y += lineHeight; addFormattedText(doc, 'Basic Salary', leftMargin, y); addFormattedText(doc, `Php${payslipData.basicSalary}`, leftMargin + 40, y);
 
-      // Right Column (Additional Info)
       y = 30;
       addFormattedText(doc, 'Civil Status', 120, y); addFormattedText(doc, payslipData.civilStatus, 150, y);
       y += lineHeight; addFormattedText(doc, 'Dependents', 120, y); addFormattedText(doc, payslipData.dependents.toString(), 150, y);
@@ -558,31 +543,26 @@ export default {
       y += lineHeight; addFormattedText(doc, 'Philhealth', 120, y); addFormattedText(doc, payslipData.philhealth, 150, y);
       y += lineHeight; addFormattedText(doc, 'HDMF', 120, y); addFormattedText(doc, payslipData.hdmf, 150, y);
 
-      // Update y to start Summary immediately after Personal Information (approx. y = 95)
       y = 95;
-
-      // Summary (left-aligned)
       addFormattedText(doc, 'Summary', leftMargin, y, { fontSize: 14, fontStyle: 'bold' });
       y += lineHeight; addFormattedText(doc, 'Total Deductions', leftMargin, y); addFormattedText(doc, `(Php${payslipData.totalDeductions})`, leftMargin + 50, y);
-      addFormattedText(doc, 'Salary PHP', 120, y); addFormattedText(doc, `Php${payslipData.netSalary}`, 150, y); // Match SSS, TIN, Philhealth, HDMF alignment
+      addFormattedText(doc, 'Salary PHP', 120, y); addFormattedText(doc, `Php${payslipData.netSalary}`, 150, y);
       y += lineHeight; addFormattedText(doc, 'Total Misc', leftMargin, y); addFormattedText(doc, 'Php0.00', leftMargin + 50, y);
 
-      // Deductions (left-aligned)
       y += lineHeight + 5;
       addFormattedText(doc, 'Deductions', leftMargin, y, { fontSize: 14, fontStyle: 'bold' });
       y += lineHeight; addFormattedText(doc, 'SSS', leftMargin, y); addFormattedText(doc, `Php${payslipData.sssDeduction}`, leftMargin + 50, y);
-      addFormattedText(doc, 'Withholding Tax', 120, y); addFormattedText(doc, `Php${payslipData.withholdingTax}`, 150, y); // Match SSS, TIN, Philhealth, HDMF alignment
+      addFormattedText(doc, 'Withholding Tax', 120, y); addFormattedText(doc, `Php${payslipData.withholdingTax}`, 150, y);
       y += lineHeight; addFormattedText(doc, 'Philhealth', leftMargin, y); addFormattedText(doc, `Php${payslipData.philhealthDeduction}`, leftMargin + 50, y);
       y += lineHeight; addFormattedText(doc, 'HDMF', leftMargin, y); addFormattedText(doc, `Php${payslipData.hdmfDeduction}`, leftMargin + 50, y);
 
-      // Miscellaneous Computations (dynamic table based on payheads)
       y += lineHeight + 5;
       addFormattedText(doc, 'Miscellaneous', leftMargin, y, { fontSize: 14, fontStyle: 'bold' });
       y += lineHeight; addFormattedText(doc, 'Computations', leftMargin, y);
 
       const miscTableData = payslipData.payheads.map(payhead => [
         payhead.name,
-        payhead.type === 'Earnings' ? `${payhead.amount} day(s)` : '', // Customize description2 based on type
+        payhead.type === 'Earnings' ? `${payhead.amount} day(s)` : '',
         `Php${this.formatNumber(payhead.amount)}`
       ]);
 
@@ -593,13 +573,12 @@ export default {
         theme: 'grid',
         styles: { fontSize: 12, cellPadding: 3 },
         columnStyles: {
-          0: { cellWidth: 70 }, // Description column
-          1: { cellWidth: 50 }, // description2 column (optional for Earnings)
-          2: { cellWidth: 50, halign: 'right' } // Amount column
+          0: { cellWidth: 70 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 50, halign: 'right' }
         }
       });
 
-      // Footer
       addFormattedText(doc, 'This being a computer generated payslip, no signature required.', doc.internal.pageSize.getWidth() / 2, 270, { fontSize: 10, align: 'center' });
 
       const pdfBlob = doc.output('blob');
@@ -627,7 +606,7 @@ export default {
         if (!this.payslips[employee.id]) {
           await this.generatePayslip(employee);
         }
-        const payslipData = this.payslips[employee.id].split(',')[1]; // Extract Base64 data
+        const payslipData = this.payslips[employee.id].split(',')[1];
         if (!payslipData) throw new Error('Invalid payslip data');
 
         const response = await axios.post('http://localhost:7777/api/payslips/send-email', {
@@ -657,15 +636,11 @@ export default {
     },
     showSuccessMessage(message) {
       this.statusMessage = message;
-      setTimeout(() => {
-        this.statusMessage = '';
-      }, 3000);
+      setTimeout(() => { this.statusMessage = ''; }, 3000);
     },
     showErrorMessage(message) {
       this.statusMessage = message;
-      setTimeout(() => {
-        this.statusMessage = '';
-      }, 5000);
+      setTimeout(() => { this.statusMessage = ''; }, 5000);
     }
   }
 };
@@ -678,12 +653,24 @@ button:disabled {
   cursor: not-allowed;
   opacity: 0.7;
 }
-
 .transition-all {
   transition: all 0.2s ease-in-out;
 }
-
 .hover\:bg-gray-50:hover {
   background-color: #f9fafb;
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

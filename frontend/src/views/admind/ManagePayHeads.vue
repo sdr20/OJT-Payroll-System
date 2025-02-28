@@ -1,116 +1,120 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-    <div class="max-w-6xl mx-auto">
-      <!-- Header with Search and Filters -->
-      <div class="flex justify-between items-center mb-6 gap-4">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search Payheads or Employees..."
-          class="border rounded-lg px-4 py-2 w-1/3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-        />
-        <select
-          v-model="filterType"
-          class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-        >
-          <option value="">All Types</option>
-          <option value="Earnings">Earnings</option>
-          <option value="Deductions">Deductions</option>
-        </select>
-        <button
-          class="py-2 px-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200"
-          @click="showAddModal = true"
-        >
-          Add Pay Head
-        </button>
-      </div>
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+    <div class="max-w-7xl mx-auto">
+      <!-- Header Section -->
+      <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+          <!-- Search with icon -->
+          <div class="relative w-full md:w-1/3">
+            <span class="material-icons absolute left-3 top-2.5 text-gray-400">search</span>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search Payheads or Employees..."
+              class="pl-10 pr-4 py-2 w-full border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+            />
+          </div>
 
-      <!-- Tabs for Payheads and Employees -->
-      <div class="mb-6">
-        <div class="flex border-b">
+          <!-- Filter with icon -->
+          <div class="relative w-full md:w-auto">
+            <span class="material-icons absolute left-3 top-2.5 text-gray-400">filter_list</span>
+            <select
+              v-model="filterType"
+              class="pl-10 pr-4 py-2 w-full border rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+            >
+              <option value="">All Types</option>
+              <option value="Earnings">Earnings</option>
+              <option value="Deductions">Deductions</option>
+            </select>
+          </div>
+
+          <!-- Add Button -->
           <button
-            class="px-4 py-2 text-sm font-medium"
-            :class="{ 'border-b-2 border-blue-500 text-blue-600': activeTab === 'payheads', 'text-gray-500 hover:text-gray-700': activeTab !== 'payheads' }"
-            @click="activeTab = 'payheads'"
+            class="w-full md:w-auto py-2 px-6 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2"
+            @click="showAddModal = true"
           >
-            Payheads
-          </button>
-          <button
-            class="px-4 py-2 text-sm font-medium"
-            :class="{ 'border-b-2 border-blue-500 text-blue-600': activeTab === 'employees', 'text-gray-500 hover:text-gray-700': activeTab !== 'employees' }"
-            @click="activeTab = 'employees'"
-          >
-            Employee Payroll
+            <span class="material-icons">add</span>
+            Add Pay Head
           </button>
         </div>
       </div>
 
-      <!-- Payheads Section -->
-      <div v-if="activeTab === 'payheads'" class="bg-white p-5 rounded-xl shadow-md mb-6">
-        <PayHeadTable :payHeads="filteredPayHeads" @update="showUpdatePayHeadModal" @delete="deletePayHead" />
+      <!-- Navigation Tabs -->
+      <div class="bg-white rounded-xl shadow-sm mb-6">
+        <div class="flex">
+          <button
+            v-for="tab in ['payheads', 'employees']"
+            :key="tab"
+            class="flex-1 px-6 py-4 text-sm font-medium transition-all duration-200"
+            :class="{
+              'border-b-2 border-blue-500 text-blue-600 bg-blue-50': activeTab === tab,
+              'text-gray-500 hover:bg-gray-50': activeTab !== tab
+            }"
+            @click="activeTab = tab"
+          >
+            <div class="flex items-center justify-center gap-2">
+              <span class="material-icons">{{ tab === 'payheads' ? 'payments' : 'people' }}</span>
+              {{ tab.charAt(0).toUpperCase() + tab.slice(1) }}
+            </div>
+          </button>
+        </div>
       </div>
 
-      <!-- Employee Payroll Section -->
-      <div v-if="activeTab === 'employees'" class="bg-white p-5 rounded-xl shadow-md">
-        <EmployeePayrollTable :employees="filteredEmployees" @addPayhead="openAddPayheadModal" />
+      <!-- Content Sections -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div v-if="activeTab === 'payheads'">
+          <PayHeadTable :payHeads="filteredPayHeads" @update="showUpdatePayHeadModal" @delete="deletePayHead" />
+        </div>
+
+        <div v-else>
+          <EmployeePayrollTable :employees="filteredEmployees" @addPayhead="openAddPayheadModal" />
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="activeTab === 'employees'" class="mt-6 flex justify-center items-center gap-4">
+          <button
+            @click="prevPage"
+            :disabled="currentPage === 1 || isLoading"
+            class="p-2 rounded-full hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span class="material-icons">navigate_before</span>
+          </button>
+          <span class="text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+          <button
+            @click="nextPage"
+            :disabled="currentPage === totalPages || isLoading"
+            class="p-2 rounded-full hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span class="material-icons">navigate_next</span>
+          </button>
+        </div>
       </div>
 
       <!-- Modals -->
-      <PayHeadModal
-        v-if="showAddModal"
-        @close="showAddModal = false"
-        @save="addPayHead"
-        :payHead="newPayHead"
-        title="Add New Pay Head"
-      />
-      <PayHeadModal
-        v-if="showUpdateModal"
-        @close="showUpdateModal = false"
-        @save="updatePayHead"
-        :payHead="selectedPayHead"
-        title="Update Pay Head"
-        isUpdate
-      />
+      <PayHeadModal v-if="showAddModal" @close="showAddModal = false" @save="addPayHead" :payHead="newPayHead" title="Add New Pay Head" />
+      <PayHeadModal v-if="showUpdateModal" @close="showUpdateModal = false" @save="updatePayHead" :payHead="selectedPayHead" title="Update Pay Head" isUpdate />
       <AddPayheadModal
         v-if="showAddPayheadModal"
+        v-bind="{ availablePayheads, selectedEmployeePayheads, totalPayableSalary: totalPayableSalary || 0, selectedEmployee: selectedEmployee || {}, isUpdate: false }"
         @close="showAddPayheadModal = false"
         @save="savePayheads"
-        :availablePayheads="availablePayheads"
-        :selectedEmployeePayheads="selectedEmployeePayheads"
         @addPayhead="addPayheadToEmployee"
         @removePayhead="removePayheadFromEmployee"
         @updatePayhead="updatePayheadInEmployee"
-        :totalPayableSalary="totalPayableSalary || 0"
-        :selectedEmployee="selectedEmployee || {}"
-        :isUpdate="false"
       />
 
-      <!-- Status Message -->
+      <!-- Toast Messages -->
       <div
         v-if="statusMessage"
-        :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
-        class="fixed bottom-4 right-4 p-4 rounded-lg shadow-md z-50"
+        :class="[
+          statusMessage.includes('successfully') ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200',
+          'fixed bottom-4 right-4 p-4 rounded-lg shadow-lg z-50 border flex items-center gap-2'
+        ]"
       >
+        <span class="material-icons">
+          {{ statusMessage.includes('successfully') ? 'check_circle' : 'error' }}
+        </span>
         {{ statusMessage }}
-      </div>
-
-      <!-- Pagination for Employees -->
-      <div v-if="activeTab === 'employees'" class="flex justify-center items-center mt-4 gap-4">
-        <button
-          @click="prevPage"
-          :disabled="currentPage === 1 || isLoading"
-          class="bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span class="material-icons">chevron_left</span>
-        </button>
-        <span class="text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
-        <button
-          @click="nextPage"
-          :disabled="currentPage === totalPages || isLoading"
-          class="bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span class="material-icons">chevron_right</span>
-        </button>
       </div>
     </div>
   </div>
