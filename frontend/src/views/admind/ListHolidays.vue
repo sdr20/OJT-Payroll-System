@@ -747,5 +747,5 @@ export default {
     max-height: 80vh;
     overflow-y: auto;
   }
-}   
-</style>
+}      
+</style>   

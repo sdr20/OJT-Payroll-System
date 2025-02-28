@@ -91,6 +91,10 @@
                 <label for="pagibig" class="text-sm font-medium text-gray-700">Pag-IBIG ID</label>
                 <input v-model="newRequest.pagibig" type="text" id="pagibig" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="123456789012" pattern="\d{12}" title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)">
               </div>
+              <div class="space-y-1">
+                <label for="tin" class="text-sm font-medium text-gray-700">TIN</label>
+                <input v-model="newRequest.tin" type="text" id="tin" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="123456789" pattern="\d{9,12}" title="Please enter a 9-12 digit TIN (e.g., 123456789)">
+              </div>
             </div>
           </div>
 
@@ -99,8 +103,28 @@
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label for="salary" class="text-sm font-medium text-gray-700">Proposed Salary</label>
+                <label for="salary" class="text-sm font-medium text-gray-700">Proposed Monthly Salary</label>
                 <input v-model.number="newRequest.salary" type="number" id="salary" class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter proposed salary" required min="0">
+              </div>
+              <div class="space-y-1">
+                <label for="hourlyRate" class="text-sm font-medium text-gray-700">Hourly Rate (Auto-Calculated)</label>
+                <input v-model="newRequest.hourlyRate" type="number" id="hourlyRate" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+              </div>
+              <div class="space-y-1">
+                <label class="text-sm font-medium text-gray-700">SSS Contribution (Employee Share)</label>
+                <input :value="calculateSSSContribution(newRequest.salary).toLocaleString()" type="text" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+              </div>
+              <div class="space-y-1">
+                <label class="text-sm font-medium text-gray-700">PhilHealth Contribution (Employee Share)</label>
+                <input :value="calculatePhilHealthContribution(newRequest.salary).toLocaleString()" type="text" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+              </div>
+              <div class="space-y-1">
+                <label class="text-sm font-medium text-gray-700">Pag-IBIG Contribution (Employee Share)</label>
+                <input :value="calculatePagIBIGContribution(newRequest.salary).toLocaleString()" type="text" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
+              </div>
+              <div class="space-y-1">
+                <label class="text-sm font-medium text-gray-700">Withholding Tax</label>
+                <input :value="calculateWithholdingTax(newRequest.salary).toLocaleString()" type="text" class="block w-full p-2 border rounded-lg bg-gray-100" disabled>
               </div>
             </div>
           </div>
@@ -162,9 +186,11 @@ export default {
         contactNumber: '',
         email: '',
         salary: 0,
+        hourlyRate: 0,
         sss: '',
         philhealth: '',
         pagibig: '',
+        tin: '',
         earnings: { travelExpenses: 0, otherEarnings: 0 },
         status: 'pending'
       },
@@ -174,6 +200,11 @@ export default {
         password: 'employee123'
       }
     };
+  },
+  watch: {
+    'newRequest.salary'(newSalary) {
+      this.newRequest.hourlyRate = newSalary / (8 * 22); // DOLE: 8-hour workday, 22 days/month
+    }
   },
   methods: {
     async login() {
@@ -223,9 +254,11 @@ export default {
           email: this.newRequest.email,
           contactNumber: this.newRequest.contactNumber,
           salary: this.newRequest.salary,
+          hourlyRate: this.newRequest.hourlyRate,
           sss: this.newRequest.sss || '',
           philhealth: this.newRequest.philhealth || '',
           pagibig: this.newRequest.pagibig || '',
+          tin: this.newRequest.tin || '',
           earnings: { travelExpenses: 0, otherEarnings: 0 },
           status: 'pending',
           username: this.newRequest.username,
@@ -252,6 +285,30 @@ export default {
         this.isSubmitting = false;
       }
     },
+    calculateSSSContribution(salary) {
+      const monthlySalaryCredit = Math.min(Math.max(salary, 5000), 35000); // SSS MSC cap at ₱35,000 in 2025
+      const employeeShareRate = 0.05; // 5% employee share per SSS Circular 2024-06
+      return Math.round(monthlySalaryCredit * employeeShareRate); // Rounded employee share
+    },
+    calculatePhilHealthContribution(salary) {
+      const rate = 0.05; // 5% total rate in 2025 per PhilHealth Circular
+      const monthlySalary = Math.min(salary, 100000); // Cap at ₱100,000
+      return Math.round((monthlySalary * rate) / 2); // 2.5% employee share
+    },
+    calculatePagIBIGContribution(salary) {
+      const rate = 0.02; // 2% employee share per Pag-IBIG Circular 460
+      const cappedSalary = Math.min(salary, 10000); // Cap at ₱10,000
+      return Math.round(cappedSalary * rate); // Max ₱200
+    },
+    calculateWithholdingTax(salary) {
+      // Simplified BIR tax table for 2025 (TRAIN Law, RA 10963)
+      const taxableIncome = salary - (this.calculateSSSContribution(salary) + this.calculatePhilHealthContribution(salary) + this.calculatePagIBIGContribution(salary));
+      if (taxableIncome <= 20833) return 0; // Bracket 1: No tax
+      if (taxableIncome <= 33333) return (taxableIncome - 20833) * 0.15; // Bracket 2: 15% over ₱20,833
+      if (taxableIncome <= 66667) return 1875 + (taxableIncome - 33333) * 0.20; // Bracket 3: ₱1,875 + 20% over ₱33,333
+      // Add more brackets as needed per BIR table
+      return 0; // Placeholder for higher brackets
+    },
     resetNewRequest() {
       this.newRequest = {
         username: '',
@@ -263,9 +320,11 @@ export default {
         contactNumber: '',
         email: '',
         salary: 0,
+        hourlyRate: 0,
         sss: '',
         philhealth: '',
         pagibig: '',
+        tin: '',
         earnings: { travelExpenses: 0, otherEarnings: 0 },
         status: 'pending'
       };

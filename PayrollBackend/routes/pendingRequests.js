@@ -1,57 +1,59 @@
+// C:\Users\ASUS\Desktop\Payroll_system\PayrollBackend\routes\pending-requests.js
 const express = require('express');
 const router = express.Router();
 const PendingRequest = require('../models/PendingRequest');
 
+// Get max ID for assigning new request IDs
 router.get('/max-id', async (req, res) => {
   try {
-    const maxIdDoc = await PendingRequest.findOne().sort({ id: -1 });
+    const maxIdDoc = await PendingRequest.findOne().sort({ id: -1 }).select('id');
     const maxId = maxIdDoc ? maxIdDoc.id : 0;
-    res.json({ maxId });
+    console.log('Fetched max ID:', maxId);
+    res.status(200).json({ maxId });
   } catch (error) {
     console.error('Error fetching max ID:', error);
-    res.status(500).json({ error: 'Failed to fetch max ID' });
+    res.status(500).json({ error: 'Failed to fetch max ID', message: error.message });
   }
 });
 
-router.post('/', async (req, res) => {
-  try {
-    console.log('Received request data:', req.body); // Add logging
-    const request = new PendingRequest(req.body);
-    await request.save();
-    console.log('Saved request:', request); // Confirm saved data
-    res.status(201).json(request);
-  } catch (error) {
-    console.error('Error creating pending request:', error);
-    res.status(500).json({ error: 'Failed to create pending request: ' + error.message });
-  }
-});
-
-// ... other routes unchanged
-
-module.exports = router;
-
-// GET all pending requests
+// Get all pending requests
 router.get('/', async (req, res) => {
   try {
     const requests = await PendingRequest.find();
-    res.json(requests);
+    console.log('Fetched pending requests:', requests.length);
+    res.status(200).json(requests);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch pending requests' });
+    console.error('Error fetching pending requests:', error);
+    res.status(500).json({ error: 'Failed to fetch pending requests', message: error.message });
   }
 });
 
-// POST a new pending request
+// Create a new pending request
 router.post('/', async (req, res) => {
   try {
+    console.log('Received request data:', req.body);
+    const requiredFields = ['id', 'name', 'positionApplied', 'email', 'contactNumber', 'salary', 'username', 'password'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    if (missingFields.length > 0) {
+      console.error('Missing required fields:', missingFields);
+      return res.status(400).json({ error: `Missing required fields: ${missingFields.join(', ')}` });
+    }
+
     const request = new PendingRequest(req.body);
     await request.save();
+    console.log('Saved request:', request);
     res.status(201).json(request);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create pending request' });
+    console.error('Error creating pending request:', error);
+    if (error.code === 11000) { // Duplicate key error (e.g., id or username)
+      res.status(400).json({ error: 'Duplicate ID or username detected', message: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to create pending request', message: error.message });
+    }
   }
 });
 
-// PUT to update a pending request
+// Update a pending request
 router.put('/:id', async (req, res) => {
   try {
     const request = await PendingRequest.findOneAndUpdate(
@@ -59,21 +61,31 @@ router.put('/:id', async (req, res) => {
       req.body,
       { new: true }
     );
-    if (!request) return res.status(404).json({ error: 'Request not found' });
-    res.json(request);
+    if (!request) {
+      console.error(`Request not found for ID: ${req.params.id}`);
+      return res.status(404).json({ error: 'Request not found' });
+    }
+    console.log('Updated request:', request);
+    res.status(200).json(request);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update request' });
+    console.error('Error updating request:', error);
+    res.status(500).json({ error: 'Failed to update request', message: error.message });
   }
 });
 
-// DELETE a pending request
+// Delete a pending request
 router.delete('/:id', async (req, res) => {
   try {
     const result = await PendingRequest.deleteOne({ id: parseInt(req.params.id) });
-    if (result.deletedCount === 0) return res.status(404).json({ error: 'Request not found' });
+    if (result.deletedCount === 0) {
+      console.error(`Request not found for ID: ${req.params.id}`);
+      return res.status(404).json({ error: 'Request not found' });
+    }
+    console.log(`Deleted request with ID: ${req.params.id}`);
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete request' });
+    console.error('Error deleting request:', error);
+    res.status(500).json({ error: 'Failed to delete request', message: error.message });
   }
 });
 

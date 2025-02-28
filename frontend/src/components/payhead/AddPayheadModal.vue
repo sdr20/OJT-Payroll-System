@@ -70,7 +70,7 @@ export default {
   }
 };
 </script>
-
+   
 <style scoped>
 .transition-all {
   transition: all 0.2s ease-in-out;

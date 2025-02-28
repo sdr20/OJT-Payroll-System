@@ -219,7 +219,7 @@ export default {
         .filter(p => p.type === 'Earnings')
         .reduce((sum, p) => sum + Number(p.amount), 0);
     },
-    calculateDeductions(payheads) {
+    calculateDeductions(payheads) {   
       return payheads
         .filter(p => p.type === 'Deductions')
         .reduce((sum, p) => sum + Number(p.amount), 0);

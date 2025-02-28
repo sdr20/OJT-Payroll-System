@@ -18,7 +18,9 @@
                   <th class="px-6 py-4 text-left text-sm font-medium text-gray-500">Employee ID</th>
                   <th class="px-6 py-4 text-left text-sm font-medium text-gray-500">Name</th>
                   <th class="px-6 py-4 text-left text-sm font-medium text-gray-500">Position</th>
+                  <th class="px-6 py-4 text-left text-sm font-medium text-gray-500">Hourly Rate</th>
                   <th class="px-6 py-4 text-left text-sm font-medium text-gray-500">Total Salary</th>
+                  <th class="px-6 py-4 text-left text-sm font-medium text-gray-500">TIN</th>
                   <th class="px-6 py-4 text-right text-sm font-medium text-gray-500">Actions</th>
                 </tr>
               </thead>
@@ -28,7 +30,9 @@
                   <td class="px-6 py-4 text-sm text-gray-900">{{ employee.id }}</td>
                   <td class="px-6 py-4 text-sm text-gray-900">{{ employee.firstName }} {{ employee.lastName }}</td>
                   <td class="px-6 py-4 text-sm text-gray-900">{{ employee.position }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-900">₱{{ employee.hourlyRate.toLocaleString() }}</td>
                   <td class="px-6 py-4 text-sm text-gray-900">₱{{ calculateNetSalary(employee).toLocaleString() }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-900">{{ employee.tin || 'Not provided' }}</td>
                   <td class="px-6 py-4 text-right flex justify-end gap-3">
                     <button @click="viewEmployeeDetails(employee)" 
                             class="text-blue-600 hover:text-blue-800 transition duration-200">
@@ -45,7 +49,7 @@
                   </td>
                 </tr>
                 <tr v-if="employees.length === 0">
-                  <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No employees found.</td>
+                  <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">No employees found.</td>
                 </tr>
               </tbody>
             </table>
@@ -100,96 +104,131 @@
     <!-- Request Info Modal -->
     <div v-if="showRequestModal" 
          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b">
           <h2 class="text-2xl font-bold text-gray-800">Application Details</h2>
         </div>
         <div class="p-6">
-          <!-- Basic Information -->
-          <div class="mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
-            <div class="grid grid-cols-2 gap-6">
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-gray-700">Full Name</p>
-                <input v-if="isEditingRequest" v-model="selectedRequest.name" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" required />
-                <p v-else class="text-lg text-gray-900">{{ selectedRequest.name }}</p>
+          <div class="grid grid-cols-3 gap-6">
+            <!-- Column 1: Personal Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Personal Info</h3>
+              <div class="space-y-4">
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Full Name</p>
+                  <input v-if="isEditingRequest" v-model="selectedRequest.name" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" required />
+                  <p v-else class="text-lg text-gray-900">{{ selectedRequest.name }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Email</p>
+                  <input v-if="isEditingRequest" v-model="selectedRequest.email" type="email"
+                         class="w-full p-2 border border-gray-200 rounded-lg" required />
+                  <p v-else class="text-lg text-gray-900">{{ selectedRequest.email }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Contact Number</p>
+                  <input v-if="isEditingRequest" v-model="selectedRequest.contactNumber" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" required pattern="\d{11}" title="Please enter an 11-digit phone number (e.g., 09123456789)" />
+                  <p v-else class="text-lg text-gray-900">{{ selectedRequest.contactNumber }}</p>
+                </div>
               </div>
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-gray-700">Position Applied</p>
-                <select v-if="isEditingRequest" v-model="selectedRequest.positionApplied" 
-                        class="w-full p-2 border border-gray-200 rounded-lg" required>
-                  <option v-for="position in adminPositions" :key="position" :value="position">
-                    {{ position }}
-                  </option>
-                </select>
-                <p v-else class="text-lg text-gray-900">{{ selectedRequest.positionApplied }}</p>
+            </div>
+
+            <!-- Column 2: Employment Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Employment Info</h3>
+              <div class="space-y-4">
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Position Applied</p>
+                  <select v-if="isEditingRequest" v-model="selectedRequest.positionApplied" 
+                          class="w-full p-2 border border-gray-200 rounded-lg" required>
+                    <option v-for="position in adminPositions" :key="position" :value="position">
+                      {{ position }}
+                    </option>
+                  </select>
+                  <p v-else class="text-lg text-gray-900">{{ selectedRequest.positionApplied }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">SSS ID</p>
+                  <input v-if="isEditingRequest" v-model="selectedRequest.sss" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{10}" title="Please enter a 10-digit SSS ID (e.g., 1234567890)" />
+                  <p v-else class="text-lg text-gray-900">{{ selectedRequest.sss || 'Not provided' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">PhilHealth ID</p>
+                  <input v-if="isEditingRequest" v-model="selectedRequest.philhealth" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{12}" title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)" />
+                  <p v-else class="text-lg text-gray-900">{{ selectedRequest.philhealth || 'Not provided' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Pag-IBIG ID</p>
+                  <input v-if="isEditingRequest" v-model="selectedRequest.pagibig" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{12}" title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)" />
+                  <p v-else class="text-lg text-gray-900">{{ selectedRequest.pagibig || 'Not provided' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">TIN</p>
+                  <input v-if="isEditingRequest" v-model="selectedRequest.tin" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{9,12}" title="Please enter a 9-12 digit TIN (e.g., 123456789)" />
+                  <p v-else class="text-lg text-gray-900">{{ selectedRequest.tin || 'Not provided' }}</p>
+                </div>
               </div>
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-gray-700">Email</p>
-                <input v-if="isEditingRequest" v-model="selectedRequest.email" type="email"
-                       class="w-full p-2 border border-gray-200 rounded-lg" required />
-                <p v-else class="text-lg text-gray-900">{{ selectedRequest.email }}</p>
-              </div>
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-gray-700">Contact Number</p>
-                <input v-if="isEditingRequest" v-model="selectedRequest.contactNumber" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" required pattern="\d{11}" title="Please enter an 11-digit phone number (e.g., 09123456789)" />
-                <p v-else class="text-lg text-gray-900">{{ selectedRequest.contactNumber }}</p>
-              </div>
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-gray-700">SSS ID</p>
-                <input v-if="isEditingRequest" v-model="selectedRequest.sss" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{10}" title="Please enter a 10-digit SSS ID (e.g., 1234567890)" />
-                <p v-else class="text-lg text-gray-900">{{ selectedRequest.sss || 'Not provided' }}</p>
-              </div>
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-gray-700">PhilHealth ID</p>
-                <input v-if="isEditingRequest" v-model="selectedRequest.philhealth" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{12}" title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)" />
-                <p v-else class="text-lg text-gray-900">{{ selectedRequest.philhealth || 'Not provided' }}</p>
-              </div>
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-gray-700">Pag-IBIG ID</p>
-                <input v-if="isEditingRequest" v-model="selectedRequest.pagibig" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{12}" title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)" />
-                <p v-else class="text-lg text-gray-900">{{ selectedRequest.pagibig || 'Not provided' }}</p>
+            </div>
+
+            <!-- Column 3: Financial Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Info</h3>
+              <div class="space-y-4">
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Proposed Salary</p>
+                  <input v-if="isEditingRequest" v-model.number="selectedRequest.salary" type="number"
+                         class="w-full p-2 border border-gray-200 rounded-lg" required min="0" />
+                  <p v-else class="text-lg text-gray-900">₱{{ selectedRequest.salary.toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Hourly Rate</p>
+                  <input v-if="isEditingRequest" :value="selectedRequest.hourlyRate.toLocaleString()" type="text"
+                         class="w-full p-2 border border-gray-200 rounded-lg bg-gray-100" disabled />
+                  <p v-else class="text-lg text-gray-900">₱{{ selectedRequest.hourlyRate.toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">SSS Contribution</p>
+                  <p class="text-lg text-gray-900">₱{{ calculateSSSContribution(selectedRequest.salary).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">PhilHealth Contribution</p>
+                  <p class="text-lg text-gray-900">₱{{ calculatePhilHealthContribution(selectedRequest.salary).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Pag-IBIG Contribution</p>
+                  <p class="text-lg text-gray-900">₱{{ calculatePagIBIGContribution(selectedRequest.salary).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Withholding Tax</p>
+                  <p class="text-lg text-gray-900">₱{{ calculateWithholdingTax(selectedRequest.salary).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Travel Expenses</p>
+                  <input v-if="isEditingRequest" v-model.number="selectedRequest.earnings.travelExpenses" type="number"
+                         class="w-full p-2 border border-gray-200 rounded-lg" min="0" />
+                  <p v-else class="text-lg text-gray-900">₱{{ selectedRequest.earnings?.travelExpenses || 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Other Earnings</p>
+                  <input v-if="isEditingRequest" v-model.number="selectedRequest.earnings.otherEarnings" type="number"
+                         class="w-full p-2 border border-gray-200 rounded-lg" min="0" />
+                  <p v-else class="text-lg text-gray-900">₱{{ selectedRequest.earnings?.otherEarnings || 0 }}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Financial Information -->
-          <div class="mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
-            <div class="grid grid-cols-2 gap-6">
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-gray-700">Proposed Salary</p>
-                <input v-if="isEditingRequest" v-model.number="selectedRequest.salary" type="number"
-                       class="w-full p-2 border border-gray-200 rounded-lg" required min="0" />
-                <p v-else class="text-lg text-gray-900">₱{{ selectedRequest.salary.toLocaleString() }}</p>
-              </div>
-              <!-- Earnings -->
-              <div class="space-y-4">
-                <p class="text-sm font-medium text-gray-700">Additional Earnings</p>
-                <div class="space-y-2">
-                  <label class="text-sm text-gray-600">Travel Expenses</label>
-                  <input v-if="isEditingRequest" v-model.number="selectedRequest.earnings.travelExpenses" type="number"
-                         class="w-full p-2 border border-gray-200 rounded-lg" min="0" />
-                  <p v-else class="text-sm text-gray-900">₱{{ selectedRequest.earnings?.travelExpenses || 0 }}</p>
-                </div>
-                <div class="space-y-2">
-                  <label class="text-sm text-gray-600">Other Earnings</label>
-                  <input v-if="isEditingRequest" v-model.number="selectedRequest.earnings.otherEarnings" type="number"
-                         class="w-full p-2 border border-gray-200 rounded-lg" min="0" />
-                  <p v-else class="text-sm text-gray-900">₱{{ selectedRequest.earnings?.otherEarnings || 0 }}</p>
-                </div>
-              </div>
-            </div>
-            <div v-if="isEditingRequest" class="mt-6 p-4 bg-gray-50 rounded-lg">
-              <div class="flex justify-between items-center">
-                <span class="text-sm font-medium text-gray-700">Net Salary Preview:</span>
-                <span class="text-lg font-semibold text-gray-900">₱{{ calculateRequestNetSalary(selectedRequest).toLocaleString() }}</span>
-              </div>
+          <!-- Net Salary Preview (Full Width) -->
+          <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium text-gray-700">Net Salary Preview:</span>
+              <span class="text-lg font-semibold text-gray-900">₱{{ calculateRequestNetSalary(selectedRequest).toLocaleString() }}</span>
             </div>
           </div>
 
@@ -214,7 +253,7 @@
     <!-- Employee Details Modal -->
     <div v-if="showDetailsModal" 
          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl m-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b flex justify-between items-center">
           <h2 class="text-2xl font-bold text-gray-800">Employee Details</h2>
           <button @click="showDetailsModal = false" 
@@ -223,62 +262,98 @@
           </button>
         </div>
         <div class="p-6">
-          <div class="grid grid-cols-2 gap-6">
-            <!-- Basic Information -->
-            <div class="col-span-2">
-              <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
+          <div class="grid grid-cols-3 gap-6">
+            <!-- Column 1: Personal Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Personal Info</h3>
+              <div class="space-y-4">
+                <div>
                   <p class="text-sm font-medium text-gray-500">Full Name</p>
                   <p class="text-base text-gray-900">{{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}</p>
                 </div>
-                <div class="space-y-2">
-                  <p class="text-sm font-medium text-gray-500">Position</p>
-                  <p class="text-base text-gray-900">{{ selectedEmployee.position }}</p>
-                </div>
-                <div class="space-y-2">
+                <div>
                   <p class="text-sm font-medium text-gray-500">Email</p>
                   <p class="text-base text-gray-900">{{ selectedEmployee.email }}</p>
                 </div>
-                <div class="space-y-2">
+                <div>
                   <p class="text-sm font-medium text-gray-500">Contact Info</p>
                   <p class="text-base text-gray-900">{{ selectedEmployee.contactInfo }}</p>
-                </div>
-                <div class="space-y-2">
-                  <p class="text-sm font-medium text-gray-500">SSS ID</p>
-                  <p class="text-base text-gray-900">{{ selectedEmployee.sss || 'Not provided' }}</p>
-                </div>
-                <div class="space-y-2">
-                  <p class="text-sm font-medium text-gray-500">PhilHealth ID</p>
-                  <p class="text-base text-gray-900">{{ selectedEmployee.philhealth || 'Not provided' }}</p>
-                </div>
-                <div class="space-y-2">
-                  <p class="text-sm font-medium text-gray-500">Pag-IBIG ID</p>
-                  <p class="text-base text-gray-900">{{ selectedEmployee.pagibig || 'Not provided' }}</p>
                 </div>
               </div>
             </div>
 
-            <!-- Financial Information -->
-            <div class="col-span-2">
-              <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
+            <!-- Column 2: Employment Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Employment Info</h3>
+              <div class="space-y-4">
+                <div>
+                  <p class="text-sm font-medium text-gray-500">Position</p>
+                  <p class="text-base text-gray-900">{{ selectedEmployee.position }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">SSS ID</p>
+                  <p class="text-base text-gray-900">{{ selectedEmployee.sss || 'Not provided' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">PhilHealth ID</p>
+                  <p class="text-base text-gray-900">{{ selectedEmployee.philhealth || 'Not provided' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">Pag-IBIG ID</p>
+                  <p class="text-base text-gray-900">{{ selectedEmployee.pagibig || 'Not provided' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">TIN</p>
+                  <p class="text-base text-gray-900">{{ selectedEmployee.tin || 'Not provided' }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Column 3: Financial Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Info</h3>
+              <div class="space-y-4">
+                <div>
                   <p class="text-sm font-medium text-gray-500">Base Salary</p>
                   <p class="text-base text-gray-900">₱{{ selectedEmployee.salary.toLocaleString() }}</p>
                 </div>
-                <div class="space-y-2">
-                  <p class="text-sm font-medium text-gray-500">Additional Earnings</p>
-                  <div class="space-y-1">
-                    <p class="text-sm text-gray-900">Travel: ₱{{ selectedEmployee.earnings?.travelExpenses || 0 }}</p>
-                    <p class="text-sm text-gray-900">Other: ₱{{ selectedEmployee.earnings?.otherEarnings || 0 }}</p>
-                  </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">Hourly Rate</p>
+                  <p class="text-base text-gray-900">₱{{ selectedEmployee.hourlyRate.toLocaleString() }}</p>
                 </div>
-                <div class="space-y-2">
-                  <p class="text-sm font-medium text-gray-500">Net Salary</p>
-                  <p class="text-base font-semibold text-gray-900">₱{{ calculateNetSalary(selectedEmployee).toLocaleString() }}</p>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">SSS Contribution</p>
+                  <p class="text-base text-gray-900">₱{{ calculateSSSContribution(selectedEmployee.salary).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">PhilHealth Contribution</p>
+                  <p class="text-base text-gray-900">₱{{ calculatePhilHealthContribution(selectedEmployee.salary).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">Pag-IBIG Contribution</p>
+                  <p class="text-base text-gray-900">₱{{ calculatePagIBIGContribution(selectedEmployee.salary).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">Withholding Tax</p>
+                  <p class="text-base text-gray-900">₱{{ calculateWithholdingTax(selectedEmployee.salary).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">Travel Expenses</p>
+                  <p class="text-base text-gray-900">₱{{ selectedEmployee.earnings?.travelExpenses || 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">Other Earnings</p>
+                  <p class="text-base text-gray-900">₱{{ selectedEmployee.earnings?.otherEarnings || 0 }}</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Net Salary Preview (Full Width) -->
+          <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium text-gray-700">Net Salary:</span>
+              <span class="text-lg font-semibold text-gray-900">₱{{ calculateNetSalary(selectedEmployee).toLocaleString() }}</span>
             </div>
           </div>
         </div>
@@ -300,81 +375,116 @@
     <!-- Edit Employee Modal -->
     <div v-if="showEditModal" 
          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b">
           <h2 class="text-2xl font-bold text-gray-800">Edit Employee</h2>
         </div>
         <div class="p-6">
-          <!-- Basic Information -->
-          <div class="mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
-            <div class="grid grid-cols-2 gap-6">
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">First Name</label>
-                <input v-model="selectedEmployee.firstName" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" required />
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">Last Name</label>
-                <input v-model="selectedEmployee.lastName" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" required />
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">Position</label>
-                <select v-model="selectedEmployee.position" 
-                        class="w-full p-2 border border-gray-200 rounded-lg" required>
-                  <option v-for="position in adminPositions" :key="position" :value="position">
-                    {{ position }}
-                  </option>
-                </select>
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">Base Salary</label>
-                <input v-model.number="selectedEmployee.salary" type="number"
-                       class="w-full p-2 border border-gray-200 rounded-lg" required min="0" />
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">Email</label>
-                <input v-model="selectedEmployee.email" type="email"
-                       class="w-full p-2 border border-gray-200 rounded-lg" required />
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">Contact Info</label>
-                <input v-model="selectedEmployee.contactInfo" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" required pattern="\d{11}" title="Please enter an 11-digit phone number (e.g., 09123456789)" />
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">SSS ID</label>
-                <input v-model="selectedEmployee.sss" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{10}" title="Please enter a 10-digit SSS ID (e.g., 1234567890)" />
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">PhilHealth ID</label>
-                <input v-model="selectedEmployee.philhealth" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{12}" title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)" />
-              </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">Pag-IBIG ID</label>
-                <input v-model="selectedEmployee.pagibig" 
-                       class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{12}" title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)" />
+          <div class="grid grid-cols-3 gap-6">
+            <!-- Column 1: Personal Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Personal Info</h3>
+              <div class="space-y-4">
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">First Name</label>
+                  <input v-model="selectedEmployee.firstName" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" required />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Last Name</label>
+                  <input v-model="selectedEmployee.lastName" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" required />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Email</label>
+                  <input v-model="selectedEmployee.email" type="email"
+                         class="w-full p-2 border border-gray-200 rounded-lg" required />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Contact Info</label>
+                  <input v-model="selectedEmployee.contactInfo" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" required pattern="\d{11}" title="Please enter an 11-digit phone number (e.g., 09123456789)" />
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Financial Information -->
-          <div class="mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
-            <div class="grid grid-cols-2 gap-6">
-              <!-- Earnings -->
+            <!-- Column 2: Employment Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Employment Info</h3>
               <div class="space-y-4">
-                <p class="text-sm font-medium text-gray-700">Additional Earnings</p>
                 <div class="space-y-2">
-                  <label class="text-sm text-gray-600">Travel Expenses</label>
+                  <label class="text-sm font-medium text-gray-700">Position</label>
+                  <select v-model="selectedEmployee.position" 
+                          class="w-full p-2 border border-gray-200 rounded-lg" required>
+                    <option v-for="position in adminPositions" :key="position" :value="position">
+                      {{ position }}
+                    </option>
+                  </select>
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">SSS ID</label>
+                  <input v-model="selectedEmployee.sss" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{10}" title="Please enter a 10-digit SSS ID (e.g., 1234567890)" />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">PhilHealth ID</label>
+                  <input v-model="selectedEmployee.philhealth" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{12}" title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)" />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Pag-IBIG ID</label>
+                  <input v-model="selectedEmployee.pagibig" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{12}" title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)" />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">TIN</label>
+                  <input v-model="selectedEmployee.tin" 
+                         class="w-full p-2 border border-gray-200 rounded-lg" pattern="\d{9,12}" title="Please enter a 9-12 digit TIN (e.g., 123456789)" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Column 3: Financial Info -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Info</h3>
+              <div class="space-y-4">
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Base Salary</label>
+                  <input v-model.number="selectedEmployee.salary" type="number"
+                         class="w-full p-2 border border-gray-200 rounded-lg" required min="0" />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Hourly Rate</label>
+                  <input v-model="selectedEmployee.hourlyRate" type="number"
+                         class="w-full p-2 border border-gray-200 rounded-lg bg-gray-100" disabled />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">SSS Contribution</label>
+                  <input :value="calculateSSSContribution(selectedEmployee.salary).toLocaleString()" 
+                         class="w-full p-2 border border-gray-200 rounded-lg bg-gray-100" disabled />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">PhilHealth Contribution</label>
+                  <input :value="calculatePhilHealthContribution(selectedEmployee.salary).toLocaleString()" 
+                         class="w-full p-2 border border-gray-200 rounded-lg bg-gray-100" disabled />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Pag-IBIG Contribution</label>
+                  <input :value="calculatePagIBIGContribution(selectedEmployee.salary).toLocaleString()" 
+                         class="w-full p-2 border border-gray-200 rounded-lg bg-gray-100" disabled />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Withholding Tax</label>
+                  <input :value="calculateWithholdingTax(selectedEmployee.salary).toLocaleString()" 
+                         class="w-full p-2 border border-gray-200 rounded-lg bg-gray-100" disabled />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-medium text-gray-700">Travel Expenses</label>
                   <input v-model.number="selectedEmployee.earnings.travelExpenses" type="number"
                          class="w-full p-2 border border-gray-200 rounded-lg" min="0" />
                 </div>
                 <div class="space-y-2">
-                  <label class="text-sm text-gray-600">Other Earnings</label>
+                  <label class="text-sm font-medium text-gray-700">Other Earnings</label>
                   <input v-model.number="selectedEmployee.earnings.otherEarnings" type="number"
                          class="w-full p-2 border border-gray-200 rounded-lg" min="0" />
                 </div>
@@ -382,7 +492,7 @@
             </div>
           </div>
 
-          <!-- Net Salary Preview -->
+          <!-- Net Salary Preview (Full Width) -->
           <div class="mt-6 p-4 bg-gray-50 rounded-lg">
             <div class="flex justify-between items-center">
               <span class="text-sm font-medium text-gray-700">Net Salary Preview:</span>
@@ -464,64 +574,109 @@ export default {
       statusMessage: ''
     };
   },
+  watch: {
+    'selectedEmployee.salary'(newSalary) {
+      this.selectedEmployee.hourlyRate = newSalary / (8 * 22); // DOLE: 8-hour workday, 22 days/month
+    },
+    'selectedRequest.salary'(newSalary) {
+      this.selectedRequest.hourlyRate = newSalary / (8 * 22); // DOLE: 8-hour workday, 22 days/month
+    }
+  },
   mounted() {
     this.fetchEmployees();
     this.fetchPendingRequests();
   },
   methods: {
+    calculateTotalEarnings(employee) {
+      const baseEarnings = (employee.earnings?.travelExpenses || 0) + 
+                           (employee.earnings?.otherEarnings || 0);
+      return employee.salary + baseEarnings; // Add OT, holiday pay if tracked
+    },
+    calculateTotalDeductions(employee) {
+      const sssContribution = this.calculateSSSContribution(employee.salary);
+      const philhealthContribution = this.calculatePhilHealthContribution(employee.salary);
+      const pagibigContribution = this.calculatePagIBIGContribution(employee.salary);
+      const withholdingTax = this.calculateWithholdingTax(employee.salary, sssContribution, philhealthContribution, pagibigContribution);
+      return sssContribution + philhealthContribution + pagibigContribution + withholdingTax;
+    },
     calculateNetSalary(employee) {
       if (!employee) return 0;
-      const totalEarnings = (employee.earnings?.travelExpenses || 0) + 
-                           (employee.earnings?.otherEarnings || 0);
-      return employee.salary + totalEarnings; // No deductions to subtract
+      return this.calculateTotalEarnings(employee) - this.calculateTotalDeductions(employee);
     },
-
     calculateRequestNetSalary(request) {
       if (!request) return 0;
       const totalEarnings = (request.earnings?.travelExpenses || 0) + 
-                           (request.earnings?.otherEarnings || 0);
-      return request.salary + totalEarnings; // No deductions to subtract
+                           (request.earnings?.otherEarnings || 0) + 
+                           (request.salary || 0);
+      const sssContribution = this.calculateSSSContribution(request.salary);
+      const philhealthContribution = this.calculatePhilHealthContribution(request.salary);
+      const pagibigContribution = this.calculatePagIBIGContribution(request.salary);
+      const withholdingTax = this.calculateWithholdingTax(request.salary, sssContribution, philhealthContribution, pagibigContribution);
+      return totalEarnings - (sssContribution + philhealthContribution + pagibigContribution + withholdingTax);
     },
-
+    calculateSSSContribution(salary) {
+      const monthlySalaryCredit = Math.min(Math.max(salary, 5000), 35000); // SSS MSC cap at ₱35,000 in 2025
+      const employeeShareRate = 0.05; // 5% employee share per SSS Circular 2024-06
+      return Math.round(monthlySalaryCredit * employeeShareRate);
+    },
+    calculatePhilHealthContribution(salary) {
+      const rate = 0.05; // 5% total rate in 2025 per PhilHealth Circular
+      const monthlySalary = Math.min(salary, 100000); // Cap at ₱100,000
+      return Math.round((monthlySalary * rate) / 2); // 2.5% employee share
+    },
+    calculatePagIBIGContribution(salary) {
+      const rate = 0.02; // 2% employee share per Pag-IBIG Circular 460
+      const cappedSalary = Math.min(salary, 10000); // Cap at ₱10,000
+      return Math.round(cappedSalary * rate); // Max ₱200
+    },
+    calculateWithholdingTax(salary, sss = 0, philhealth = 0, pagibig = 0) {
+      const taxableIncome = salary - (sss + philhealth + pagibig); // After mandatory deductions
+      if (taxableIncome <= 20833) return 0; // Bracket 1: No tax
+      if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15); // Bracket 2: 15% over ₱20,833
+      if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20); // Bracket 3: ₱1,875 + 20% over ₱33,333
+      // Add more BIR tax brackets as needed
+      return 0; // Placeholder for higher brackets
+    },
     async fetchEmployees() {
       try {
         const response = await axios.get('http://localhost:7777/api/employees');
-        console.log('Fetched employees:', response.data); // Debugging
-        this.employees = response.data || [];
+        console.log('Fetched employees:', response.data);
+        this.employees = response.data.map(emp => ({
+          ...emp,
+          hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22))
+        })) || [];
         this.nextEmployeeId = Math.max(...this.employees.map(e => e.id), 0) + 1;
       } catch (error) {
         console.error('Error fetching employees:', error);
         this.showErrorMessage('Failed to load employees. Please try again.');
       }
     },
-
     async refreshEmployees() {
       await this.fetchEmployees();
       this.showSuccessMessage('Employee list refreshed successfully!');
     },
-
     async fetchPendingRequests() {
       try {
         const response = await axios.get('http://localhost:7777/api/pending-requests');
-        console.log('Fetched pending requests:', response.data); // Debugging
-        this.pendingRequests = response.data || [];
+        console.log('Fetched pending requests:', response.data);
+        this.pendingRequests = response.data.map(req => ({
+          ...req,
+          hourlyRate: req.hourlyRate || (req.salary / (8 * 22))
+        })) || [];
       } catch (error) {
         console.error('Error fetching pending requests:', error);
         this.showErrorMessage('Failed to load pending requests. Please try again.');
       }
     },
-
     async refreshPendingRequests() {
       await this.fetchPendingRequests();
       this.showSuccessMessage('Pending requests refreshed successfully!');
     },
-
     viewEmployeeDetails(employee) {
       this.selectedEmployee = { ...employee };
-      console.log('Viewing employee details:', this.selectedEmployee); // Debugging
+      console.log('Viewing employee details:', this.selectedEmployee);
       this.showDetailsModal = true;
     },
-
     editEmployee(employee) {
       this.selectedEmployee = { 
         ...employee,
@@ -533,7 +688,6 @@ export default {
       this.showDetailsModal = false;
       this.showEditModal = true;
     },
-
     async updateEmployee() {
       if (!this.selectedEmployee.firstName || !this.selectedEmployee.lastName) {
         this.showErrorMessage('First and Last names are required');
@@ -566,12 +720,10 @@ export default {
         this.isUpdating = false;
       }
     },
-
     confirmDelete(employee) {
       this.selectedEmployee = employee;
       this.showDeleteModal = true;
     },
-
     async removeEmployee(id) {
       this.isDeleting = true;
       try {
@@ -588,8 +740,6 @@ export default {
         this.isDeleting = false;
       }
     },
-
-    // Pending Requests Methods
     viewRequestInfo(request) {
       this.selectedRequest = { 
         ...request,
@@ -598,11 +748,10 @@ export default {
           otherEarnings: request.earnings?.otherEarnings || 0 
         }
       };
-      console.log('Viewing request info:', this.selectedRequest); // Debugging
+      console.log('Viewing request info:', this.selectedRequest);
       this.showRequestModal = true;
       this.isEditingRequest = false;
     },
-
     async saveRequestChanges() {
       if (!this.selectedRequest.name) {
         this.showErrorMessage('Name is required');
@@ -632,7 +781,6 @@ export default {
         this.showErrorMessage('Failed to save request changes. Please try again.');
       }
     },
-
     async approveRequest(request) {
       try {
         const newEmployee = {
@@ -641,11 +789,13 @@ export default {
           lastName: request.name.split(' ').slice(1).join(' ') || '',
           position: request.positionApplied,
           salary: request.salary,
+          hourlyRate: request.hourlyRate || (request.salary / (8 * 22)),
           email: request.email,
           contactInfo: request.contactNumber,
           sss: request.sss || '',
           philhealth: request.philhealth || '',
           pagibig: request.pagibig || '',
+          tin: request.tin || '',
           earnings: { 
             travelExpenses: request.earnings?.travelExpenses || 0,
             otherEarnings: request.earnings?.otherEarnings || 0 
@@ -658,7 +808,7 @@ export default {
         console.log('Approving employee with data:', newEmployee);
         const response = await axios.post('http://localhost:7777/api/employees', newEmployee);
         if (response.status === 201) {
-          this.employees.push(response.data);
+          this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
           await axios.delete(`http://localhost:7777/api/pending-requests/${request.id}`);
           this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
           this.showRequestModal = false;
@@ -675,7 +825,6 @@ export default {
         }
       }
     },
-
     async rejectRequest(id) {
       try {
         const response = await axios.delete(`http://localhost:7777/api/pending-requests/${id}`);
@@ -689,13 +838,10 @@ export default {
         this.showErrorMessage('Error rejecting application. Please try again.');
       }
     },
-
-    // Notification Methods
     showSuccessMessage(message) {
       this.statusMessage = message;
       setTimeout(() => this.statusMessage = '', 3000);
     },
-
     showErrorMessage(message) {
       this.statusMessage = message;
       setTimeout(() => this.statusMessage = '', 3000);
