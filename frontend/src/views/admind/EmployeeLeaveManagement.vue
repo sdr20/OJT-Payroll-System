@@ -1,31 +1,26 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-1">
     <div class="max-w-8xl mx-auto">
-      <!-- Dashboard Header with Enhanced Design -->
       <header class="bg-white p-6 rounded-xl shadow-lg mb-6">
         <div class="flex justify-between items-center">
           <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span class="material-icons text-blue-600">event_note</span>
             Employee Leave Management
           </h1>
-          <div class="flex items-center gap-3">
-            <!-- Refresh Button - Smaller, Animated, and with Icon -->
-            <button 
-              @click="refreshLeaveRequests" 
-              class="inline-flex items-center gap-2 bg-blue-500 text-white px-3 py-1.5 rounded-md text-sm font-medium 
-                     hover:bg-blue-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-            >
-              <span class="material-icons text-sm">refresh</span>
-              Refresh
-            </button>
-          </div>
+          <button 
+            @click="refreshLeaveRequests" 
+            class="inline-flex items-center gap-2 bg-blue-500 text-white px-3 py-1.5 rounded-md text-sm font-medium 
+                   hover:bg-blue-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+          >
+            <span class="material-icons text-sm">refresh</span>
+            Refresh
+          </button>
         </div>
       </header>
 
-      <!-- Filters and Search - Improved with Card Design -->
+      <!-- Filters and Search -->
       <div class="bg-white rounded-xl shadow-lg p-5 mb-6 border border-gray-100">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <!-- Search Input - Enhanced with Label and Clear Button -->
           <div class="relative">
             <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search Employees</label>
             <div class="relative">
@@ -50,7 +45,6 @@
             </div>
           </div>
 
-          <!-- Filter by Status - Enhanced Dropdown -->
           <div class="relative">
             <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
             <div class="relative">
@@ -74,7 +68,6 @@
             </div>
           </div>
 
-          <!-- Date Range Filter - New Feature -->
           <div class="relative">
             <label for="dateRange" class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
             <input
@@ -89,19 +82,13 @@
         </div>
       </div>
 
-      <!-- Leave Requests Table - Enhanced with Card Design and Animations -->
+      <!-- Leave Requests Table -->
       <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-        <!-- Table Header - Improved with Sorting and Filters -->
         <div class="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
           <h2 class="text-lg font-medium text-gray-900">Leave Requests</h2>
-          <div class="flex items-center gap-3">
-            <span class="text-sm text-gray-500">
-              Showing {{ filteredLeaveRequests.length }} {{ filteredLeaveRequests.length === 1 ? 'request' : 'requests' }}
-            </span>
-          </div>
+          <span class="text-sm text-gray-500">Showing {{ filteredLeaveRequests.length }} {{ filteredLeaveRequests.length === 1 ? 'request' : 'requests' }}</span>
         </div>
 
-        <!-- Loading State - Enhanced Animation -->
         <div v-if="isLoading" class="p-10 flex justify-center items-center">
           <div class="flex flex-col items-center">
             <div class="loader ease-linear rounded-full border-4 border-t-4 border-blue-200 h-12 w-12 mb-4 animate-spin"></div>
@@ -109,7 +96,6 @@
           </div>
         </div>
 
-        <!-- Empty State - Enhanced Design -->
         <div v-else-if="filteredLeaveRequests.length === 0" class="p-12 text-center">
           <div class="rounded-full bg-blue-100 p-4 mb-4 inline-flex">
             <span class="material-icons text-blue-600 text-3xl">event_busy</span>
@@ -120,7 +106,6 @@
           </p>
         </div>
 
-        <!-- Data Table with Animation -->
         <transition-group name="table-fade" tag="div" class="overflow-x-auto">
           <table v-if="!isLoading && filteredLeaveRequests.length > 0" 
                  class="min-w-full divide-y divide-gray-200">
@@ -183,7 +168,7 @@
           </table>
         </transition-group>
 
-        <!-- Pagination - Enhanced Design -->
+        <!-- Pagination -->
         <div v-if="!isLoading && filteredLeaveRequests.length > itemsPerPage" 
              class="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
           <div class="text-sm text-gray-700">
@@ -211,7 +196,7 @@
         </div>
       </div>
 
-      <!-- Email-Style Details Modal - Enhanced Design with Animation -->
+      <!-- Email-Style Details Modal -->
       <transition name="modal-slide">
         <div v-if="showDetailsModalVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div class="bg-white p-6 rounded-xl shadow-lg max-w-2xl w-full transform transition-all duration-300 scale-100">
@@ -225,18 +210,15 @@
               <div class="text-sm text-gray-500 mt-2">From: HR System <span class="text-gray-400">|</span> To: Admin</div>
             </div>
 
-            <!-- Email Header -->
             <div class="mb-4">
               <h3 class="text-base font-medium text-gray-900">Subject: Leave Request for {{ selectedLeave.employeeName }}</h3>
               <p class="text-sm text-gray-600 mt-1">Date: {{ formatDate(selectedLeave.startDate) }} – {{ formatDate(selectedLeave.endDate) }}</p>
             </div>
 
-            <!-- Email Body (Reason) -->
             <div class="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200">
               <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ selectedLeave.reason }}</p>
             </div>
 
-            <!-- Email Details -->
             <div class="space-y-3 text-sm">
               <p class="text-gray-700"><span class="font-medium text-gray-800">Employee:</span> {{ selectedLeave.employeeName }}</p>
               <p class="text-gray-700"><span class="font-medium text-gray-800">Employee ID:</span> {{ selectedLeave.employeeId }}</p>
@@ -245,7 +227,6 @@
               </p>
             </div>
 
-            <!-- Email Footer/Actions -->
             <div class="mt-6 flex justify-end gap-3">
               <button v-if="selectedLeave.status !== 'Disapproved'" @click="approveLeave(selectedLeave.id)" 
                       class="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
@@ -264,20 +245,18 @@
         </div>
       </transition>
 
-      <!-- Toast Notifications - Enhanced Design with Animation -->
+      <!-- Toast Notifications -->
       <div class="fixed bottom-4 right-4 z-50 space-y-4">
-        <TransitionGroup
+        <transition
           enter-active-class="transform ease-out duration-300 transition"
           enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
           enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
           leave-active-class="transition ease-in duration-100"
           leave-from-class="opacity-100"
           leave-to-class="opacity-0"
-          move-class="transition duration-500"
         >
           <div
             v-if="toastMessage"
-            :key="toastMessage"
             class="max-w-sm w-full bg-white rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 overflow-hidden"
           >
             <div class="p-4 flex items-center gap-3">
@@ -297,7 +276,7 @@
               </button>
             </div>
           </div>
-        </TransitionGroup>
+        </transition>
       </div>
     </div>
   </div>
@@ -305,7 +284,7 @@
 
 <script>
 import axios from 'axios';
-import moment from 'moment'; // Add this to format dates
+import moment from 'moment';
 
 export default {
   name: 'AdminLeaveManagement',
@@ -333,7 +312,6 @@ export default {
     filteredLeaveRequests() {
       let filtered = [...this.leaveRequests];
 
-      // Apply search filter
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         filtered = filtered.filter(leave => 
@@ -342,12 +320,10 @@ export default {
         );
       }
 
-      // Apply status filter
       if (this.filterStatus) {
         filtered = filtered.filter(leave => leave.status === this.filterStatus);
       }
 
-      // Apply date range filter
       if (this.dateRange) {
         const [year, month] = this.dateRange.split('-');
         const startOfMonth = moment(`${year}-${month}-01`).startOf('month').toDate();
@@ -358,7 +334,6 @@ export default {
         });
       }
 
-      // Apply sorting
       filtered.sort((a, b) => {
         const valueA = a[this.sortKey];
         const valueB = b[this.sortKey];

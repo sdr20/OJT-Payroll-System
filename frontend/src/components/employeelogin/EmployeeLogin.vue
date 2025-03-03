@@ -145,7 +145,6 @@
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="09123456789"
                   required
-                  pattern="\\d{11}"
                   title="Please enter an 11-digit phone number (e.g., 09123456789)"
                   @input="validatePhoneNumber"
                 />

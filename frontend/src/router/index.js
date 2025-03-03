@@ -13,14 +13,12 @@ import SalarySlips from '../views/admind/SalarySlips.vue';
 import ManagePayHeads from '../views/admind/ManagePayHeads.vue';
 import MonthSelection from '../views/admind/MonthSelection.vue';
 import PayrollWithDeductions from '../views/admind/PayrollWithDeductions.vue';
-import EmployeeLeaveManagement from '../views/admind/EmployeeLeaveManagement.vue';
+import AdminLeaveManagement from '../views/admind/EmployeeLeaveManagement.vue'; // Corrected import
 import ListHolidays from '../views/admind/ListHolidays.vue';
 import EmployeeReports from '../views/employee/EmployeeReports.vue';
 import AdminLayout from '../layouts/AdminLayout.vue';
 import EmployeeLayout from '../layouts/EmployeeLayout.vue';
-import EmployeeAttendanceView from '../views/admind/EmployeeAttendance.vue';
 import EmployeeSalarySlips from '../views/employee/EmployeeSalarySlips.vue';
-import EmployeeLeaveManagementView from '../views/admind/EmployeeLeaveManagement.vue';
 import EmployeeHolidays from '../views/employee/EmployeeHolidays.vue';
 import EmployeeReportsView from '../views/employee/EmployeeReports.vue';
 import EmployeeLeaveRequest from '../views/employee/EmployeeLeaveRequest.vue';
@@ -40,10 +38,10 @@ const routes = [
       { path: 'employee-attendance', component: EmployeeAttendance },
       { path: 'manage-employees', component: ManageEmployees },
       { path: 'salary-slips', component: SalarySlips },
-      { path: 'manage-pay-heads', component: ManagePayHeads }, // ✅ Route for ManagePayHeads
+      { path: 'manage-pay-heads', component: ManagePayHeads },
       { path: 'month-selection', component: MonthSelection },
       { path: 'payroll-with-deductions', component: PayrollWithDeductions },
-      { path: 'employee-leave-management', component: EmployeeLeaveManagement },
+      { path: 'employee-leave-management', component: AdminLeaveManagement }, // Corrected component
       { path: 'list-holidays', component: ListHolidays },
       { path: 'employee-reports', component: EmployeeReports },
     ],
@@ -54,9 +52,9 @@ const routes = [
     meta: { requiresAuth: true, role: 'employee' },
     children: [
       { path: '', component: EmployeeDashboard },
-      { path: 'attendance', component: EmployeeAttendanceView },
+      { path: 'attendance', component: EmployeeAttendance },
       { path: 'salary-slips', component: EmployeeSalarySlips },
-      { path: 'leave-management', component: EmployeeLeaveManagementView },
+      { path: 'leave-management', component: AdminLeaveManagement },
       { path: 'holidays', component: EmployeeHolidays },
       { path: 'reports', component: EmployeeReportsView },
       { path: 'employee-leave-request', name: 'EmployeeLeaveRequest', component: EmployeeLeaveRequest },
@@ -69,10 +67,10 @@ const router = createRouter({
   routes,
 });
 
-// Navigation Guards
+// Navigation Guard
 router.beforeEach((to, from, next) => {
+  const user = store.state.user;
   if (to.matched.some(record => record.meta.requiresAuth)) {
-    const user = store.state.user;
     if (!user) {
       next('/');
     } else if (to.meta.role && to.meta.role !== user.role) {
@@ -80,22 +78,10 @@ router.beforeEach((to, from, next) => {
     } else {
       next();
     }
+  } else if (from.matched.some(record => record.meta.requiresAuth) && to.path === '/') {
+    next(user.role === 'admin' ? '/admin' : '/employee');
   } else {
     next();
-  }
-});
-
-// Prevent Back Navigation to Login
-router.afterEach((to) => {
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    window.history.pushState(null, '', window.location.href);
-  }
-});
-
-window.addEventListener('popstate', (event) => {
-  const user = store.state.user;
-  if (user && (event.state === null || event.state === undefined)) {
-    router.push(user.role === 'admin' ? '/admin' : '/employee');
   }
 });
 

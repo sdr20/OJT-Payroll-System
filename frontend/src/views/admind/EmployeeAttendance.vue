@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen  p-4 md:p-1">
-    <div class="max-w-7xl mx-auto space-y-6">
+  <div class="min-h-screen md: p-1">
+    <div class="max-w-8xl  mx-auto space-y-6">
       <!-- Header Section - Polished with Modern Design -->
       <header class="bg-white rounded-xl shadow-lg p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center justify-between border-l-4 border-blue-500">
         <div class="text-center md:text-left w-full md:w-auto">
