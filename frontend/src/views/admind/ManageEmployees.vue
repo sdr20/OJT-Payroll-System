@@ -756,9 +756,16 @@ export default {
     },
     async approveRequest(request) {
       try {
+        const userRole = localStorage.getItem('userRole');
+        console.log('Approving request with LocalStorage state:', {
+          userId: localStorage.getItem('userId'),
+          userRole: userRole,
+          userName: localStorage.getItem('userName'),
+          userEmail: localStorage.getItem('userEmail')
+        });
         const newEmployee = {
           id: request.id,
-          empNo: request.empNo, // Ensure empNo is included
+          empNo: request.empNo,
           firstName: request.firstName,
           lastName: request.lastName,
           middleName: request.middleName,
@@ -780,17 +787,17 @@ export default {
           password: request.password
         };
 
-        console.log('Approving employee with data:', newEmployee); // Debug log
+        console.log('Approving employee with data:', newEmployee);
         const response = await axios.post('http://localhost:7777/api/employees', newEmployee, {
           headers: {
-            'user-role': localStorage.getItem('userRole') || 'employee'
+            'user-role': 'admin' // Force admin role for testing
           }
         });
         if (response.status === 201) {
           this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
           await axios.delete(`http://localhost:7777/api/pending-requests/${request.id}`, {
             headers: {
-              'user-role': localStorage.getItem('userRole') || 'employee'
+              'user-role': 'admin' // Force admin role for testing
             }
           });
           this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);

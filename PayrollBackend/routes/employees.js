@@ -4,9 +4,12 @@ const router = express.Router();
 const Employee = require('../models/Employee');
 
 const isAdmin = (req, res, next) => {
-  const userRole = req.headers['user-role'] || 'employee';
-  console.log('Received user-role header for employees:', userRole);
-  if (userRole.toLowerCase() !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+  console.log('All request headers for employees:', req.headers); // Log all headers
+  const userRole = req.headers['user-role'];
+  console.log('Parsed user-role for employees:', userRole);
+  if (!userRole || userRole.toLowerCase() !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   next();
 };
 
