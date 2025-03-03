@@ -758,6 +758,7 @@ export default {
       try {
         const newEmployee = {
           id: request.id,
+          empNo: request.empNo, // Ensure empNo is included
           firstName: request.firstName,
           lastName: request.lastName,
           middleName: request.middleName,
@@ -779,7 +780,7 @@ export default {
           password: request.password
         };
 
-        console.log('Approving employee with data:', newEmployee);
+        console.log('Approving employee with data:', newEmployee); // Debug log
         const response = await axios.post('http://localhost:7777/api/employees', newEmployee, {
           headers: {
             'user-role': localStorage.getItem('userRole') || 'employee'

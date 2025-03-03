@@ -1,4 +1,4 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes/pendingRequests.js
+// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes\pendingRequests.js
 const express = require('express');
 const router = express.Router();
 const PendingRequest = require('../models/PendingRequest');

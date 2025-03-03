@@ -8,7 +8,7 @@ const pendingRequestSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   middleName: { type: String, default: '' },
   lastName: { type: String, required: true },
-  position: { type: String, required: true }, // Changed from positionApplied
+  position: { type: String, required: true },
   email: { type: String, required: true },
   contactNumber: { type: String, required: true },
   salary: { type: Number, required: true, min: 0 },
