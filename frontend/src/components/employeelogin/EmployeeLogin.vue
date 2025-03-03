@@ -8,6 +8,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
+          </div>
           <h1 class="text-2xl font-bold text-gray-900">Employee Portal</h1>
           <p class="text-gray-500 text-sm">Welcome to your workspace</p>
         </div>
@@ -49,16 +50,8 @@
                   stroke="currentColor"
                   class="w-5 h-5 text-gray-500"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                  />
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
             </div>
@@ -90,339 +83,338 @@
           </p>
         </div>
       </div>
-    </div>
 
-    <!-- Register Modal -->
-    <div v-if="showRegisterModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <h2 class="text-2xl font-bold mb-6 text-gray-900">Request Account Creation</h2>
-        <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-6">
-          <!-- Basic Information -->
-          <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="space-y-1">
-                <label for="firstName" class="text-sm font-medium text-gray-700">First Name</label>
-                <input
-                  v-model="newRequest.firstName"
-                  type="text"
-                  id="firstName"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your first name"
-                  required
-                />
-              </div>
-              <div class="space-y-1">
-                <label for="lastName" class="text-sm font-medium text-gray-700">Last Name</label>
-                <input
-                  v-model="newRequest.lastName"
-                  type="text"
-                  id="lastName"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your last name"
-                  required
-                />
-              </div>
-              <div class="space-y-1">
-                <label for="email" class="text-sm font-medium text-gray-700">Email</label>
-                <input
-                  v-model="newRequest.email"
-                  type="email"
-                  id="email"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your email"
-                  required
-                  @input="validateEmail"
-                />
-                <p v-if="emailError" class="text-red-500 text-xs mt-1">{{ emailError }}</p>
-              </div>
-              <div class="space-y-1">
-                <label for="contactNumber" class="text-sm font-medium text-gray-700">Contact Number</label>
-                <input
-                  v-model="newRequest.contactNumber"
-                  type="text"
-                  id="contactNumber"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="09123456789"
-                  required
-                  title="Please enter an 11-digit phone number (e.g., 09123456789)"
-                  @input="validatePhoneNumber"
-                />
-                <p v-if="phoneError" class="text-red-500 text-xs mt-1">{{ phoneError }}</p>
-              </div>
-              <div class="space-y-1">
-                <label for="positionApplied" class="text-sm font-medium text-gray-700">Position Applying For</label>
-                <select
-                  v-model="newRequest.positionApplied"
-                  id="positionApplied"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option v-for="position in positions" :key="position" :value="position">{{ position }}</option>
-                </select>
-              </div>
-              <div class="space-y-1">
-                <label for="civilStatus" class="text-sm font-medium text-gray-700">Civil Status</label>
-                <select
-                  v-model="newRequest.civilStatus"
-                  id="civilStatus"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="Single">Single</option>
-                  <option value="Married">Married</option>
-                  <option value="Divorced">Divorced</option>
-                  <option value="Widowed">Widowed</option>
-                </select>
-              </div>
-              <div class="space-y-1">
-                <label for="sss" class="text-sm font-medium text-gray-700">SSS ID</label>
-                <input
-                  v-model="newRequest.sss"
-                  type="text"
-                  id="sss"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="1234567890"
-                  pattern="\\d{10}"
-                  title="Please enter a 10-digit SSS ID (e.g., 1234567890)"
-                />
-              </div>
-              <div class="space-y-1">
-                <label for="philhealth" class="text-sm font-medium text-gray-700">PhilHealth ID</label>
-                <input
-                  v-model="newRequest.philhealth"
-                  type="text"
-                  id="philhealth"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="123456789012"
-                  pattern="\\d{12}"
-                  title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)"
-                />
-              </div>
-              <div class="space-y-1">
-                <label for="pagibig" class="text-sm font-medium text-gray-700">Pag-IBIG ID</label>
-                <input
-                  v-model="newRequest.pagibig"
-                  type="text"
-                  id="pagibig"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="123456789012"
-                  pattern="\\d{12}"
-                  title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)"
-                />
-              </div>
-              <div class="space-y-1">
-                <label for="tin" class="text-sm font-medium text-gray-700">TIN</label>
-                <input
-                  v-model="newRequest.tin"
-                  type="text"
-                  id="tin"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="123456789"
-                  pattern="\\d{9,12}"
-                  title="Please enter a 9-12 digit TIN (e.g., 123456789)"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Financial Information -->
-          <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="space-y-1">
-                <label for="salary" class="text-sm font-medium text-gray-700">Proposed Monthly Salary</label>
-                <input
-                  v-model.number="newRequest.salary"
-                  type="number"
-                  id="salary"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter proposed salary"
-                  required
-                  min="0"
-                />
-              </div>
-              <div class="space-y-1">
-                <label for="hourlyRate" class="text-sm font-medium text-gray-700">Hourly Rate (Auto-Calculated)</label>
-                <input
-                  v-model="newRequest.hourlyRate"
-                  type="number"
-                  id="hourlyRate"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">SSS Contribution (Employee Share)</label>
-                <input
-                  :value="calculateSSSContribution(newRequest.salary).toLocaleString()"
-                  type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">PhilHealth Contribution (Employee Share)</label>
-                <input
-                  :value="calculatePhilHealthContribution(newRequest.salary).toLocaleString()"
-                  type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">Pag-IBIG Contribution (Employee Share)</label>
-                <input
-                  :value="calculatePagIBIGContribution(newRequest.salary).toLocaleString()"
-                  type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">Withholding Tax</label>
-                <input
-                  :value="calculateWithholdingTax(newRequest.salary).toLocaleString()"
-                  type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
-                  disabled
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Credentials -->
-          <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Login Credentials</h3>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="space-y-1">
-                <label for="newUsername" class="text-sm font-medium text-gray-700">Username</label>
-                <input
-                  v-model="newRequest.username"
-                  type="text"
-                  id="newUsername"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Choose a username"
-                  required
-                />
-              </div>
-              <div class="space-y-1">
-                <label for="newPassword" class="text-sm font-medium text-gray-700">Password</label>
-                <div class="relative">
+      <!-- Register Modal -->
+      <div v-if="showRegisterModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <h2 class="text-2xl font-bold mb-6 text-gray-900">Request Account Creation</h2>
+          <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-6">
+            <!-- Basic Information -->
+            <div class="col-span-2">
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                  <label for="empNo" class="text-sm font-medium text-gray-700">Employee Number</label>
                   <input
-                    v-model="newRequest.password"
-                    :type="showPassword ? 'text' : 'password'"
-                    id="newPassword"
-                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
-                    placeholder="Choose a password"
+                    v-model="newRequest.empNo"
+                    type="text"
+                    id="empNo"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your employee number"
                     required
-                    @input="validatePassword"
                   />
-                  <button
-                    type="button"
-                    @click="togglePasswordVisibility"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      class="w-5 h-5 text-gray-500"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                      />
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  </button>
                 </div>
-                <div class="text-sm text-gray-600 mt-2">
-                  Password strength: <span :class="passwordStrengthClass">{{ passwordStrength }}</span>
-                </div>
-              </div>
-
-              <div class="space-y-1">
-                <label for="confirmPassword" class="text-sm font-medium text-gray-700">Confirm Password</label>
-                <div class="relative">
+                <div class="space-y-1">
+                  <label for="firstName" class="text-sm font-medium text-gray-700">First Name</label>
                   <input
-                    v-model="confirmPassword"
-                    :type="showConfirmPassword ? 'text' : 'password'"
-                    id="confirmPassword"
-                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
-                    placeholder="Confirm your password"
+                    v-model="newRequest.firstName"
+                    type="text"
+                    id="firstName"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your first name"
                     required
-                    @input="validatePassword"
                   />
-                  <button
-                    type="button"
-                    @click="toggleConfirmPasswordVisibility"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      class="w-5 h-5 text-gray-500"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                      />
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  </button>
                 </div>
-                <div class="text-sm text-red-500 mt-1" v-if="!passwordsMatch">
-                  Passwords do not match
+                <div class="space-y-1">
+                  <label for="middleName" class="text-sm font-medium text-gray-700">Middle Name</label>
+                  <input
+                    v-model="newRequest.middleName"
+                    type="text"
+                    id="middleName"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your middle name"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label for="lastName" class="text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    v-model="newRequest.lastName"
+                    type="text"
+                    id="lastName"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your last name"
+                    required
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label for="email" class="text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    v-model="newRequest.email"
+                    type="email"
+                    id="email"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your email"
+                    required
+                    @input="validateEmail"
+                  />
+                  <p v-if="emailError" class="text-red-500 text-xs mt-1">{{ emailError }}</p>
+                </div>
+                <div class="space-y-1">
+                  <label for="contactNumber" class="text-sm font-medium text-gray-700">Contact Number</label>
+                  <input
+                    v-model="newRequest.contactNumber"
+                    type="text"
+                    id="contactNumber"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="09123456789"
+                    required
+                    title="Please enter an 11-digit phone number (e.g., 09123456789)"
+                    @input="validatePhoneNumber"
+                  />
+                  <p v-if="phoneError" class="text-red-500 text-xs mt-1">{{ phoneError }}</p>
+                </div>
+                <div class="space-y-1">
+                  <label for="position" class="text-sm font-medium text-gray-700">Position</label>
+                  <select
+                    v-model="newRequest.position"
+                    id="position"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option v-for="position in positions" :key="position" :value="position">{{ position }}</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <label for="civilStatus" class="text-sm font-medium text-gray-700">Civil Status</label>
+                  <select
+                    v-model="newRequest.civilStatus"
+                    id="civilStatus"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widowed">Widowed</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <label for="sss" class="text-sm font-medium text-gray-700">SSS ID</label>
+                  <input
+                    v-model="newRequest.sss"
+                    type="text"
+                    id="sss"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="1234567890"
+                    title="Please enter a 10-digit SSS ID (e.g., 1234567890)"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label for="philhealth" class="text-sm font-medium text-gray-700">PhilHealth ID</label>
+                  <input
+                    v-model="newRequest.philhealth"
+                    type="text"
+                    id="philhealth"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="123456789012"
+                    title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label for="hdmf" class="text-sm font-medium text-gray-700">HDMF ID</label>
+                  <input
+                    v-model="newRequest.hdmf"
+                    type="text"
+                    id="hdmf"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="123456789012"
+                    title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label for="tin" class="text-sm font-medium text-gray-700">TIN</label>
+                  <input
+                    v-model="newRequest.tin"
+                    type="text"
+                    id="tin"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="123456789"
+                    title="Please enter a 9-12 digit TIN (e.g., 123456789)"
+                  />
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Buttons -->
-          <div class="col-span-2 flex justify-end space-x-2 mt-6">
-            <button
-              type="button"
-              @click="showRegisterModal = false"
-              class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-200"
-              :disabled="isSubmitting"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-200"
-              :disabled="isSubmitting || !passwordsMatch"
-            >
-              {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
-            </button>
+            <!-- Financial Information -->
+            <div class="col-span-2">
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                  <label for="salary" class="text-sm font-medium text-gray-700">Proposed Monthly Salary</label>
+                  <input
+                    v-model.number="newRequest.salary"
+                    type="number"
+                    id="salary"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter proposed salary"
+                    required
+                    min="0"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label for="hourlyRate" class="text-sm font-medium text-gray-700">Hourly Rate (Auto-Calculated)</label>
+                  <input
+                    v-model="newRequest.hourlyRate"
+                    type="number"
+                    id="hourlyRate"
+                    class="block w-full p-2 border rounded-lg bg-gray-100"
+                    disabled
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-sm font-medium text-gray-700">SSS Contribution (Employee Share)</label>
+                  <input
+                    :value="calculateSSSContribution(newRequest.salary).toLocaleString()"
+                    type="text"
+                    class="block w-full p-2 border rounded-lg bg-gray-100"
+                    disabled
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-sm font-medium text-gray-700">PhilHealth Contribution (Employee Share)</label>
+                  <input
+                    :value="calculatePhilHealthContribution(newRequest.salary).toLocaleString()"
+                    type="text"
+                    class="block w-full p-2 border rounded-lg bg-gray-100"
+                    disabled
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-sm font-medium text-gray-700">HDMF Contribution (Employee Share)</label>
+                  <input
+                    :value="calculatePagIBIGContribution(newRequest.salary).toLocaleString()"
+                    type="text"
+                    class="block w-full p-2 border rounded-lg bg-gray-100"
+                    disabled
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-sm font-medium text-gray-700">Withholding Tax</label>
+                  <input
+                    :value="calculateWithholdingTax(newRequest.salary).toLocaleString()"
+                    type="text"
+                    class="block w-full p-2 border rounded-lg bg-gray-100"
+                    disabled
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Credentials -->
+            <div class="col-span-2">
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Login Credentials</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                  <label for="newUsername" class="text-sm font-medium text-gray-700">Username</label>
+                  <input
+                    v-model="newRequest.username"
+                    type="text"
+                    id="newUsername"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Choose a username"
+                    required
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label for="newPassword" class="text-sm font-medium text-gray-700">Password</label>
+                  <div class="relative">
+                    <input
+                      v-model="newRequest.password"
+                      :type="showPassword ? 'text' : 'password'"
+                      id="newPassword"
+                      class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                      placeholder="Choose a password"
+                      required
+                      @input="validatePassword"
+                    />
+                    <button
+                      type="button"
+                      @click="togglePasswordVisibility"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-5 h-5 text-gray-500"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="text-sm text-gray-600 mt-2">
+                    Password strength: <span :class="passwordStrengthClass">{{ passwordStrength }}</span>
+                  </div>
+                </div>
+                <div class="space-y-1">
+                  <label for="confirmPassword" class="text-sm font-medium text-gray-700">Confirm Password</label>
+                  <div class="relative">
+                    <input
+                      v-model="confirmPassword"
+                      :type="showConfirmPassword ? 'text' : 'password'"
+                      id="confirmPassword"
+                      class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                      placeholder="Confirm your password"
+                      required
+                      @input="validatePassword"
+                    />
+                    <button
+                      type="button"
+                      @click="toggleConfirmPasswordVisibility"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-5 h-5 text-gray-500"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="text-sm text-red-500 mt-1" v-if="!passwordsMatch">
+                    Passwords do not match
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-span-2 flex justify-end space-x-2 mt-6">
+              <button
+                type="button"
+                @click="showRegisterModal = false"
+                class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-200"
+                :disabled="isSubmitting"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-200"
+                :disabled="isSubmitting || !passwordsMatch"
+              >
+                {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
+              </button>
+            </div>
+          </form>
+          <div
+            v-if="statusMessage"
+            :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
+            class="mt-4 p-3 rounded-lg text-center"
+          >
+            {{ statusMessage }}
           </div>
-        </form>
-        <div
-          v-if="statusMessage"
-          :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
-          class="mt-4 p-3 rounded-lg text-center"
-        >
-          {{ statusMessage }}
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script>
@@ -440,11 +432,13 @@ export default {
       isLoggingIn: false,
       statusMessage: '',
       newRequest: {
+        empNo: '',
         username: '',
         password: '',
         firstName: '',
+        middleName: '',
         lastName: '',
-        positionApplied: '',
+        position: '',
         civilStatus: '',
         contactNumber: '',
         email: '',
@@ -452,9 +446,8 @@ export default {
         hourlyRate: 0,
         sss: '',
         philhealth: '',
-        pagibig: '',
+        hdmf: '',
         tin: '',
-        earnings: { travelExpenses: 0, otherEarnings: 0 },
         status: 'pending'
       },
       positions: ['Manager', 'Assistant', 'Developer'],
@@ -465,7 +458,7 @@ export default {
       emailError: '',
       phoneError: '',
       passwordError: '',
-      minimumWage: 610 // NCR minimum wage for 2025 (adjust if updated)
+      minimumWage: 610
     };
   },
   watch: {
@@ -499,21 +492,57 @@ export default {
       this.loginError = '';
       try {
         const response = await axios.post('http://localhost:7777/api/auth/login', {
-          username: this.username,
+          username: this.username.trim(),
           password: this.password
         });
-        this.$store.dispatch('login', { username: this.username, role: 'employee' });
-        localStorage.setItem('userId', response.data.id);
-        localStorage.setItem('userRole', 'employee');
-        localStorage.setItem('userName', response.data.name);
-        this.$router.push('/employee');
-      } catch (error) {
-        console.error('Login error:', error);
-        if (error.response) {
-          this.loginError = error.response.data.error || 'Wrong username or password. Please try again.';
-        } else {
-          this.loginError = 'Failed to connect to server. Please try again.';
+
+        console.log('Login response:', response.data);
+
+        if (!response.data || typeof response.data.id === 'undefined') {
+          throw new Error('Invalid response from server');
         }
+
+        const userData = {
+          id: response.data.id,
+          empNo: response.data.empNo || 'N/A',
+          username: this.username,
+          name: response.data.name || `${response.data.firstName || ''} ${response.data.lastName || ''}`.trim(),
+          email: response.data.email || 'N/A',
+          role: response.data.role
+        };
+        this.$store.dispatch('login', userData);
+
+        console.log('Storing user role:', userData.role, 'in localStorage');
+        localStorage.setItem('userId', response.data.id);
+        localStorage.setItem('userEmpNo', response.data.empNo || 'N/A');
+        localStorage.setItem('userRole', userData.role);
+        localStorage.setItem('userName', userData.name);
+        localStorage.setItem('userEmail', response.data.email || 'N/A');
+
+        if (userData.role === 'admin') {
+          this.$router.push('/admin');
+        } else {
+          this.$router.push('/employee');
+        }
+      } catch (error) {
+        console.error('Login error:', error.response || error);
+
+        if (error.response) {
+          const status = error.response.status;
+          const message = error.response.data.error || 'An error occurred';
+          if (status === 401) {
+            this.loginError = 'Invalid username or password. Please try again.';
+          } else if (status === 400) {
+            this.loginError = 'Bad request. Please check your input.';
+          } else {
+            this.loginError = message;
+          }
+        } else if (error.request) {
+          this.loginError = 'Unable to connect to the server. Please try again later.';
+        } else {
+          this.loginError = 'An unexpected error occurred. Please try again.';
+        }
+
         this.password = '';
       } finally {
         this.isLoggingIn = false;
@@ -547,9 +576,11 @@ export default {
       this.isSubmitting = true;
       this.statusMessage = '';
       try {
+        const maxIdResponse = await axios.get('http://localhost:7777/api/pending-requests/max-id');
         const response = await axios.post('http://localhost:7777/api/pending-requests', {
           ...this.newRequest,
-          id: (await axios.get('http://localhost:7777/api/pending-requests/max-id')).data.maxId + 1
+          name: `${this.newRequest.firstName} ${this.newRequest.middleName || ''} ${this.newRequest.lastName}`.trim(),
+          id: maxIdResponse.data.maxId + 1
         });
         if (response.status === 201) {
           this.showRegisterModal = false;
@@ -569,11 +600,13 @@ export default {
     },
     resetNewRequest() {
       this.newRequest = {
+        empNo: '',
         username: '',
         password: '',
         firstName: '',
+        middleName: '',
         lastName: '',
-        positionApplied: '',
+        position: '',
         civilStatus: '',
         contactNumber: '',
         email: '',
@@ -581,9 +614,8 @@ export default {
         hourlyRate: 0,
         sss: '',
         philhealth: '',
-        pagibig: '',
+        hdmf: '',
         tin: '',
-        earnings: { travelExpenses: 0, otherEarnings: 0 },
         status: 'pending'
       };
       this.confirmPassword = '';
@@ -606,24 +638,22 @@ export default {
     },
     calculatePagIBIGContribution(salary) {
       const cappedSalary = Math.min(salary || 0, 10000);
-      return (cappedSalary * 0.02).toFixed(2); // 2% capped at ₱10,000 per Pag-IBIG
+      return (cappedSalary * 0.02).toFixed(2); // 2% employee share per Pag-IBIG 2025
     },
     calculateWithholdingTax(salary) {
-      const isMWE = (salary / 30) <= this.minimumWage; // Check if Minimum Wage Earner
-      const nonTaxable = isMWE ? salary : (
-        parseFloat(this.calculateSSSContribution(salary)) +
-        parseFloat(this.calculatePhilHealthContribution(salary)) +
-        parseFloat(this.calculatePagIBIGContribution(salary))
-      );
-      const taxableIncome = (salary || 0) - nonTaxable;
-      if (taxableIncome <= 0 || isMWE) return (0).toFixed(2); // MWE exempt or no taxable income
-      if (taxableIncome <= 20833) return (0).toFixed(2);
-      if (taxableIncome <= 33333) return ((taxableIncome - 20833) * 0.15).toFixed(2);
-      if (taxableIncome <= 66667) return (1875 + (taxableIncome - 33333) * 0.20).toFixed(2);
-      if (taxableIncome <= 166667) return (13541.80 + (taxableIncome - 66667) * 0.25).toFixed(2);
-      if (taxableIncome <= 666667) return (90841.80 + (taxableIncome - 166667) * 0.30).toFixed(2);
-      return (408841.80 + (taxableIncome - 666667) * 0.35).toFixed(2); // BIR TRAIN Law table
+      const taxableIncome = salary || 0;
+      if (taxableIncome <= 20833) return 0;
+      if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15);
+      if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20);
+      return 0; // Placeholder for higher brackets
+    },
+    forgotPassword() {
+      this.loginError = 'Forgot Password feature not implemented yet.';
     }
   }
 };
 </script>
+
+<style scoped>
+/* No specific styles needed, using Tailwind CSS classes */
+</style>

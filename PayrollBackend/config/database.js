@@ -1,5 +1,5 @@
+// C:\Users\ASUS\Desktop\Payroll_system\PayrollBackend\config\database.js
 const mongoose = require('mongoose');
-require('dotenv').config();
 
 const connectDB = async () => {
   try {
