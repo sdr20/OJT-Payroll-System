@@ -7,7 +7,7 @@
                     <h1 class="text-3xl sm:text-4xl font-light text-gray-800 mb-2">Welcome</h1>
                     <p class="text-sm sm:text-base text-gray-500">Please select your login type</p>
                 </div>
-                
+
 
                 <div class="space-y-3 sm:space-y-4">
                     <router-link to="/admin-login" class="group block">
@@ -33,7 +33,7 @@
             <!-- Right side - Illustration -->
             <div class="hidden lg:block lg:w-1/2 bg-gray-50 p-6 sm:p-8 lg:p-12">
                 <img 
-                    src="@/assets/pic.png" 
+                    src="@/assets/pic1.png" 
                     alt="Payroll System" 
                     class="w-full h-full object-contain"
                 >
