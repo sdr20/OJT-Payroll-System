@@ -7,8 +7,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-          </div>
-          </div>
+          </div></div>
           <h1 class="text-2xl font-bold text-gray-900">Employee Portal</h1>
           <p class="text-gray-500 text-sm">Welcome to your workspace</p>
         </div>
@@ -512,12 +511,13 @@ export default {
         };
         this.$store.dispatch('login', userData);
 
-        console.log('Storing user role:', userData.role, 'in localStorage');
+        console.log('Storing user data:', userData);
         localStorage.setItem('userId', response.data.id);
         localStorage.setItem('userEmpNo', response.data.empNo || 'N/A');
         localStorage.setItem('userRole', userData.role);
         localStorage.setItem('userName', userData.name);
         localStorage.setItem('userEmail', response.data.email || 'N/A');
+        console.log('Verified localStorage userRole:', localStorage.getItem('userRole'));
 
         if (userData.role === 'admin') {
           this.$router.push('/admin');
@@ -526,14 +526,11 @@ export default {
         }
       } catch (error) {
         console.error('Login error:', error.response || error);
-
         if (error.response) {
           const status = error.response.status;
           const message = error.response.data.error || 'An error occurred';
           if (status === 401) {
             this.loginError = 'Invalid username or password. Please try again.';
-          } else if (status === 400) {
-            this.loginError = 'Bad request. Please check your input.';
           } else {
             this.loginError = message;
           }
@@ -542,7 +539,6 @@ export default {
         } else {
           this.loginError = 'An unexpected error occurred. Please try again.';
         }
-
         this.password = '';
       } finally {
         this.isLoggingIn = false;

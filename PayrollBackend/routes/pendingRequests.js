@@ -1,13 +1,14 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes\pendingRequests.js
+// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes/pendingRequests.js
 const express = require('express');
 const router = express.Router();
 const PendingRequest = require('../models/PendingRequest');
 const Employee = require('../models/Employee');
 
 const isAdmin = (req, res, next) => {
-  const userRole = req.headers['user-role'] || 'employee';
-  console.log('Received user-role header:', userRole); // Debug log
-  if (userRole.toLowerCase() !== 'admin') {
+  console.log('All request headers:', req.headers); // Log all headers
+  const userRole = req.headers['user-role'];
+  console.log('Parsed user-role:', userRole);
+  if (!userRole || userRole.toLowerCase() !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();

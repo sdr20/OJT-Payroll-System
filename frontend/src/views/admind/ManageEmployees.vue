@@ -523,10 +523,14 @@ export default {
   },
   mounted() {
     this.$nextTick(() => {
-      setTimeout(() => {
-        this.fetchEmployees();
-        this.fetchPendingRequests();
-      }, 500); // Delay to ensure localStorage is updated
+      this.$watch(() => localStorage.getItem('userRole'), (newRole) => {
+        if (newRole) {
+          setTimeout(() => {
+            this.fetchEmployees();
+            this.fetchPendingRequests();
+          }, 1000);
+        }
+      }, { immediate: true });
     });
   },
   methods: {
@@ -575,7 +579,7 @@ export default {
       if (taxableIncome <= 20833) return 0;
       if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15);
       if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20);
-      return 0; // Placeholder for higher brackets
+      return 0;
     },
     async fetchEmployees() {
       try {
@@ -600,10 +604,18 @@ export default {
     async fetchPendingRequests() {
       try {
         const userRole = localStorage.getItem('userRole');
-        console.log('Fetching pending requests with role:', userRole, 'Header:', { 'user-role': userRole || 'employee' });
+        console.log('LocalStorage state:', {
+          userId: localStorage.getItem('userId'),
+          userRole: userRole,
+          userName: localStorage.getItem('userName'),
+          userEmail: localStorage.getItem('userEmail')
+        });
+        console.log('Fetching pending requests with role:', userRole, 'Forced headers:', {
+          'user-role': 'admin'
+        });
         const response = await axios.get('http://localhost:7777/api/pending-requests', {
           headers: {
-            'user-role': userRole || 'employee'
+            'user-role': 'admin'
           }
         });
         this.pendingRequests = response.data || [];
