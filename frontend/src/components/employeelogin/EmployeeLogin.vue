@@ -487,7 +487,7 @@ export default {
   },
   watch: {
     'newRequest.salary'(newSalary) {
-      this.newRequest.hourlyRate = newSalary / (8 * 22);
+      this.newRequest.hourlyRate = newSalary / (8 * 22); // DOLE: 8-hour workday, 22 days/month
     }
   },
   computed: {
@@ -537,12 +537,13 @@ export default {
         this.$store.dispatch('login', userData);
 
         // Store in localStorage with debugging
-        console.log('Storing user role:', userData.role);
+        console.log('Storing user data:', userData);
         localStorage.setItem('userId', response.data.id);
         localStorage.setItem('userEmpNo', response.data.empNo || 'N/A');
         localStorage.setItem('userRole', userData.role); // Store the role
         localStorage.setItem('userName', userData.name);
         localStorage.setItem('userEmail', response.data.email || 'N/A');
+        console.log('Verified localStorage userRole:', localStorage.getItem('userRole'));
 
         // Redirect based on role
         if (userData.role === 'admin') {
@@ -574,7 +575,26 @@ export default {
         this.isLoggingIn = false;
       }
     },
-    // ... [Other methods remain unchanged, refer to previous response] ...
+    toggleLoginPasswordVisibility() {
+      this.showLoginPassword = !this.showLoginPassword;
+    },
+    togglePasswordVisibility() {
+      this.showPassword = !this.showPassword;
+    },
+    toggleConfirmPasswordVisibility() {
+      this.showConfirmPassword = !this.showConfirmPassword;
+    },
+    validateEmail() {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      this.emailError = emailRegex.test(this.newRequest.email) ? '' : 'Please enter a valid email address.';
+    },
+    validatePhoneNumber() {
+      const phoneRegex = /^\d{11}$/;
+      this.phoneError = phoneRegex.test(this.newRequest.contactNumber) ? '' : 'Please enter a valid 11-digit phone number.';
+    },
+    validatePassword() {
+      this.passwordError = this.newRequest.password.length >= 8 ? '' : 'Password must be at least 8 characters long.';
+    },
     async submitRequest() {
       if (!this.passwordsMatch) {
         this.statusMessage = 'Passwords do not match';
@@ -605,12 +625,62 @@ export default {
         this.isSubmitting = false;
       }
     },
-    // ... [Other methods remain unchanged] ...
+    resetNewRequest() {
+      this.newRequest = {
+        empNo: '',
+        username: '',
+        password: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        position: '',
+        civilStatus: '',
+        contactNumber: '',
+        email: '',
+        salary: 0,
+        hourlyRate: 0,
+        sss: '',
+        philhealth: '',
+        hdmf: '',
+        tin: '',
+        status: 'pending'
+      };
+      this.confirmPassword = '';
+      this.showPassword = false;
+      this.showConfirmPassword = false;
+    },
+    showSuccessMessage(message) {
+      this.statusMessage = message;
+      setTimeout(() => {
+        this.statusMessage = '';
+      }, 5000);
+    },
+    calculateSSSContribution(salary) {
+      const salaryCredit = Math.min(Math.max(salary || 0, 5000), 35000);
+      return (salaryCredit * 0.045).toFixed(2); // 4.5% employee share per SSS 2025
+    },
+    calculatePhilHealthContribution(salary) {
+      const cappedSalary = Math.min(salary || 0, 100000);
+      return (cappedSalary * 0.025).toFixed(2); // 2.5% employee share (half of 5%) per PhilHealth 2025
+    },
     calculatePagIBIGContribution(salary) {
-      const rate = 0.02;
       const cappedSalary = Math.min(salary || 0, 10000);
-      return Math.round(cappedSalary * rate);
+      return (cappedSalary * 0.02).toFixed(2); // 2% employee share per Pag-IBIG 2025
+    },
+    calculateWithholdingTax(salary) {
+      const taxableIncome = salary || 0;
+      if (taxableIncome <= 20833) return 0;
+      if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15);
+      if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20);
+      return 0; // Placeholder for higher brackets
+    },
+    forgotPassword() {
+      this.loginError = 'Forgot Password feature not implemented yet.';
     }
   }
 };
 </script>
+
+<style scoped>
+/* No specific styles needed, using Tailwind CSS classes */
+</style>
