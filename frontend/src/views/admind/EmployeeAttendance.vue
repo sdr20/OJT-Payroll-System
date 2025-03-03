@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-1">
+  <div class="min-h-screen  p-4 md:p-1">
     <div class="max-w-7xl mx-auto space-y-6">
       <!-- Header Section - Polished with Modern Design -->
       <header class="bg-white rounded-xl shadow-lg p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center justify-between border-l-4 border-blue-500">
