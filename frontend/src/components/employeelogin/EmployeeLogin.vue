@@ -1,28 +1,11 @@
 <template>
-  <div
-    class="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center p-4"
-  >
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center p-4">
     <div class="w-full max-w-md">
-      <div
-        class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 space-y-6"
-      >
+      <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 space-y-6">
         <div class="text-center space-y-2">
-          <div
-            class="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-8 h-8 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
+          <div class="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
           <h1 class="text-2xl font-bold text-gray-900">Employee Portal</h1>
@@ -31,9 +14,7 @@
 
         <form @submit.prevent="login" class="space-y-4">
           <div class="space-y-1">
-            <label for="username" class="text-sm font-medium text-gray-700"
-              >Username</label
-            >
+            <label for="username" class="text-sm font-medium text-gray-700">Username</label>
             <input
               v-model="username"
               type="text"
@@ -45,9 +26,7 @@
           </div>
 
           <div class="space-y-1">
-            <label for="password" class="text-sm font-medium text-gray-700"
-              >Password</label
-            >
+            <label for="password" class="text-sm font-medium text-gray-700">Password</label>
             <div class="relative">
               <input
                 v-model="password"
@@ -90,6 +69,11 @@
             {{ loginError }}
           </div>
 
+          <!-- Forgot Password Link -->
+          <div class="text-right">
+            <a href="#" @click="forgotPassword" class="text-sm text-blue-500 hover:underline">Forgot Password?</a>
+          </div>
+
           <button
             type="submit"
             class="w-full bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition duration-200"
@@ -102,39 +86,23 @@
         <div class="text-center">
           <p class="text-sm text-gray-700">
             Don't have an account?
-            <a
-              href="#"
-              @click="showRegisterModal = true"
-              class="text-blue-500 hover:underline"
-              >Request an account</a
-            >
+            <a href="#" @click="showRegisterModal = true" class="text-blue-500 hover:underline">Request an account</a>
           </p>
         </div>
       </div>
     </div>
 
     <!-- Register Modal -->
-    <div
-      v-if="showRegisterModal"
-      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-    >
-      <div
-        class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-      >
-        <h2 class="text-2xl font-bold mb-6 text-gray-900">
-          Request Account Creation
-        </h2>
+    <div v-if="showRegisterModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <h2 class="text-2xl font-bold mb-6 text-gray-900">Request Account Creation</h2>
         <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-6">
           <!-- Basic Information -->
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-              Basic Information
-            </h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label for="firstName" class="text-sm font-medium text-gray-700"
-                  >First Name</label
-                >
+                <label for="firstName" class="text-sm font-medium text-gray-700">First Name</label>
                 <input
                   v-model="newRequest.firstName"
                   type="text"
@@ -145,9 +113,7 @@
                 />
               </div>
               <div class="space-y-1">
-                <label for="lastName" class="text-sm font-medium text-gray-700"
-                  >Last Name</label
-                >
+                <label for="lastName" class="text-sm font-medium text-gray-700">Last Name</label>
                 <input
                   v-model="newRequest.lastName"
                   type="text"
@@ -158,9 +124,7 @@
                 />
               </div>
               <div class="space-y-1">
-                <label for="email" class="text-sm font-medium text-gray-700"
-                  >Email</label
-                >
+                <label for="email" class="text-sm font-medium text-gray-700">Email</label>
                 <input
                   v-model="newRequest.email"
                   type="email"
@@ -168,14 +132,12 @@
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your email"
                   required
+                  @input="validateEmail"
                 />
+                <p v-if="emailError" class="text-red-500 text-xs mt-1">{{ emailError }}</p>
               </div>
               <div class="space-y-1">
-                <label
-                  for="contactNumber"
-                  class="text-sm font-medium text-gray-700"
-                  >Contact Number</label
-                >
+                <label for="contactNumber" class="text-sm font-medium text-gray-700">Contact Number</label>
                 <input
                   v-model="newRequest.contactNumber"
                   type="text"
@@ -185,33 +147,23 @@
                   required
                   pattern="\\d{11}"
                   title="Please enter an 11-digit phone number (e.g., 09123456789)"
+                  @input="validatePhoneNumber"
                 />
+                <p v-if="phoneError" class="text-red-500 text-xs mt-1">{{ phoneError }}</p>
               </div>
               <div class="space-y-1">
-                <label
-                  for="positionApplied"
-                  class="text-sm font-medium text-gray-700"
-                  >Position Applying For</label
-                >
+                <label for="positionApplied" class="text-sm font-medium text-gray-700">Position Applying For</label>
                 <select
                   v-model="newRequest.positionApplied"
                   id="positionApplied"
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 >
-                  <option
-                    v-for="position in positions"
-                    :key="position"
-                    :value="position"
-                  >
-                    {{ position }}
-                  </option>
+                  <option v-for="position in positions" :key="position" :value="position">{{ position }}</option>
                 </select>
               </div>
               <div class="space-y-1">
-                <label for="civilStatus" class="text-sm font-medium text-gray-700"
-                  >Civil Status</label
-                >
+                <label for="civilStatus" class="text-sm font-medium text-gray-700">Civil Status</label>
                 <select
                   v-model="newRequest.civilStatus"
                   id="civilStatus"
@@ -237,11 +189,7 @@
                 />
               </div>
               <div class="space-y-1">
-                <label
-                  for="philhealth"
-                  class="text-sm font-medium text-gray-700"
-                  >PhilHealth ID</label
-                >
+                <label for="philhealth" class="text-sm font-medium text-gray-700">PhilHealth ID</label>
                 <input
                   v-model="newRequest.philhealth"
                   type="text"
@@ -253,9 +201,7 @@
                 />
               </div>
               <div class="space-y-1">
-                <label for="pagibig" class="text-sm font-medium text-gray-700"
-                  >Pag-IBIG ID</label
-                >
+                <label for="pagibig" class="text-sm font-medium text-gray-700">Pag-IBIG ID</label>
                 <input
                   v-model="newRequest.pagibig"
                   type="text"
@@ -283,14 +229,10 @@
 
           <!-- Financial Information -->
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-              Financial Information
-            </h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label for="salary" class="text-sm font-medium text-gray-700"
-                  >Proposed Monthly Salary</label
-                >
+                <label for="salary" class="text-sm font-medium text-gray-700">Proposed Monthly Salary</label>
                 <input
                   v-model.number="newRequest.salary"
                   type="number"
@@ -302,11 +244,7 @@
                 />
               </div>
               <div class="space-y-1">
-                <label
-                  for="hourlyRate"
-                  class="text-sm font-medium text-gray-700"
-                  >Hourly Rate (Auto-Calculated)</label
-                >
+                <label for="hourlyRate" class="text-sm font-medium text-gray-700">Hourly Rate (Auto-Calculated)</label>
                 <input
                   v-model="newRequest.hourlyRate"
                   type="number"
@@ -316,52 +254,36 @@
                 />
               </div>
               <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700"
-                  >SSS Contribution (Employee Share)</label
-                >
+                <label class="text-sm font-medium text-gray-700">SSS Contribution (Employee Share)</label>
                 <input
-                  :value="
-                    calculateSSSContribution(newRequest.salary).toLocaleString()
-                  "
+                  :value="calculateSSSContribution(newRequest.salary).toLocaleString()"
                   type="text"
                   class="block w-full p-2 border rounded-lg bg-gray-100"
                   disabled
                 />
               </div>
               <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700"
-                  >PhilHealth Contribution (Employee Share)</label
-                >
+                <label class="text-sm font-medium text-gray-700">PhilHealth Contribution (Employee Share)</label>
                 <input
-                  :value="
-                    calculatePhilHealthContribution(newRequest.salary).toLocaleString()
-                  "
+                  :value="calculatePhilHealthContribution(newRequest.salary).toLocaleString()"
                   type="text"
                   class="block w-full p-2 border rounded-lg bg-gray-100"
                   disabled
                 />
               </div>
               <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700"
-                  >Pag-IBIG Contribution (Employee Share)</label
-                >
+                <label class="text-sm font-medium text-gray-700">Pag-IBIG Contribution (Employee Share)</label>
                 <input
-                  :value="
-                    calculatePagIBIGContribution(newRequest.salary).toLocaleString()
-                  "
+                  :value="calculatePagIBIGContribution(newRequest.salary).toLocaleString()"
                   type="text"
                   class="block w-full p-2 border rounded-lg bg-gray-100"
                   disabled
                 />
               </div>
               <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700"
-                  >Withholding Tax</label
-                >
+                <label class="text-sm font-medium text-gray-700">Withholding Tax</label>
                 <input
-                  :value="
-                    calculateWithholdingTax(newRequest.salary).toLocaleString()
-                  "
+                  :value="calculateWithholdingTax(newRequest.salary).toLocaleString()"
                   type="text"
                   class="block w-full p-2 border rounded-lg bg-gray-100"
                   disabled
@@ -372,14 +294,10 @@
 
           <!-- Credentials -->
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-              Login Credentials
-            </h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Login Credentials</h3>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label for="newUsername" class="text-sm font-medium text-gray-700"
-                  >Username</label
-                >
+                <label for="newUsername" class="text-sm font-medium text-gray-700">Username</label>
                 <input
                   v-model="newRequest.username"
                   type="text"
@@ -390,9 +308,7 @@
                 />
               </div>
               <div class="space-y-1">
-                <label for="newPassword" class="text-sm font-medium text-gray-700"
-                  >Password</label
-                >
+                <label for="newPassword" class="text-sm font-medium text-gray-700">Password</label>
                 <div class="relative">
                   <input
                     v-model="newRequest.password"
@@ -401,6 +317,7 @@
                     class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
                     placeholder="Choose a password"
                     required
+                    @input="validatePassword"
                   />
                   <button
                     type="button"
@@ -428,14 +345,13 @@
                     </svg>
                   </button>
                 </div>
+                <div class="text-sm text-gray-600 mt-2">
+                  Password strength: <span :class="passwordStrengthClass">{{ passwordStrength }}</span>
+                </div>
               </div>
 
               <div class="space-y-1">
-                <label
-                  for="confirmPassword"
-                  class="text-sm font-medium text-gray-700"
-                  >Confirm Password</label
-                >
+                <label for="confirmPassword" class="text-sm font-medium text-gray-700">Confirm Password</label>
                 <div class="relative">
                   <input
                     v-model="confirmPassword"
@@ -444,6 +360,7 @@
                     class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
                     placeholder="Confirm your password"
                     required
+                    @input="validatePassword"
                   />
                   <button
                     type="button"
@@ -471,22 +388,13 @@
                     </svg>
                   </button>
                 </div>
-              </div>
-
-              <div class="col-span-2">
-                <div class="text-sm text-gray-600 mt-2">
-                  Password strength: {{ passwordStrength }}
-                </div>
-                <div
-                  class="text-sm text-red-500 mt-1"
-                  v-if="!passwordsMatch"
-                >
+                <div class="text-sm text-red-500 mt-1" v-if="!passwordsMatch">
                   Passwords do not match
                 </div>
               </div>
             </div>
           </div>
-            
+
           <!-- Buttons -->
           <div class="col-span-2 flex justify-end space-x-2 mt-6">
             <button
@@ -508,11 +416,7 @@
         </form>
         <div
           v-if="statusMessage"
-          :class="
-            statusMessage.includes('successfully')
-              ? 'bg-green-50 text-green-700'
-              : 'bg-red-50 text-red-700'
-          "
+          :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
           class="mt-4 p-3 rounded-lg text-center"
         >
           {{ statusMessage }}
@@ -555,14 +459,14 @@ export default {
         status: 'pending'
       },
       positions: ['Manager', 'Assistant', 'Developer'],
-      testCredentials: {
-        username: 'employee',
-        password: 'employee123'
-      },
-      showLoginPassword: false, // For login password visibility
-      showPassword: false, // For registration password visibility
-      showConfirmPassword: false, // For confirm password visibility
-      confirmPassword: ''
+      showLoginPassword: false,
+      showPassword: false,
+      showConfirmPassword: false,
+      confirmPassword: '',
+      emailError: '',
+      phoneError: '',
+      passwordError: '',
+      minimumWage: 610 // NCR minimum wage for 2025 (adjust if updated)
     };
   },
   watch: {
@@ -579,6 +483,13 @@ export default {
       }
       return 'Medium';
     },
+    passwordStrengthClass() {
+      return {
+        'text-red-500': this.passwordStrength === 'Weak',
+        'text-yellow-500': this.passwordStrength === 'Medium',
+        'text-green-500': this.passwordStrength === 'Strong'
+      };
+    },
     passwordsMatch() {
       return this.newRequest.password === this.confirmPassword;
     }
@@ -588,12 +499,10 @@ export default {
       this.isLoggingIn = true;
       this.loginError = '';
       try {
-        console.log('Attempting login with:', { username: this.username, password: this.password });
         const response = await axios.post('http://localhost:7777/api/auth/login', {
           username: this.username,
           password: this.password
         });
-        console.log('Login response:', response.data);
         this.$store.dispatch('login', { username: this.username, role: 'employee' });
         localStorage.setItem('userId', response.data.id);
         localStorage.setItem('userRole', 'employee');
@@ -602,7 +511,6 @@ export default {
       } catch (error) {
         console.error('Login error:', error);
         if (error.response) {
-          console.error('Error details:', error.response.data);
           this.loginError = error.response.data.error || 'Wrong username or password. Please try again.';
         } else {
           this.loginError = 'Failed to connect to server. Please try again.';
@@ -621,6 +529,17 @@ export default {
     toggleConfirmPasswordVisibility() {
       this.showConfirmPassword = !this.showConfirmPassword;
     },
+    validateEmail() {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      this.emailError = emailRegex.test(this.newRequest.email) ? '' : 'Please enter a valid email address.';
+    },
+    validatePhoneNumber() {
+      const phoneRegex = /^\d{11}$/;
+      this.phoneError = phoneRegex.test(this.newRequest.contactNumber) ? '' : 'Please enter a valid 11-digit phone number.';
+    },
+    validatePassword() {
+      this.passwordError = this.newRequest.password.length >= 8 ? '' : 'Password must be at least 8 characters long.';
+    },
     async submitRequest() {
       if (!this.passwordsMatch) {
         this.statusMessage = 'Passwords do not match';
@@ -629,35 +548,10 @@ export default {
       this.isSubmitting = true;
       this.statusMessage = '';
       try {
-        console.log('Fetching max ID...');
-        const maxIdResponse = await axios.get('http://localhost:7777/api/pending-requests/max-id');
-        console.log('Max ID response:', maxIdResponse.data);
-        if (maxIdResponse.status !== 200) {
-          throw new Error('Failed to fetch max ID');
-        }
-        const newId = (maxIdResponse.data.maxId || 0) + 1;
-
-        const requestData = {
-          id: newId,
-          name: `${this.newRequest.firstName} ${this.newRequest.lastName}`,
-          positionApplied: this.newRequest.positionApplied,
-          email: this.newRequest.email,
-          contactNumber: this.newRequest.contactNumber,
-          salary: this.newRequest.salary,
-          hourlyRate: this.newRequest.hourlyRate,
-          sss: this.newRequest.sss || '',
-          philhealth: this.newRequest.philhealth || '',
-          pagibig: this.newRequest.pagibig || '',
-          tin: this.newRequest.tin || '',
-          earnings: { travelExpenses: 0, otherEarnings: 0 },
-          status: 'pending',
-          username: this.newRequest.username,
-          password: this.newRequest.password
-        };
-
-        console.log('Submitting request:', requestData);
-        const response = await axios.post('http://localhost:7777/api/pending-requests', requestData);
-        console.log('POST response:', response.data);
+        const response = await axios.post('http://localhost:7777/api/pending-requests', {
+          ...this.newRequest,
+          id: (await axios.get('http://localhost:7777/api/pending-requests/max-id')).data.maxId + 1
+        });
         if (response.status === 201) {
           this.showRegisterModal = false;
           this.resetNewRequest();
@@ -666,7 +560,6 @@ export default {
       } catch (error) {
         console.error('Request submission error:', error);
         if (error.response) {
-          console.error('Error details:', error.response.data);
           this.statusMessage = error.response.data.error || 'Failed to submit request. Please try again.';
         } else {
           this.statusMessage = 'Failed to connect to server. Please try again.';
@@ -705,20 +598,32 @@ export default {
       }, 5000);
     },
     calculateSSSContribution(salary) {
-      // Replace with your actual SSS contribution calculation logic
-      return (salary * 0.045).toFixed(2); // Example calculation
+      const salaryCredit = Math.min(Math.max(salary || 0, 5000), 35000);
+      return (salaryCredit * 0.045).toFixed(2); // 4.5% employee share per SSS 2025
     },
     calculatePhilHealthContribution(salary) {
-      // Replace with your actual PhilHealth contribution calculation logic
-      return (salary * 0.015).toFixed(2); // Example calculation
+      const cappedSalary = Math.min(salary || 0, 100000);
+      return (cappedSalary * 0.025).toFixed(2); // 2.5% employee share (half of 5%) per PhilHealth 2025
     },
     calculatePagIBIGContribution(salary) {
-      // Replace with your actual Pag-IBIG contribution calculation logic
-      return Math.min(100, salary * 0.02).toFixed(2); // Example calculation, max 100
+      const cappedSalary = Math.min(salary || 0, 10000);
+      return (cappedSalary * 0.02).toFixed(2); // 2% capped at ₱10,000 per Pag-IBIG
     },
     calculateWithholdingTax(salary) {
-      // Replace with your actual withholding tax calculation logic
-      return (salary * 0.10).toFixed(2); // Example calculation
+      const isMWE = (salary / 30) <= this.minimumWage; // Check if Minimum Wage Earner
+      const nonTaxable = isMWE ? salary : (
+        parseFloat(this.calculateSSSContribution(salary)) +
+        parseFloat(this.calculatePhilHealthContribution(salary)) +
+        parseFloat(this.calculatePagIBIGContribution(salary))
+      );
+      const taxableIncome = (salary || 0) - nonTaxable;
+      if (taxableIncome <= 0 || isMWE) return (0).toFixed(2); // MWE exempt or no taxable income
+      if (taxableIncome <= 20833) return (0).toFixed(2);
+      if (taxableIncome <= 33333) return ((taxableIncome - 20833) * 0.15).toFixed(2);
+      if (taxableIncome <= 66667) return (1875 + (taxableIncome - 33333) * 0.20).toFixed(2);
+      if (taxableIncome <= 166667) return (13541.80 + (taxableIncome - 66667) * 0.25).toFixed(2);
+      if (taxableIncome <= 666667) return (90841.80 + (taxableIncome - 166667) * 0.30).toFixed(2);
+      return (408841.80 + (taxableIncome - 666667) * 0.35).toFixed(2); // BIR TRAIN Law table
     }
   }
 };

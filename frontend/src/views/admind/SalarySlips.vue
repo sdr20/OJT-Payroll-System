@@ -175,7 +175,7 @@
       <!-- Toast Messages -->
       <div v-if="statusMessage"
            :class="[
-             statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
+             statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-green-700',
              'fixed bottom-4 right-4 p-3 rounded shadow-lg z-50 flex items-center gap-1 animate-fade-in text-sm'
            ]">
         <span class="material-icons text-sm">
@@ -260,7 +260,7 @@ export default {
         this.employees = response.data.map((employee) => ({
           id: employee.id,
           empNo: employee.empNo || 'N/A',
-          name: `${employee.firstName} ${employee.lastName}`,
+          name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim(),
           lastName: employee.lastName || 'N/A',
           middleName: employee.middleName || 'N/A',
           firstName: employee.firstName || 'N/A',
@@ -277,10 +277,22 @@ export default {
           totalDeductions: employee.totalDeductions || this.calculateTotalDeductions(employee) || 0,
           totalSalary: employee.netSalary || this.calculateNetSalary(employee) || 0,
           salaryMonth: this.formatSalaryMonth(this.selectedMonth),
-          email: employee.email,
-          position: employee.position,
+          email: employee.email || 'N/A',
+          position: employee.position || 'N/A',
           payheads: employee.payheads || [],
-          rawData: employee
+          rawData: employee,
+          salary: employee.salary || 0, // Ensure salary is available for calculations
+          commission: employee.commission || 0,
+          profitSharing: employee.profitSharing || 0,
+          fees: employee.fees || 0,
+          thirteenthMonthPay: employee.thirteenthMonthPay || 0,
+          hazardPay: employee.hazardPay || 0,
+          overtimeHours: employee.overtimeHours || { regular: 0, holiday: 0 },
+          nightShiftDiff: employee.nightShiftDiff || 0,
+          deMinimis: employee.deMinimis || 0,
+          otherTaxable: employee.otherTaxable || 0,
+          paidLeaves: employee.paidLeaves || { days: 0, amount: 0 },
+          absences: employee.absences || { days: 0, amount: 0 }
         }));
         this.showSuccessMessage('Employees loaded successfully!');
       } catch (error) {
@@ -392,31 +404,31 @@ export default {
       const isRegularHoliday = regularHolidays.some(holiday => moment(holiday, 'MM/DD/YYYY').format('MMMM') === salaryMonth);
       const isSpecialHoliday = specialNonWorkingDays.some(holiday => moment(holiday, 'MM/DD/YYYY').format('MMMM') === salaryMonth);
       if (isRegularHoliday) return dailyRate * 2 || 0; // DOLE: 200% for worked regular holiday
-      if (isSpecialHoliday) return dailyRate * 0.3 || 0; // DOLE: 30% premium for special holiday
+      if (isSpecialHoliday) return dailyRate * 1.3 || 0; // Updated to 130% for special non-working day per DOLE
       return 0;
     },
     calculateOvertimePay(employee) {
       const hourlyRate = ((employee.hourlyRate || (employee.salary / (8 * 22))) || 0) || 0;
-      const regularOTHours = (employee.overtimeHours?.regular || 2) || 0;
-      const holidayOTHours = (employee.overtimeHours?.holiday || 1) || 0;
+      const regularOTHours = (employee.overtimeHours?.regular || 0) || 0; // Use actual value from employee data
+      const holidayOTHours = (employee.overtimeHours?.holiday || 0) || 0; // Use actual value from employee data
       const regularOTPay = regularOTHours * hourlyRate * 1.25 || 0; // DOLE: 25% OT rate
       const holidayOTPay = holidayOTHours * hourlyRate * 1.3 || 0; // DOLE: 30% OT on holiday/rest day
       return regularOTPay + holidayOTPay || 0;
     },
     calculateSSSContribution(salary) {
       const monthlySalaryCredit = Math.min(Math.max((salary || 0), 5000), 35000) || 0;
-      const employeeShareRate = 0.05;
+      const employeeShareRate = 0.045; // Updated to 4.5% per SSS 2025
       return Math.round(monthlySalaryCredit * employeeShareRate) || 0;
     },
     calculatePhilHealthContribution(salary) {
-      const rate = 0.05;
+      const rate = 0.05; // 5% total premium
       const monthlySalary = Math.min((salary || 0), 100000) || 0;
-      return Math.round((monthlySalary * rate) / 2) || 0;
+      return Math.round((monthlySalary * rate) / 2) || 0; // 2.5% employee share
     },
     calculatePagIBIGContribution(salary) {
-      const rate = 0.02;
+      const rate = 0.02; // 2% employee share
       const cappedSalary = Math.min((salary || 0), 10000) || 0;
-      return Math.round(cappedSalary * rate) || 0;
+      return Math.round(cappedSalary * rate) || 0; // Capped at ₱10,000
     },
     calculateWithholdingTax(employee) {
       const nonTaxable = this.calculateNonTaxableIncome(employee);
@@ -430,7 +442,7 @@ export default {
     },
     formatSalaryMonth(month) {
       const date = new Date(month + '-01');
-      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     },
     prevPage() {
       if (this.currentPage > 1) this.currentPage--;
@@ -456,32 +468,32 @@ export default {
     },
     createPayslipData(employee) {
       const salaryDate = moment(employee.salaryMonth, 'MM/YYYY').format('MM/DD/YYYY');
-      const basicSalary = (employee.rawData.salary || 0) || 0;
-      const sss = (this.calculateSSSContribution(employee.rawData.salary) || 0) || 0;
-      const philhealth = (this.calculatePhilHealthContribution(employee.rawData.salary) || 0) || 0;
-      const hdmf = (this.calculatePagIBIGContribution(employee.rawData.salary) || 0) || 0;
-      const totalDeductions = (sss + philhealth + hdmf + (this.calculateWithholdingTax(employee) || 0)) || 0;
-      const netSalary = (employee.totalSalary || this.calculateNetSalary(employee) || 0) || 0;
-      const paidLeavesDays = (employee.paidLeaves?.days || 1) || 0;
-      const absencesDays = (employee.absences?.days || 1) || 0;
-      const paidLeavesAmount = (employee.paidLeaves?.amount || 568.18) || 0;
-      const absencesAmount = -((employee.absences?.amount || 568.18) || 0);
+      const basicSalary = (employee.salary || 0) || 0; // Use actual salary from employee data
+      const sss = (this.calculateSSSContribution(employee.salary) || 0) || 0; // Use calculated SSS
+      const philhealth = (this.calculatePhilHealthContribution(employee.salary) || 0) || 0; // Use calculated PhilHealth
+      const hdmf = (this.calculatePagIBIGContribution(employee.salary) || 0) || 0; // Use calculated Pag-IBIG
+      const totalDeductions = (sss + philhealth + hdmf + (this.calculateWithholdingTax(employee) || 0)) || 0; // Use calculated total
+      const netSalary = (employee.totalSalary || this.calculateNetSalary(employee) || 0) || 0; // Use calculated net salary
+      const paidLeavesDays = (employee.paidLeaves?.days || 0) || 0;
+      const absencesDays = (employee.absences?.days || 0) || 0;
+      const paidLeavesAmount = (employee.paidLeaves?.amount || 0) || 0;
+      const absencesAmount = -((employee.absences?.amount || 0) || 0);
 
       return {
         salaryDate,
-        empNo: employee.empNo || '202220308',
-        lastName: employee.lastName || 'TAMSM',
-        middleName: employee.middleName || 'LEDESMA',
-        firstName: employee.firstName || 'MOHAMMED ZIN',
-        birthDate: moment(employee.birthDate).format('MM/DD/YYYY') || '07/22/1998',
-        hireDate: moment(employee.hireDate).format('MM/DD/YYYY') || '03/28/2022',
+        empNo: employee.empNo || 'N/A',
+        lastName: employee.lastName || 'N/A',
+        middleName: employee.middleName || 'N/A',
+        firstName: employee.firstName || 'N/A',
+        birthDate: moment(employee.birthDate).isValid() ? moment(employee.birthDate).format('MM/DD/YYYY') : 'Invalid date',
+        hireDate: moment(employee.hireDate).isValid() ? moment(employee.hireDate).format('MM/DD/YYYY') : 'Invalid date',
         civilStatus: employee.civilStatus || 'SINGLE',
-        dependents: (employee.dependents || 0) || 0,
-        sss: employee.sss || '10-13386313-6',
-        tin: employee.tin || '444-340-756',
-        philhealth: employee.philhealth || '01-052343921-4',
-        hdmf: employee.hdmf || '121249288489',
-        position: employee.position || 'DIGITAL CREATOR II',
+        dependents: employee.dependents || 0,
+        sss: employee.sss || 'N/A',
+        tin: employee.tin || 'N/A',
+        philhealth: employee.philhealth || 'N/A',
+        hdmf: employee.hdmf || 'N/A',
+        position: employee.position || 'N/A',
         basicSalary: this.formatNumber(basicSalary),
         totalDeductions: this.formatNumber(totalDeductions),
         netSalary: this.formatNumber(netSalary),
@@ -493,7 +505,7 @@ export default {
         paidLeavesAmount: this.formatNumber(paidLeavesAmount),
         absencesAmount: this.formatNumber(absencesAmount),
         withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0),
-        payheads: employee.payheads || []
+        payheads: employee.payheads || [] // Use actual payheads from employee data
       };
     },
     formatNumber(value) {
@@ -501,85 +513,148 @@ export default {
       return num.toFixed(2);
     },
     async generatePdf(payslipData) {
+      // Standard letter-sized paper (8.5" x 11" or 21.59cm x 27.94cm)
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: [216, 279] // 8.5" x 11" in mm
       });
-      const lineHeight = 8;
-      const leftMargin = 14;
+      const lineHeight = 5; // Adjusted to match the image's tight spacing
+      const margin = 10; // Uniform margin of 10mm on all sides
+      const contentWidth = doc.internal.pageSize.getWidth() - (2 * margin); // 196mm content width
+      const pageHeight = doc.internal.pageSize.getHeight();
 
       function addFormattedText(doc, text, x, y, options = {}) {
-        doc.setFontSize(options.fontSize || 12);
+        if (!text || typeof text !== 'string') {
+          console.warn('Invalid text passed to addFormattedText:', text);
+          text = 'N/A'; // Fallback for invalid text
+        }
+        if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+          console.warn('Invalid coordinates passed to addFormattedText:', { x, y });
+          x = margin; // Default to left margin if invalid
+          y = y || margin; // Default to top margin if invalid
+        }
+        doc.setFontSize(options.fontSize || 12); // Default font size from image
         doc.setFont(undefined, options.fontStyle || 'normal');
         doc.setTextColor(options.textColor ? options.textColor[0] : 0, options.textColor ? options.textColor[1] : 0, options.textColor ? options.textColor[2] : 0);
         doc.text(text, x, y, { align: options.align || 'left' });
       }
 
-      addFormattedText(doc, 'RIGHTJOB Solutions', leftMargin, 15, { fontSize: 16, fontStyle: 'bold', textColor: [0, 128, 0] });
-      addFormattedText(doc, 'PAYSLIP', doc.internal.pageSize.getWidth() / 2, 15, { fontSize: 18, align: 'center' });
-      addFormattedText(doc, 'Salary Date', 140, 15, { fontSize: 12 });
-      addFormattedText(doc, payslipData.salaryDate, 170, 15, { fontSize: 12 });
+      function addValue(doc, label, value, x, y) {
+        if (!label || typeof label !== 'string' || !value || typeof value !== 'string') {
+          console.warn('Invalid label or value passed to addValue:', { label, value });
+          label = 'N/A';
+          value = 'N/A';
+        }
+        if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+          console.warn('Invalid coordinates passed to addValue:', { x, y });
+          x = margin; // Default to left margin if invalid
+          y = y || margin; // Default to top margin if invalid
+        }
+        addFormattedText(doc, label, x, y, { fontSize: 12, textColor: [0, 0, 0] }); // Black text for labels
+        addFormattedText(doc, value, x + 60, y, { fontSize: 12, textColor: [0, 0, 0] }); // Black text for values, 60mm gap
+      }
 
-      doc.line(leftMargin, 20, doc.internal.pageSize.getWidth() - leftMargin, 20);
+      // Header with margin
+      doc.setFillColor(0, 128, 0); // Green background
+      doc.rect(margin, margin, contentWidth, 15, 'F'); // 10mm top margin, 196mm width
+      addFormattedText(doc, 'RIGHTJOB Solutions', margin + 5, margin + 10, { fontSize: 14, fontStyle: 'bold', textColor: [255, 255, 255] });
+      addFormattedText(doc, 'PAYSLIP', margin + (contentWidth / 2), margin + 10, { fontSize: 14, align: 'center', textColor: [255, 255, 255] });
 
-      let y = 30;
-      addFormattedText(doc, 'Personal Information', leftMargin, 25, { fontSize: 14, fontStyle: 'bold' });
+      // Personal Information and Salary Date (Two side-by-side containers) with margin
+      let y = margin + 20; // Start 10mm below header (20mm from top)
+      addFormattedText(doc, 'Personal Information', margin, y, { fontSize: 12, fontStyle: 'bold', textColor: [0, 0, 0] });
+      y += 5;
+      addFormattedText(doc, 'Salary Date', margin + contentWidth - 60, y, { fontSize: 12, textColor: [0, 0, 0] });
+      addFormattedText(doc, payslipData.salaryDate, margin + contentWidth - 20, y, { fontSize: 12, textColor: [0, 0, 0] });
+      y += 10;
 
-      addFormattedText(doc, 'Emp No.', leftMargin, y); addFormattedText(doc, payslipData.empNo, leftMargin + 40, y);
-      y += lineHeight; addFormattedText(doc, 'Last Name', leftMargin, y); addFormattedText(doc, payslipData.lastName, leftMargin + 40, y);
-      y += lineHeight; addFormattedText(doc, 'Middle Name', leftMargin, y); addFormattedText(doc, payslipData.middleName, leftMargin + 40, y);
-      y += lineHeight; addFormattedText(doc, 'First Name', leftMargin, y); addFormattedText(doc, payslipData.firstName, leftMargin + 40, y);
-      y += lineHeight; addFormattedText(doc, 'Birth Date', leftMargin, y); addFormattedText(doc, payslipData.birthDate, leftMargin + 40, y);
-      y += lineHeight; addFormattedText(doc, 'Hire Date', leftMargin, y); addFormattedText(doc, payslipData.hireDate, leftMargin + 40, y);
-      y += lineHeight; addFormattedText(doc, 'Position', leftMargin, y); addFormattedText(doc, payslipData.position, leftMargin + 40, y);
-      y += lineHeight; addFormattedText(doc, 'Basic Salary', leftMargin, y); addFormattedText(doc, `Php${payslipData.basicSalary}`, leftMargin + 40, y);
+      const leftInfo = [
+        ['Emp No.', payslipData.empNo || 'N/A'],
+        ['Last Name', payslipData.lastName || 'N/A'],
+        ['Middle Name', payslipData.middleName || 'N/A'],
+        ['First Name', payslipData.firstName || 'N/A'],
+        ['Birth Date', payslipData.birthDate || 'N/A'],
+        ['Hire Date', payslipData.hireDate || 'N/A'],
+        ['Position', payslipData.position || 'N/A'],
+        ['Basic Salary', `Php${payslipData.basicSalary || '0.00'}`]
+      ];
 
-      y = 30;
-      addFormattedText(doc, 'Civil Status', 120, y); addFormattedText(doc, payslipData.civilStatus, 150, y);
-      y += lineHeight; addFormattedText(doc, 'Dependents', 120, y); addFormattedText(doc, payslipData.dependents.toString(), 150, y);
-      y += lineHeight * 2; addFormattedText(doc, 'SSS', 120, y); addFormattedText(doc, payslipData.sss, 150, y);
-      y += lineHeight; addFormattedText(doc, 'TIN', 120, y); addFormattedText(doc, payslipData.tin, 150, y);
-      y += lineHeight; addFormattedText(doc, 'Philhealth', 120, y); addFormattedText(doc, payslipData.philhealth, 150, y);
-      y += lineHeight; addFormattedText(doc, 'HDMF', 120, y); addFormattedText(doc, payslipData.hdmf, 150, y);
+      const rightInfo = [
+        ['Civil Status', payslipData.civilStatus || 'N/A'],
+        ['Dependents', (payslipData.dependents || 0).toString()],
+        ['SSS', payslipData.sss || 'N/A'],
+        ['TIN', payslipData.tin || 'N/A'],
+        ['Philhealth', payslipData.philhealth || 'N/A'],
+        ['HDMF', payslipData.hdmf || 'N/A']
+      ];
 
-      y = 95;
-      addFormattedText(doc, 'Summary', leftMargin, y, { fontSize: 14, fontStyle: 'bold' });
-      y += lineHeight; addFormattedText(doc, 'Total Deductions', leftMargin, y); addFormattedText(doc, `(Php${payslipData.totalDeductions})`, leftMargin + 50, y);
-      addFormattedText(doc, 'Salary PHP', 120, y); addFormattedText(doc, `Php${payslipData.netSalary}`, 150, y);
-      y += lineHeight; addFormattedText(doc, 'Total Misc', leftMargin, y); addFormattedText(doc, 'Php0.00', leftMargin + 50, y);
+      // Draw two containers side by side with margin
+      const containerWidth = (contentWidth - 10) / 2; // 93mm each, 10mm gap between containers
 
-      y += lineHeight + 5;
-      addFormattedText(doc, 'Deductions', leftMargin, y, { fontSize: 14, fontStyle: 'bold' });
-      y += lineHeight; addFormattedText(doc, 'SSS', leftMargin, y); addFormattedText(doc, `Php${payslipData.sssDeduction}`, leftMargin + 50, y);
-      addFormattedText(doc, 'Withholding Tax', 120, y); addFormattedText(doc, `Php${payslipData.withholdingTax}`, 150, y);
-      y += lineHeight; addFormattedText(doc, 'Philhealth', leftMargin, y); addFormattedText(doc, `Php${payslipData.philhealthDeduction}`, leftMargin + 50, y);
-      y += lineHeight; addFormattedText(doc, 'HDMF', leftMargin, y); addFormattedText(doc, `Php${payslipData.hdmfDeduction}`, leftMargin + 50, y);
+      // Left Container
+      leftInfo.forEach(([label, value], index) => {
+        addValue(doc, label, value.toString(), margin, y + index * lineHeight);
+      });
 
-      y += lineHeight + 5;
-      addFormattedText(doc, 'Miscellaneous', leftMargin, y, { fontSize: 14, fontStyle: 'bold' });
-      y += lineHeight; addFormattedText(doc, 'Computations', leftMargin, y);
+      // Right Container (aligned upward with left container)
+      rightInfo.forEach(([label, value], index) => {
+        addValue(doc, label, value.toString(), margin + containerWidth + 10, y + index * lineHeight);
+      });
+
+      // Adjust y to account for the height of the containers
+      y += Math.max(leftInfo.length, rightInfo.length) * lineHeight + 5;
+
+      // Combined Deductions and Summary in a single container with margin
+      y += 5; // Small gap (10mm total from top margin + Personal Info)
+      doc.setFillColor(240, 240, 240); // Light gray background
+      doc.rect(margin, y - 5, contentWidth, 45, 'F'); // 45mm height, 196mm width
+      addFormattedText(doc, 'Deductions', margin, y, { fontSize: 12, fontStyle: 'bold', textColor: [0, 0, 0] });
+      addValue(doc, 'SSS', `Php${payslipData.sssDeduction || '0.00'}`, margin, y + lineHeight);
+      addValue(doc, 'Philhealth', `Php${payslipData.philhealthDeduction || '0.00'}`, margin, y + 2 * lineHeight);
+      addValue(doc, 'HDMF', `Php${payslipData.hdmfDeduction || '0.00'}`, margin, y + 3 * lineHeight);
+      addValue(doc, 'Withholding Tax', `Php${payslipData.withholdingTax || '0.00'}`, margin + (contentWidth / 2), y + 2 * lineHeight);
+
+      // Summary content within the same container, below Deductions
+      y += 25; // Move below Deductions details within the same container
+      addFormattedText(doc, 'Summary', margin, y, { fontSize: 12, fontStyle: 'bold', textColor: [0, 0, 0] });
+      // Align fields to match the image snippet exactly with margin
+      addFormattedText(doc, `(Php${payslipData.totalDeductions || '0.00'})`, margin + 20, y, { fontSize: 12, textColor: [0, 0, 0] });
+      addFormattedText(doc, `Total Php${payslipData.totalDeductions || '0.00'}`, margin + (contentWidth / 2) - 20, y, { fontSize: 12, textColor: [0, 0, 0] });
+      addFormattedText(doc, `Php${this.formatNumber(this.calculatePayheadEarnings(payslipData.payheads) || 0)}`, margin + contentWidth - 20, y, { fontSize: 12, textColor: [0, 0, 0] });
+
+      // Separate Miscellaneous Computations container with margin
+      y += 30; // Add space between Summary and Miscellaneous Computations
+      doc.setFillColor(0, 0, 0, 0); // Light gray background
+      doc.rect(margin, y - 5, contentWidth, 30, 'F'); // 30mm height, 196mm width for separate container
+      addFormattedText(doc, 'Miscellaneous Computations', margin, y, { fontSize: 12, fontStyle: 'bold', textColor: [0, 0, 0] });
 
       const miscTableData = payslipData.payheads.map(payhead => [
-        payhead.name,
-        payhead.type === 'Earnings' ? `${payhead.amount} day(s)` : '',
-        `Php${this.formatNumber(payhead.amount)}`
+        payhead.name || 'N/A',
+        payhead.type === 'Earnings' ? `${payhead.amount || 0} day(s)` : '',
+        `Php${this.formatNumber(payhead.amount || 0)}`
       ]);
 
       doc.autoTable({
-        startY: y + 5,
+        startY: y + 10,
         head: [['Description', 'description2', 'Amount']],
         body: miscTableData,
         theme: 'grid',
-        styles: { fontSize: 12, cellPadding: 3 },
+        styles: { fontSize: 12, cellPadding: 2 },
         columnStyles: {
           0: { cellWidth: 70 },
-          1: { cellWidth: 50 },
+          1: { cellWidth: 40 },
           2: { cellWidth: 50, halign: 'right' }
-        }
+        },
+        headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0] }, // Light gray header
+        tableLineColor: [200, 200, 200], // Light gray borders for table
+        tableLineWidth: 0.5,
+        margin: { left: margin, right: margin } // Apply margin to table
       });
 
-      addFormattedText(doc, 'This being a computer generated payslip, no signature required.', doc.internal.pageSize.getWidth() / 2, 270, { fontSize: 10, align: 'center' });
+      // Footer with margin
+      y = pageHeight - margin - 5; // 10mm bottom margin, 5mm above text
+      addFormattedText(doc, 'This being a computer generated payslip, no signature required.', margin + (contentWidth / 2), y, { fontSize: 10, align: 'center', textColor: [0, 0, 0] });
 
       const pdfBlob = doc.output('blob');
       return pdfBlob;
@@ -603,7 +678,7 @@ export default {
       this.payslipGenerationStatus[employee.id] = { sending: true };
       this.statusMessage = '';
       try {
-        if (!this.payslips[employee.id]) {
+        if (!this.payslipDataUrl) {
           await this.generatePayslip(employee);
         }
         const payslipData = this.payslips[employee.id].split(',')[1];
