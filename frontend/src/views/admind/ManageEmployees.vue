@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-4">
-    <div class="flex gap-6">
+  <div class="min-h-screen bg-gray-50 p-1">
+    <div class="max-w-8xl flex gap-6">
       <!-- Left side - Employee List -->
       <div class="flex-1">
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">

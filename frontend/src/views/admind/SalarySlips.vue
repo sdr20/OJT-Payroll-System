@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
-    <div class="max-w-7xl mx-auto">
+  <div class="min-h-screen p-1">
+    <div class="max-w-8xl mx-auto">
       <!-- Header Section -->
       <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

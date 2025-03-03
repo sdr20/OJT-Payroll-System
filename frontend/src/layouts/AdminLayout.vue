@@ -86,7 +86,7 @@
     data() {
       return {
         currentDateTime: '2025-03-03 05:34:37',
-        username: 'sdr20',
+        username: 'Admin',
         navigationLinks: [
           { path: '/admin', name: 'Dashboard' },
           { path: '/admin/employee-attendance', name: 'Employee Attendance' },

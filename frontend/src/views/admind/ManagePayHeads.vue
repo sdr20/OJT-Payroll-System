@@ -1,10 +1,7 @@
 <template>
 
-
     <!-- Main Content - Improved layout and spacing -->
-    <main class="flex-1 max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 py-1">
-
-
+    <main class="flex-1 max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-1">
       <!-- Stats Cards - New component for key metrics -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
         <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">

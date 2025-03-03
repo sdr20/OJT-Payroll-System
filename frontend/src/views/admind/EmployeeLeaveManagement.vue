@@ -1,78 +1,303 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-    <div class="max-w-6xl mx-auto">
-      <div class="bg-white p-6 rounded-xl shadow-md">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-bold text-gray-900">Employee Leave Management</h2>
-          <button @click="refreshLeaveRequests" 
-                  class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all duration-200">
-            Refresh
-          </button>
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-1">
+    <div class="max-w-8xl mx-auto">
+      <!-- Dashboard Header with Enhanced Design -->
+      <header class="bg-white p-6 rounded-xl shadow-lg mb-6">
+        <div class="flex justify-between items-center">
+          <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <span class="material-icons text-blue-600">event_note</span>
+            Employee Leave Management
+          </h1>
+          <div class="flex items-center gap-3">
+            <!-- Refresh Button - Smaller, Animated, and with Icon -->
+            <button 
+              @click="refreshLeaveRequests" 
+              class="inline-flex items-center gap-2 bg-blue-500 text-white px-3 py-1.5 rounded-md text-sm font-medium 
+                     hover:bg-blue-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+              <span class="material-icons text-sm">refresh</span>
+              Refresh
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Filters and Search - Improved with Card Design -->
+      <div class="bg-white rounded-xl shadow-lg p-5 mb-6 border border-gray-100">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Search Input - Enhanced with Label and Clear Button -->
+          <div class="relative">
+            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search Employees</label>
+            <div class="relative">
+              <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                search
+              </span>
+              <input
+                id="search"
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search by name or ID..."
+                class="w-full pl-10 pr-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 
+                       focus:border-blue-500 outline-none transition-all duration-200 text-sm"
+              />
+              <button 
+                v-if="searchQuery" 
+                @click="searchQuery = ''"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-all duration-200"
+              >
+                <span class="material-icons text-sm">clear</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter by Status - Enhanced Dropdown -->
+          <div class="relative">
+            <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+            <div class="relative">
+              <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                filter_list
+              </span>
+              <select
+                id="statusFilter"
+                v-model="filterStatus"
+                class="w-full pl-10 pr-9 py-2.5 border rounded-lg appearance-none focus:ring-2 
+                       focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 text-sm"
+              >
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Disapproved">Disapproved</option>
+              </select>
+              <span class="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                arrow_drop_down
+              </span>
+            </div>
+          </div>
+
+          <!-- Date Range Filter - New Feature -->
+          <div class="relative">
+            <label for="dateRange" class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+            <input
+              id="dateRange"
+              v-model="dateRange"
+              type="month"
+              class="w-full px-10 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 
+                     focus:border-blue-500 outline-none transition-all duration-200 text-sm"
+              @change="applyDateFilter"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Leave Requests Table - Enhanced with Card Design and Animations -->
+      <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+        <!-- Table Header - Improved with Sorting and Filters -->
+        <div class="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+          <h2 class="text-lg font-medium text-gray-900">Leave Requests</h2>
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-500">
+              Showing {{ filteredLeaveRequests.length }} {{ filteredLeaveRequests.length === 1 ? 'request' : 'requests' }}
+            </span>
+          </div>
         </div>
 
-        <!-- Leave Requests Table -->
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+        <!-- Loading State - Enhanced Animation -->
+        <div v-if="isLoading" class="p-10 flex justify-center items-center">
+          <div class="flex flex-col items-center">
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-blue-200 h-12 w-12 mb-4 animate-spin"></div>
+            <h3 class="text-lg font-medium text-gray-600">Loading...</h3>
+          </div>
+        </div>
+
+        <!-- Empty State - Enhanced Design -->
+        <div v-else-if="filteredLeaveRequests.length === 0" class="p-12 text-center">
+          <div class="rounded-full bg-blue-100 p-4 mb-4 inline-flex">
+            <span class="material-icons text-blue-600 text-3xl">event_busy</span>
+          </div>
+          <h3 class="text-xl font-semibold text-gray-900">No Leave Requests Found</h3>
+          <p class="mt-2 text-gray-500 max-w-md mx-auto text-sm">
+            There are no leave requests matching your criteria. Try adjusting your filters.
+          </p>
+        </div>
+
+        <!-- Data Table with Animation -->
+        <transition-group name="table-fade" tag="div" class="overflow-x-auto">
+          <table v-if="!isLoading && filteredLeaveRequests.length > 0" 
+                 class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Start Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave End Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    @click="sortTable('employeeName')">
+                  Employee Name
+                  <span class="material-icons text-xs ml-1">{{ sortDirection === 'asc' && sortKey === 'employeeName' ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    @click="sortTable('startDate')">
+                  Start Date
+                  <span class="material-icons text-xs ml-1">{{ sortDirection === 'asc' && sortKey === 'startDate' ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    @click="sortTable('endDate')">
+                  End Date
+                  <span class="material-icons text-xs ml-1">{{ sortDirection === 'asc' && sortKey === 'endDate' ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    @click="sortTable('status')">
+                  Status
+                  <span class="material-icons text-xs ml-1">{{ sortDirection === 'asc' && sortKey === 'status' ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="leave in leaveRequests" :key="leave.id" class="hover:bg-gray-50">
+              <tr v-for="leave in filteredLeaveRequests" :key="leave.id" class="transition-all duration-200 hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ leave.employeeName }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ leave.startDate }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ leave.endDate }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(leave.startDate) }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(leave.endDate) }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold"
                     :class="getStatusClass(leave.status)">
                   {{ leave.status }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
                   <button @click="showDetailsModal(leave)" 
-                          class="bg-blue-50 text-blue-600 py-1.5 px-3 rounded-lg hover:bg-blue-100 transition-all duration-200">
-                    View Details
+                          class="inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 py-1.5 px-2.5 rounded-md text-sm font-medium 
+                                 hover:bg-blue-100 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                    <span class="material-icons text-xs">visibility</span>
+                    View
                   </button>
-                  <button v-if="leave.status === 'Pending'" @click="approveLeave(leave.id)" 
-                          class="bg-green-50 text-green-600 py-1.5 px-3 rounded-lg hover:bg-green-100 transition-all duration-200">
+                  <button v-if="leave.status !== 'Disapproved'" @click="approveLeave(leave.id)" 
+                          class="inline-flex items-center gap-1.5 bg-green-50 text-green-600 py-1.5 px-2.5 rounded-md text-sm font-medium 
+                                 hover:bg-green-100 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                    <span class="material-icons text-xs">check</span>
                     Approve
                   </button>
-                  <button v-if="leave.status === 'Pending'" @click="disapproveLeave(leave.id)" 
-                          class="bg-red-50 text-red-600 py-1.5 px-3 rounded-lg hover:bg-red-100 transition-all duration-200">
+                  <button @click="disapproveLeave(leave.id)" 
+                          class="inline-flex items-center gap-1.5 bg-red-50 text-red-600 py-1.5 px-2.5 rounded-md text-sm font-medium 
+                                 hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                    <span class="material-icons text-xs">close</span>
                     Disapprove
                   </button>
                 </td>
               </tr>
-              <tr v-if="leaveRequests.length === 0">
-                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No leave requests found.</td>
-              </tr>
             </tbody>
           </table>
-        </div>
-      </div>
+        </transition-group>
 
-      <!-- Details Modal -->
-      <div v-if="showDetailsModalVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div class="bg-white p-6 rounded-xl shadow-md max-w-lg w-full">
-          <h2 class="text-xl font-bold mb-4">Leave Request Details</h2>
-          <div class="space-y-2">
-            <p><strong>Employee:</strong> {{ selectedLeave.employeeName }}</p>
-            <p><strong>Employee ID:</strong> {{ selectedLeave.employeeId }}</p>
-            <p><strong>Start Date:</strong> {{ selectedLeave.startDate }}</p>
-            <p><strong>End Date:</strong> {{ selectedLeave.endDate }}</p>
-            <p><strong>Reason:</strong> {{ selectedLeave.reason }}</p>
-            <p><strong>Status:</strong> <span :class="getStatusClass(selectedLeave.status)">{{ selectedLeave.status }}</span></p>
+        <!-- Pagination - Enhanced Design -->
+        <div v-if="!isLoading && filteredLeaveRequests.length > itemsPerPage" 
+             class="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Showing <span class="font-medium">{{ ((currentPage - 1) * itemsPerPage) + 1 }}</span> to 
+            <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, filteredLeaveRequests.length) }}</span> of 
+            <span class="font-medium">{{ filteredLeaveRequests.length }}</span> requests
           </div>
-          <div class="flex justify-end gap-3 mt-6">
-            <button @click="closeDetailsModal" 
-                    class="py-2 px-4 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-200">
-              Close
+          <div class="flex items-center gap-2">
+            <button
+              @click="prevPage"
+              :disabled="currentPage === 1"
+              class="p-2 rounded-md hover:bg-blue-100 transition-all duration-200 disabled:opacity-50 disabled:hover:bg-transparent text-gray-700"
+            >
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <span class="text-sm text-gray-700">{{ currentPage }} of {{ totalPages }}</span>
+            <button
+              @click="nextPage"
+              :disabled="currentPage === totalPages"
+              class="p-2 rounded-md hover:bg-blue-100 transition-all duration-200 disabled:opacity-50 disabled:hover:bg-transparent text-gray-700"
+            >
+              <span class="material-icons">chevron_right</span>
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- Email-Style Details Modal - Enhanced Design with Animation -->
+      <transition name="modal-slide">
+        <div v-if="showDetailsModalVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div class="bg-white p-6 rounded-xl shadow-lg max-w-2xl w-full transform transition-all duration-300 scale-100">
+            <div class="border-b border-gray-200 pb-4 mb-4">
+              <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-800">Leave Request Notification</h2>
+                <button @click="closeDetailsModal" class="text-gray-600 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100 transition-all duration-200">
+                  <span class="material-icons text-lg">close</span>
+                </button>
+              </div>
+              <div class="text-sm text-gray-500 mt-2">From: HR System <span class="text-gray-400">|</span> To: Admin</div>
+            </div>
+
+            <!-- Email Header -->
+            <div class="mb-4">
+              <h3 class="text-base font-medium text-gray-900">Subject: Leave Request for {{ selectedLeave.employeeName }}</h3>
+              <p class="text-sm text-gray-600 mt-1">Date: {{ formatDate(selectedLeave.startDate) }} – {{ formatDate(selectedLeave.endDate) }}</p>
+            </div>
+
+            <!-- Email Body (Reason) -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200">
+              <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ selectedLeave.reason }}</p>
+            </div>
+
+            <!-- Email Details -->
+            <div class="space-y-3 text-sm">
+              <p class="text-gray-700"><span class="font-medium text-gray-800">Employee:</span> {{ selectedLeave.employeeName }}</p>
+              <p class="text-gray-700"><span class="font-medium text-gray-800">Employee ID:</span> {{ selectedLeave.employeeId }}</p>
+              <p class="text-gray-700"><span class="font-medium text-gray-800">Status:</span> 
+                <span :class="getStatusClass(selectedLeave.status)">{{ selectedLeave.status }}</span>
+              </p>
+            </div>
+
+            <!-- Email Footer/Actions -->
+            <div class="mt-6 flex justify-end gap-3">
+              <button v-if="selectedLeave.status !== 'Disapproved'" @click="approveLeave(selectedLeave.id)" 
+                      class="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                Approve
+              </button>
+              <button @click="disapproveLeave(selectedLeave.id)" 
+                      class="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                Disapprove
+              </button>
+              <button @click="closeDetailsModal" 
+                      class="px-4 py-2 bg-gray-500 text-white rounded-md text-sm font-medium hover:bg-gray-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Toast Notifications - Enhanced Design with Animation -->
+      <div class="fixed bottom-4 right-4 z-50 space-y-4">
+        <TransitionGroup
+          enter-active-class="transform ease-out duration-300 transition"
+          enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+          enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+          leave-active-class="transition ease-in duration-100"
+          leave-from-class="opacity-100"
+          leave-to-class="opacity-0"
+          move-class="transition duration-500"
+        >
+          <div
+            v-if="toastMessage"
+            :key="toastMessage"
+            class="max-w-sm w-full bg-white rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 overflow-hidden"
+          >
+            <div class="p-4 flex items-center gap-3">
+              <span 
+                class="material-icons"
+                :class="toastType === 'success' ? 'text-green-500' : 'text-red-500'"
+              >
+                {{ toastType === 'success' ? 'check_circle' : 'error' }}
+              </span>
+              <p class="text-sm font-medium text-gray-900">{{ toastMessage }}</p>
+              <button
+                @click="clearToast"
+                class="ml-auto flex-shrink-0 rounded-md text-gray-400 hover:text-gray-500 
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 p-1"
+              >
+                <span class="material-icons text-sm">close</span>
+              </button>
+            </div>
+          </div>
+        </TransitionGroup>
       </div>
     </div>
   </div>
@@ -80,6 +305,7 @@
 
 <script>
 import axios from 'axios';
+import moment from 'moment'; // Add this to format dates
 
 export default {
   name: 'AdminLeaveManagement',
@@ -87,25 +313,91 @@ export default {
     return {
       leaveRequests: [],
       showDetailsModalVisible: false,
-      selectedLeave: {}
+      selectedLeave: {},
+      searchQuery: '',
+      filterStatus: '',
+      dateRange: '',
+      sortKey: 'startDate',
+      sortDirection: 'desc',
+      currentPage: 1,
+      itemsPerPage: 10,
+      isLoading: false,
+      toastMessage: '',
+      toastType: 'success'
     };
   },
   mounted() {
     this.fetchLeaveRequests();
   },
+  computed: {
+    filteredLeaveRequests() {
+      let filtered = [...this.leaveRequests];
+
+      // Apply search filter
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        filtered = filtered.filter(leave => 
+          leave.employeeName.toLowerCase().includes(query) || 
+          leave.employeeId.toLowerCase().includes(query)
+        );
+      }
+
+      // Apply status filter
+      if (this.filterStatus) {
+        filtered = filtered.filter(leave => leave.status === this.filterStatus);
+      }
+
+      // Apply date range filter
+      if (this.dateRange) {
+        const [year, month] = this.dateRange.split('-');
+        const startOfMonth = moment(`${year}-${month}-01`).startOf('month').toDate();
+        const endOfMonth = moment(startOfMonth).endOf('month').toDate();
+        filtered = filtered.filter(leave => {
+          const start = moment(leave.startDate).toDate();
+          return start >= startOfMonth && start <= endOfMonth;
+        });
+      }
+
+      // Apply sorting
+      filtered.sort((a, b) => {
+        const valueA = a[this.sortKey];
+        const valueB = b[this.sortKey];
+        if (this.sortKey === 'startDate' || this.sortKey === 'endDate') {
+          return this.sortDirection === 'asc' 
+            ? moment(valueA).diff(moment(valueB)) 
+            : moment(valueB).diff(moment(valueA));
+        }
+        return this.sortDirection === 'asc' 
+          ? valueA.localeCompare(valueB) 
+          : valueB.localeCompare(valueA);
+      });
+
+      return filtered;
+    },
+    totalPages() {
+      return Math.ceil(this.filteredLeaveRequests.length / this.itemsPerPage);
+    }
+  },
   methods: {
     async fetchLeaveRequests() {
       try {
+        this.isLoading = true;
         const response = await axios.get('http://localhost:7777/api/leaves/all');
-        this.leaveRequests = response.data || [];
+        this.leaveRequests = response.data.map(leave => ({
+          ...leave,
+          startDate: moment(leave.startDate).format('YYYY-MM-DD'),
+          endDate: moment(leave.endDate).format('YYYY-MM-DD')
+        })) || [];
       } catch (error) {
         console.error('Failed to fetch leave requests:', error);
-        alert('Failed to load leave requests. Please try again.');
+        this.showToast('Failed to load leave requests. Please try again.', 'error');
+      } finally {
+        this.isLoading = false;
       }
     },
     async refreshLeaveRequests() {
       await this.fetchLeaveRequests();
-      alert('Leave requests refreshed!');
+      this.showToast('Leave requests refreshed successfully!', 'success');
     },
     showDetailsModal(leave) {
       this.selectedLeave = { ...leave };
@@ -122,11 +414,11 @@ export default {
           this.leaveRequests = this.leaveRequests.map(leave => 
             leave.id === id ? { ...leave, status: 'Approved' } : leave
           );
-          alert('Leave approved successfully!');
+          this.showToast('Leave approved successfully!', 'success');
         }
       } catch (error) {
         console.error('Failed to approve leave:', error);
-        alert('Failed to approve leave. Please try again.');
+        this.showToast('Failed to approve leave. Please try again.', 'error');
       }
     },
     async disapproveLeave(id) {
@@ -136,39 +428,128 @@ export default {
           this.leaveRequests = this.leaveRequests.map(leave => 
             leave.id === id ? { ...leave, status: 'Disapproved' } : leave
           );
-          alert('Leave disapproved successfully!');
+          this.showToast('Leave disapproved successfully!', 'success');
         }
       } catch (error) {
         console.error('Failed to disapprove leave:', error);
-        alert('Failed to disapprove leave. Please try again.');
+        this.showToast('Failed to disapprove leave. Please try again.', 'error');
       }
     },
     getStatusClass(status) {
       switch (status) {
         case 'Pending':
-          return 'text-yellow-600';
+          return 'text-yellow-600 bg-yellow-50 px-2 py-1 rounded-md';
         case 'Approved':
-          return 'text-green-600';
+          return 'text-green-600 bg-green-50 px-2 py-1 rounded-md';
         case 'Disapproved':
-          return 'text-red-600';
+          return 'text-red-600 bg-red-50 px-2 py-1 rounded-md';
         default:
-          return 'text-gray-600';
+          return 'text-gray-600 bg-gray-50 px-2 py-1 rounded-md';
       }
+    },
+    formatDate(date) {
+      return moment(date).format('MMMM D, YYYY');
+    },
+    sortTable(key) {
+      if (this.sortKey === key) {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.sortKey = key;
+        this.sortDirection = 'asc';
+      }
+    },
+    applyDateFilter() {
+      this.currentPage = 1; // Reset to first page when filtering
+    },
+    prevPage() {
+      if (this.currentPage > 1) this.currentPage--;
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) this.currentPage++;
+    },
+    showToast(message, type = 'success') {
+      this.toastMessage = message;
+      this.toastType = type;
+      setTimeout(() => this.clearToast(), 3000);
+    },
+    clearToast() {
+      this.toastMessage = '';
+      this.toastType = 'success';
     }
   }
 };
 </script>
 
 <style scoped>
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
+/* Table row animation */
+.table-fade-enter-active, .table-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.table-fade-enter-from, .table-fade-leave-to {
+  opacity: 0;
+  transform: translateY(30px);
 }
 
-.transition-all {
-  transition: all 0.2s ease-in-out;
+/* Modal slide animation */
+.modal-slide-enter-active, .modal-slide-leave-active {
+  transition: all 0.3s ease;
+}
+.modal-slide-enter-from, .modal-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.95);
 }
 
+/* Loader animation */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Button hover effects */
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+  .px-6 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .text-xl {
+    font-size: 1.25rem;
+  }
+}
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Focus states for accessibility */
+input:focus, select:focus, button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+/* Improve hover states for better interactivity */
 .hover\:bg-gray-50:hover {
   background-color: #f9fafb;
 }
