@@ -79,7 +79,6 @@ export default {
   name: 'AdminLayout',
   data() {
     return {
-      currentDateTime: '2025-03-03 05:34:37',
       username: 'Admin',
       navigationLinks: [
         { path: '/admin', name: 'Dashboard' },
