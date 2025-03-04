@@ -5,21 +5,21 @@ const PendingRequest = require('../models/PendingRequest');
 const Employee = require('../models/Employee');
 
 const isAdmin = (req, res, next) => {
-  console.log('All request headers:', req.headers); // Log all headers
+  console.log('All request headers:', req.headers);
   const userRole = req.headers['user-role'];
   console.log('Parsed user-role:', userRole);
   if (!userRole || userRole.toLowerCase() !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+    return res.status(403).json({ error: 'Admin access required', headersSent: req.headers });
   }
   next();
 };
 
-// Get max ID
+// Get max ID (accessible to all for registration)
 router.get('/max-id', async (req, res) => {
   try {
     const maxIdDoc = await PendingRequest.findOne().sort({ id: -1 }).select('id');
     const maxId = maxIdDoc ? maxIdDoc.id : 0;
-    console.log('Fetched max ID:', maxId);
+    console.log('Fetched max ID for pending requests:', maxId);
     res.status(200).json({ maxId });
   } catch (error) {
     console.error('Error fetching max ID:', error);
@@ -27,7 +27,7 @@ router.get('/max-id', async (req, res) => {
   }
 });
 
-// Get all pending requests
+// Get all pending requests (admin only)
 router.get('/', isAdmin, async (req, res) => {
   try {
     const requests = await PendingRequest.find({ status: 'pending' });
@@ -39,115 +39,163 @@ router.get('/', isAdmin, async (req, res) => {
   }
 });
 
-// Create a new pending request
+// Create a new pending request (accessible to all for registration)
 router.post('/', async (req, res) => {
   try {
     console.log('Received request data:', req.body);
-    const requiredFields = ['id', 'empNo', 'firstName', 'lastName', 'position', 'email', 'contactNumber', 'salary', 'username', 'password'];
-    const missingFields = requiredFields.filter(field => !req.body[field]);
+    const requiredFields = [
+      'id', 'empNo', 'firstName', 'lastName', 'position', 'email', 
+      'contactNumber', 'salary', 'username', 'password', 'hireDate'
+    ];
+    const missingFields = requiredFields.filter(field => !req.body[field] && req.body[field] !== 0);
     if (missingFields.length > 0) {
       console.error('Missing required fields:', missingFields);
       return res.status(400).json({ error: `Missing required fields: ${missingFields.join(', ')}` });
     }
 
-    const request = new PendingRequest(req.body);
+    // Validate unique fields
+    const { empNo, username, email } = req.body;
+    const existingRequest = await PendingRequest.findOne({ $or: [{ empNo }, { username }, { email }] });
+    if (existingRequest) {
+      const duplicateField = existingRequest.empNo === empNo ? 'Employee Number' : 
+                            existingRequest.username === username ? 'Username' : 'Email';
+      return res.status(400).json({ error: `${duplicateField} already exists in pending requests` });
+    }
+
+    const existingEmployee = await Employee.findOne({ $or: [{ empNo }, { username }, { email }] });
+    if (existingEmployee) {
+      const duplicateField = existingEmployee.empNo === empNo ? 'Employee Number' : 
+                            existingEmployee.username === username ? 'Username' : 'Email';
+      return res.status(400).json({ error: `${duplicateField} already exists in employees` });
+    }
+
+    // Ensure hireDate is a valid date
+    const hireDate = new Date(req.body.hireDate);
+    if (isNaN(hireDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid hireDate format' });
+    }
+
+    const request = new PendingRequest({
+      ...req.body,
+      status: 'pending',
+      role: 'employee', // Default role
+      hourlyRate: req.body.salary / (8 * 22), // Auto-calculate if not provided
+      earnings: req.body.earnings || { travelExpenses: 0, otherEarnings: 0 } // Default earnings
+    });
+
     await request.save();
-    console.log('Saved request:', request);
+    console.log('Saved pending request:', { id: request.id, empNo: request.empNo });
     res.status(201).json(request);
   } catch (error) {
     console.error('Error creating pending request:', error);
     if (error.code === 11000) {
-      res.status(400).json({ error: 'Duplicate ID, Employee Number, or username detected', message: error.message });
+      const field = Object.keys(error.keyPattern)[0];
+      res.status(400).json({ error: `Duplicate ${field} detected`, message: error.message });
     } else {
       res.status(500).json({ error: 'Failed to create pending request', message: error.message });
     }
   }
 });
 
-// Update a pending request
+// Update a pending request (admin only)
 router.put('/:id', isAdmin, async (req, res) => {
   try {
     const request = await PendingRequest.findOneAndUpdate(
       { id: parseInt(req.params.id) },
-      req.body,
+      { ...req.body, hourlyRate: req.body.salary ? req.body.salary / (8 * 22) : req.body.hourlyRate },
       { new: true }
     );
     if (!request) {
       console.error(`Request not found for ID: ${req.params.id}`);
       return res.status(404).json({ error: 'Request not found' });
     }
-    console.log('Updated request:', request);
+    console.log('Updated request:', { id: request.id, empNo: request.empNo });
     res.status(200).json(request);
   } catch (error) {
     console.error('Error updating request:', error);
     if (error.code === 11000) {
-      res.status(400).json({ error: 'Duplicate ID, Employee Number, or username detected', message: error.message });
+      const field = Object.keys(error.keyPattern)[0];
+      res.status(400).json({ error: `Duplicate ${field} detected`, message: error.message });
     } else {
       res.status(500).json({ error: 'Failed to update request', message: error.message });
     }
   }
 });
 
-// Approve a pending request and create an employee
+// Approve a pending request and create an employee (admin only)
 router.put('/:id/approve', isAdmin, async (req, res) => {
   try {
     const request = await PendingRequest.findOne({ id: parseInt(req.params.id) });
-    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (!request) {
+      console.error(`Request not found for ID: ${req.params.id}`);
+      return res.status(404).json({ error: 'Request not found' });
+    }
 
-    const existingEmployee = await Employee.findOne({ empNo: request.empNo });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Request already processed' });
+    }
+
+    const existingEmployee = await Employee.findOne({ 
+      $or: [{ empNo: request.empNo }, { username: request.username }, { email: request.email }]
+    });
     if (existingEmployee) {
-      return res.status(400).json({ error: 'Employee with this Employee Number already exists' });
+      const duplicateField = existingEmployee.empNo === request.empNo ? 'Employee Number' : 
+                            existingEmployee.username === request.username ? 'Username' : 'Email';
+      return res.status(400).json({ error: `${duplicateField} already exists in employees` });
     }
 
     const employee = new Employee({
       id: request.id,
       empNo: request.empNo,
       firstName: request.firstName,
-      middleName: request.middleName,
+      middleName: request.middleName || '',
       lastName: request.lastName,
       position: request.position,
       salary: request.salary,
-      hourlyRate: request.hourlyRate,
+      hourlyRate: request.hourlyRate || (request.salary / (8 * 22)),
       email: request.email,
       contactInfo: request.contactNumber,
-      sss: request.sss,
-      philhealth: request.philhealth,
-      pagibig: request.pagibig,
-      tin: request.tin,
-      civilStatus: request.civilStatus,
+      sss: request.sss || '',
+      philhealth: request.philhealth || '',
+      pagibig: request.hdmf || '', // Match Employee model field name
+      tin: request.tin || '',
+      civilStatus: request.civilStatus || 'Single',
       username: request.username,
-      password: request.password,
-      role: 'employee'
+      password: request.password, // Already hashed if pre-save hook is used
+      role: request.role || 'employee',
+      hireDate: request.hireDate,
+      earnings: request.earnings || { travelExpenses: 0, otherEarnings: 0 }
     });
 
     await employee.save();
-    await PendingRequest.updateOne({ id: request.id }, { status: 'approved' });
+    await PendingRequest.updateOne({ id: request.id }, { status: 'approved', approvedAt: new Date() });
 
-    console.log('Approved request and created employee:', employee);
+    console.log('Approved request and created employee:', { id: employee.id, empNo: employee.empNo });
     res.status(200).json(employee);
   } catch (error) {
     console.error('Error approving request:', error);
     if (error.code === 11000) {
-      res.status(400).json({ error: 'Duplicate ID, Employee Number, or username in employees collection', message: error.message });
+      const field = Object.keys(error.keyPattern)[0];
+      res.status(400).json({ error: `Duplicate ${field} in employees collection`, message: error.message });
     } else {
       res.status(500).json({ error: 'Failed to approve request', message: error.message });
     }
   }
 });
 
-// Reject a pending request
+// Reject a pending request (admin only)
 router.put('/:id/reject', isAdmin, async (req, res) => {
   try {
     const request = await PendingRequest.findOneAndUpdate(
       { id: parseInt(req.params.id) },
-      { status: 'rejected' },
+      { status: 'rejected', rejectedAt: new Date() },
       { new: true }
     );
     if (!request) {
       console.error(`Request not found for ID: ${req.params.id}`);
       return res.status(404).json({ error: 'Request not found' });
     }
-    console.log('Rejected request:', request);
+    console.log('Rejected request:', { id: request.id, empNo: request.empNo });
     res.status(200).json(request);
   } catch (error) {
     console.error('Error rejecting request:', error);
@@ -155,7 +203,7 @@ router.put('/:id/reject', isAdmin, async (req, res) => {
   }
 });
 
-// Delete a pending request
+// Delete a pending request (admin only)
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
     const result = await PendingRequest.deleteOne({ id: parseInt(req.params.id) });

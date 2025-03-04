@@ -186,16 +186,6 @@
                   <p class="text-sm font-medium text-gray-700">Withholding Tax</p>
                   <p class="text-lg text-gray-900">₱{{ calculateWithholdingTax(selectedRequest.salary).toLocaleString() }}</p>
                 </div>
-                <div>
-                  <p class="text-sm font-medium text-gray-700">Travel Expenses</p>
-                  <input v-if="isEditingRequest" v-model.number="selectedRequest.earnings.travelExpenses" type="number" class="w-full p-2 border border-gray-200 rounded-lg" min="0" />
-                  <p v-else class="text-lg text-gray-900">₱{{ selectedRequest.earnings?.travelExpenses || 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-gray-700">Other Earnings</p>
-                  <input v-if="isEditingRequest" v-model.number="selectedRequest.earnings.otherEarnings" type="number" class="w-full p-2 border border-gray-200 rounded-lg" min="0" />
-                  <p v-else class="text-lg text-gray-900">₱{{ selectedRequest.earnings?.otherEarnings || 0 }}</p>
-                </div>
               </div>
             </div>
           </div>
@@ -307,14 +297,6 @@
                 <div>
                   <p class="text-sm font-medium text-gray-500">Withholding Tax</p>
                   <p class="text-base text-gray-900">₱{{ calculateWithholdingTax(selectedEmployee.salary).toLocaleString() }}</p>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-gray-500">Travel Expenses</p>
-                  <p class="text-base text-gray-900">₱{{ selectedEmployee.earnings?.travelExpenses || 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-gray-500">Other Earnings</p>
-                  <p class="text-base text-gray-900">₱{{ selectedEmployee.earnings?.otherEarnings || 0 }}</p>
                 </div>
               </div>
             </div>

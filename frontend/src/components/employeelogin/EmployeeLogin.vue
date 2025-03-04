@@ -64,14 +64,12 @@
             </div>
           </div>
 
-          <!-- Error Message -->
           <div v-if="loginError" class="text-red-500 text-sm text-center">
             {{ loginError }}
           </div>
 
-          <!-- Forgot Password Link -->
           <div class="text-right">
-            <a href="#" @click="forgotPassword" class="text-sm text-blue-500 hover:underline">Forgot Password?</a>
+            <a href="#" @click.prevent="forgotPassword" class="text-sm text-blue-500 hover:underline">Forgot Password?</a>
           </div>
 
           <button
@@ -86,7 +84,7 @@
         <div class="text-center">
           <p class="text-sm text-gray-700">
             Don't have an account?
-            <a href="#" @click="showRegisterModal = true" class="text-blue-500 hover:underline">Request an account</a>
+            <a href="#" @click.prevent="showRegisterModal = true" class="text-blue-500 hover:underline">Request an account</a>
           </p>
         </div>
       </div>
@@ -97,7 +95,6 @@
       <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <h2 class="text-2xl font-bold mb-6 text-gray-900">Request Account Creation</h2>
         <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-6">
-          <!-- Basic Information -->
           <div class="col-span-2">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
             <div class="grid grid-cols-2 gap-4">
@@ -166,6 +163,7 @@
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="09123456789"
                   required
+                  pattern="\d{11}"
                   title="Please enter an 11-digit phone number (e.g., 09123456789)"
                   @input="validatePhoneNumber"
                 />
@@ -197,6 +195,16 @@
                 </select>
               </div>
               <div class="space-y-1">
+                <label for="hireDate" class="text-sm font-medium text-gray-700">Hire Date</label>
+                <input
+                  v-model="newRequest.hireDate"
+                  type="date"
+                  id="hireDate"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              <div class="space-y-1">
                 <label for="sss" class="text-sm font-medium text-gray-700">SSS ID</label>
                 <input
                   v-model="newRequest.sss"
@@ -204,6 +212,7 @@
                   id="sss"
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="1234567890"
+                  pattern="\d{10}"
                   title="Please enter a 10-digit SSS ID (e.g., 1234567890)"
                 />
               </div>
@@ -215,6 +224,7 @@
                   id="philhealth"
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="123456789012"
+                  pattern="\d{12}"
                   title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)"
                 />
               </div>
@@ -226,6 +236,7 @@
                   id="hdmf"
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="123456789012"
+                  pattern="\d{12}"
                   title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)"
                 />
               </div>
@@ -237,13 +248,13 @@
                   id="tin"
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="123456789"
+                  pattern="\d{9,12}"
                   title="Please enter a 9-12 digit TIN (e.g., 123456789)"
                 />
               </div>
             </div>
           </div>
 
-          <!-- Financial Information -->
           <div class="col-span-2">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
             <div class="grid grid-cols-2 gap-4">
@@ -262,8 +273,8 @@
               <div class="space-y-1">
                 <label for="hourlyRate" class="text-sm font-medium text-gray-700">Hourly Rate (Auto-Calculated)</label>
                 <input
-                  v-model="newRequest.hourlyRate"
-                  type="number"
+                  :value="newRequest.hourlyRate.toLocaleString()"
+                  type="text"
                   id="hourlyRate"
                   class="block w-full p-2 border rounded-lg bg-gray-100"
                   disabled
@@ -308,7 +319,6 @@
             </div>
           </div>
 
-          <!-- Credentials -->
           <div class="col-span-2">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Login Credentials</h3>
             <div class="grid grid-cols-2 gap-4">
@@ -321,6 +331,7 @@
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Choose a username"
                   required
+                  minlength="4"
                 />
               </div>
               <div class="space-y-1">
@@ -333,6 +344,7 @@
                     class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
                     placeholder="Choose a password"
                     required
+                    minlength="8"
                     @input="validatePassword"
                   />
                   <button
@@ -364,6 +376,7 @@
                 <div class="text-sm text-gray-600 mt-2">
                   Password strength: <span :class="passwordStrengthClass">{{ passwordStrength }}</span>
                 </div>
+                <p v-if="passwordError" class="text-red-500 text-xs mt-1">{{ passwordError }}</p>
               </div>
               <div class="space-y-1">
                 <label for="confirmPassword" class="text-sm font-medium text-gray-700">Confirm Password</label>
@@ -410,7 +423,6 @@
             </div>
           </div>
 
-          <!-- Buttons -->
           <div class="col-span-2 flex justify-end space-x-2 mt-6">
             <button
               type="button"
@@ -423,7 +435,7 @@
             <button
               type="submit"
               class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-200"
-              :disabled="isSubmitting || !passwordsMatch"
+              :disabled="isSubmitDisabled"
             >
               {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
             </button>
@@ -463,7 +475,7 @@ export default {
         middleName: '',
         lastName: '',
         position: '',
-        civilStatus: '',
+        civilStatus: 'Single',
         contactNumber: '',
         email: '',
         salary: 0,
@@ -472,7 +484,10 @@ export default {
         philhealth: '',
         hdmf: '',
         tin: '',
-        status: 'pending'
+        hireDate: new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        role: 'employee',
+        earnings: { travelExpenses: 0, otherEarnings: 0 }
       },
       positions: ['Manager', 'Assistant', 'Developer'],
       showLoginPassword: false,
@@ -487,17 +502,22 @@ export default {
   },
   watch: {
     'newRequest.salary'(newSalary) {
-      this.newRequest.hourlyRate = newSalary / (8 * 22); // DOLE: 8-hour workday, 22 days/month
+      this.newRequest.hourlyRate = newSalary ? newSalary / (8 * 22) : 0;
     }
   },
   computed: {
     passwordStrength() {
       const password = this.newRequest.password;
+      if (!password) return 'Weak';
       if (password.length < 8) return 'Weak';
-      if (password.length >= 12 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) {
-        return 'Strong';
-      }
-      return 'Medium';
+      const hasUpper = /[A-Z]/.test(password);
+      const hasLower = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[^A-Za-z0-9]/.test(password);
+      const strengthScore = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+      if (password.length >= 12 && strengthScore >= 3) return 'Strong';
+      if (password.length >= 8 && strengthScore >= 2) return 'Medium';
+      return 'Weak';
     },
     passwordStrengthClass() {
       return {
@@ -508,6 +528,18 @@ export default {
     },
     passwordsMatch() {
       return this.newRequest.password === this.confirmPassword;
+    },
+    isSubmitDisabled() {
+      const disabled = this.isSubmitting || !this.passwordsMatch || !!this.emailError || !!this.phoneError || !!this.passwordError;
+      console.log('isSubmitDisabled:', {
+        isSubmitting: this.isSubmitting,
+        passwordsMatch: this.passwordsMatch,
+        emailError: this.emailError,
+        phoneError: this.phoneError,
+        passwordError: this.passwordError,
+        result: disabled
+      });
+      return disabled;
     }
   },
   methods: {
@@ -528,49 +560,31 @@ export default {
 
         const userData = {
           id: response.data.id,
-          empNo: response.data.empNo || 'N/A',
-          username: this.username,
-          name: response.data.name || `${response.data.firstName || ''} ${response.data.lastName || ''}`.trim(),
-          email: response.data.email || 'N/A',
-          role: response.data.role // Ensure role is included
+          empNo: response.data.empNo,
+          username: response.data.username,
+          name: response.data.name,
+          email: response.data.email,
+          role: response.data.role,
+          hireDate: response.data.hireDate
         };
-        this.$store.dispatch('login', userData);
 
-        // Store in localStorage with debugging
-        console.log('Storing user data:', userData);
-        localStorage.setItem('userId', response.data.id);
-        localStorage.setItem('userEmpNo', response.data.empNo || 'N/A');
-        localStorage.setItem('userRole', userData.role); // Store the role
-        localStorage.setItem('userName', userData.name);
-        localStorage.setItem('userEmail', response.data.email || 'N/A');
-        console.log('Verified localStorage userRole:', localStorage.getItem('userRole'));
-
-        // Redirect based on role
-        if (userData.role === 'admin') {
-          this.$router.push('/admin');
-        } else {
-          this.$router.push('/employee');
+        if (this.$store) {
+          this.$store.dispatch('login', userData);
         }
+
+        console.log('Storing user data in localStorage:', userData);
+        localStorage.setItem('userId', userData.id);
+        localStorage.setItem('userEmpNo', userData.empNo);
+        localStorage.setItem('userRole', userData.role);
+        localStorage.setItem('userName', userData.name);
+        localStorage.setItem('userEmail', userData.email);
+        localStorage.setItem('userHireDate', userData.hireDate);
+
+        this.$router.push(userData.role === 'admin' ? '/admin' : '/employee');
       } catch (error) {
         console.error('Login error:', error.response || error);
-
-        if (error.response) {
-          const status = error.response.status;
-          const message = error.response.data.error || 'An error occurred';
-          if (status === 401) {
-            this.loginError = 'Invalid username or password. Please try again.';
-          } else if (status === 400) {
-            this.loginError = 'Bad request. Please check your input.';
-          } else {
-            this.loginError = message;
-          }
-        } else if (error.request) {
-          this.loginError = 'Unable to connect to the server. Please try again later.';
-        } else {
-          this.loginError = 'An unexpected error occurred. Please try again.';
-        }
-
-        this.password = ''; // Clear password field on error
+        this.loginError = error.response?.data?.error || 'Unable to connect to the server. Please try again later.';
+        this.password = '';
       } finally {
         this.isLoggingIn = false;
       }
@@ -593,36 +607,58 @@ export default {
       this.phoneError = phoneRegex.test(this.newRequest.contactNumber) ? '' : 'Please enter a valid 11-digit phone number.';
     },
     validatePassword() {
-      this.passwordError = this.newRequest.password.length >= 8 ? '' : 'Password must be at least 8 characters long.';
+      const password = this.newRequest.password;
+      if (!password) {
+        this.passwordError = 'Password is required.';
+      } else if (password.length < 8) {
+        this.passwordError = 'Password must be at least 8 characters long.';
+      } else if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+        this.passwordError = 'Password must contain letters and numbers.';
+      } else {
+        this.passwordError = '';
+      }
     },
     async submitRequest() {
+      console.log('Form submitted, calling submitRequest');
       if (!this.passwordsMatch) {
-        this.statusMessage = 'Passwords do not match';
+        this.showErrorMessage('Passwords do not match.');
         return;
       }
+      if (this.emailError || this.phoneError || this.passwordError) {
+        this.showErrorMessage('Please fix all validation errors before submitting.');
+        return;
+      }
+
       this.isSubmitting = true;
       this.statusMessage = '';
       try {
+        console.log('Step 1: Fetching max ID');
         const maxIdResponse = await axios.get('http://localhost:7777/api/pending-requests/max-id');
-        const response = await axios.post('http://localhost:7777/api/pending-requests', {
+        console.log('Step 2: Max ID fetched:', maxIdResponse.data);
+        const newId = (maxIdResponse.data.maxId || 0) + 1;
+
+        const requestData = {
           ...this.newRequest,
-          name: `${this.newRequest.firstName} ${this.newRequest.middleName || ''} ${this.newRequest.lastName}`.trim(),
-          id: maxIdResponse.data.maxId + 1
-        });
+          id: newId,
+          earnings: { travelExpenses: 0, otherEarnings: 0 }
+        };
+        console.log('Step 3: Submitting request with data:', requestData);
+
+        const response = await axios.post('http://localhost:7777/api/pending-requests', requestData);
+        console.log('Step 4: Submission response:', response.data);
+
         if (response.status === 201) {
+          console.log('Step 5: Success, closing modal');
           this.showRegisterModal = false;
           this.resetNewRequest();
           this.showSuccessMessage('Account request submitted successfully! Please wait for admin approval.');
         }
       } catch (error) {
-        console.error('Request submission error:', error);
-        if (error.response) {
-          this.statusMessage = error.response.data.error || 'Failed to submit request. Please try again.';
-        } else {
-          this.statusMessage = 'Failed to connect to server. Please try again.';
-        }
+        console.error('Submission error:', error.response || error);
+        this.showErrorMessage(error.response?.data?.error || 'Failed to submit request. Please check your connection or try again.');
       } finally {
         this.isSubmitting = false;
+        console.log('Step 6: Submission complete, isSubmitting set to false');
       }
     },
     resetNewRequest() {
@@ -634,7 +670,7 @@ export default {
         middleName: '',
         lastName: '',
         position: '',
-        civilStatus: '',
+        civilStatus: 'Single',
         contactNumber: '',
         email: '',
         salary: 0,
@@ -643,44 +679,55 @@ export default {
         philhealth: '',
         hdmf: '',
         tin: '',
-        status: 'pending'
+        hireDate: new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        role: 'employee',
+        earnings: { travelExpenses: 0, otherEarnings: 0 }
       };
       this.confirmPassword = '';
       this.showPassword = false;
       this.showConfirmPassword = false;
+      this.emailError = '';
+      this.phoneError = '';
+      this.passwordError = '';
     },
     showSuccessMessage(message) {
       this.statusMessage = message;
-      setTimeout(() => {
-        this.statusMessage = '';
-      }, 5000);
+      setTimeout(() => { this.statusMessage = ''; }, 5000);
+    },
+    showErrorMessage(message) {
+      this.statusMessage = message;
+      console.error(message);
+      setTimeout(() => { this.statusMessage = ''; }, 5000);
     },
     calculateSSSContribution(salary) {
       const salaryCredit = Math.min(Math.max(salary || 0, 5000), 35000);
-      return (salaryCredit * 0.045).toFixed(2); // 4.5% employee share per SSS 2025
+      return Math.round(salaryCredit * 0.045);
     },
     calculatePhilHealthContribution(salary) {
       const cappedSalary = Math.min(salary || 0, 100000);
-      return (cappedSalary * 0.025).toFixed(2); // 2.5% employee share (half of 5%) per PhilHealth 2025
+      return Math.round(cappedSalary * 0.025);
     },
     calculatePagIBIGContribution(salary) {
       const cappedSalary = Math.min(salary || 0, 10000);
-      return (cappedSalary * 0.02).toFixed(2); // 2% employee share per Pag-IBIG 2025
+      return Math.round(cappedSalary * 0.02);
     },
     calculateWithholdingTax(salary) {
       const taxableIncome = salary || 0;
       if (taxableIncome <= 20833) return 0;
       if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15);
       if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20);
-      return 0; // Placeholder for higher brackets
+      if (taxableIncome <= 166667) return Math.round(13541.80 + (taxableIncome - 66667) * 0.25);
+      if (taxableIncome <= 666667) return Math.round(90841.80 + (taxableIncome - 166667) * 0.30);
+      return Math.round(408841.80 + (taxableIncome - 666667) * 0.35);
     },
     forgotPassword() {
-      this.loginError = 'Forgot Password feature not implemented yet.';
+      this.loginError = 'Forgot Password feature not implemented yet. Contact your admin.';
     }
   }
 };
 </script>
 
 <style scoped>
-/* No specific styles needed, using Tailwind CSS classes */
+/* Tailwind CSS classes are sufficient */
 </style>
