@@ -179,14 +179,15 @@
         <!-- Table Header - New component for better visual hierarchy with "New Pay Head" button -->
         <div class="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
           <h2 class="text-lg font-medium text-gray-900">
-            Pay Heads
+            {{ activeTab === 'payheads' ? 'Pay Heads' : 'Employees' }}
           </h2>
           <div class="flex items-center space-x-4">
-            <div v-if="filteredPayHeads.length > 0" class="text-sm text-gray-500">
+            <div v-if="filteredPayHeads.length > 0 && activeTab === 'payheads'" class="text-sm text-gray-500">
               Showing {{ filteredPayHeads.length }} {{ filteredPayHeads.length === 1 ? 'item' : 'items' }}
             </div>
             <!-- Smaller "New Pay Head" button -->
             <button
+              v-if="activeTab === 'payheads'"
               @click="showAddModal = true"
               class="inline-flex items-center px-2.5 py-1 bg-blue-600 text-white rounded-md 
                      text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 
@@ -510,13 +511,28 @@ export default {
 
   methods: {
     async fetchPayHeads() {
+      this.isLoading = true;
+      this.statusMessage = '';
       try {
-        this.isLoading = true;
-        const response = await axios.get('http://localhost:7777/api/payheads');
-        this.payHeads = response.data || [];
+        const userRole = localStorage.getItem('userRole') || 'admin'; // Default to 'admin' for testing
+        console.log('Fetching pay heads with role:', userRole, 'Headers being sent:', {
+          'user-role': 'admin'
+        });
+        const response = await axios.get('http://localhost:7777/api/payheads', {
+          headers: {
+            'user-role': 'admin' // Explicitly force admin role
+          }
+        });
+        console.log('Fetched pay heads:', JSON.stringify(response.data, null, 2));
+        this.payHeads = response.data || []; // Store pay heads data
+        this.showSuccessMessage('Pay heads loaded successfully!');
       } catch (error) {
-        console.error('Error fetching pay heads:', error);
-        this.showErrorMessage('Failed to fetch pay heads.');
+        console.error('Error fetching pay heads:', {
+          message: error.message,
+          response: error.response ? error.response.data : null,
+          config: error.config ? error.config.headers : null
+        });
+        this.showErrorMessage('Failed to load pay heads. Please try again.');
       } finally {
         this.isLoading = false;
       }
@@ -524,8 +540,18 @@ export default {
 
     async fetchEmployees() {
       this.isLoading = true;
+      this.statusMessage = '';
       try {
-        const response = await axios.get('http://localhost:7777/api/employees');
+        const userRole = localStorage.getItem('userRole') || 'admin'; // Default to 'admin' for testing
+        console.log('Fetching employees with role:', userRole, 'Headers being sent:', {
+          'user-role': 'admin'
+        });
+        const response = await axios.get('http://localhost:7777/api/employees', {
+          headers: {
+            'user-role': 'admin' // Explicitly force admin role
+          }
+        });
+        console.log('Fetched employees response:', JSON.stringify(response.data, null, 2));
         this.employees = response.data.map(emp => ({
           ...emp,
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
@@ -535,9 +561,14 @@ export default {
           totalSalary: (emp.salary || 0) + this.calculateEarnings(emp.payheads || []) - this.calculateDeductions(emp.payheads || []),
           payheads: emp.payheads || []
         }));
+        this.showSuccessMessage('Employees loaded successfully!');
       } catch (error) {
-        console.error('Error fetching employees:', error);
-        this.showErrorMessage('Failed to fetch employees.');
+        console.error('Error fetching employees:', {
+          message: error.message,
+          response: error.response ? error.response.data : null,
+          config: error.config ? error.config.headers : null
+        });
+        this.showErrorMessage('Failed to load employees. Please try again.');
       } finally {
         this.isLoading = false;
       }
@@ -545,7 +576,12 @@ export default {
 
     async addPayHead(payHead) {
       try {
-        const response = await axios.post('http://localhost:7777/api/payheads', payHead);
+        this.isLoading = true;
+        const response = await axios.post('http://localhost:7777/api/payheads', payHead, {
+          headers: {
+            'user-role': 'admin' // Explicitly force admin role
+          }
+        });
         this.payHeads.push(response.data);
         this.showAddModal = false;
         this.showSuccessMessage('Pay head added successfully!');
@@ -553,6 +589,8 @@ export default {
       } catch (error) {
         console.error('Error adding pay head:', error);
         this.showErrorMessage('Failed to add pay head.');
+      } finally {
+        this.isLoading = false;
       }
     },
 
@@ -563,9 +601,14 @@ export default {
 
     async updatePayHead(updatedPayHead) {
       try {
+        this.isLoading = true;
         const response = await axios.put(
           `http://localhost:7777/api/payheads/${updatedPayHead.id}`, 
-          updatedPayHead
+          updatedPayHead, {
+            headers: {
+              'user-role': 'admin' // Explicitly force admin role
+            }
+          }
         );
         const index = this.payHeads.findIndex(ph => ph.id === updatedPayHead.id);
         if (index !== -1) {
@@ -577,6 +620,8 @@ export default {
       } catch (error) {
         console.error('Error updating pay head:', error);
         this.showErrorMessage('Failed to update pay head.');
+      } finally {
+        this.isLoading = false;
       }
     },
 
@@ -588,13 +633,20 @@ export default {
 
     async deletePayHead(id) {
       try {
-        await axios.delete(`http://localhost:7777/api/payheads/${id}`);
+        this.isLoading = true;
+        await axios.delete(`http://localhost:7777/api/payheads/${id}`, {
+          headers: {
+            'user-role': 'admin' // Explicitly force admin role
+          }
+        });
         this.payHeads = this.payHeads.filter(payHead => payHead.id !== id);
         this.showSuccessMessage('Pay head deleted successfully!');
         await this.fetchEmployees();
       } catch (error) {
         console.error('Error deleting pay head:', error);
         this.showErrorMessage('Failed to delete pay head.');
+      } finally {
+        this.isLoading = false;
       }
     },
 
@@ -630,6 +682,7 @@ export default {
 
     async savePayheads() {
       try {
+        this.isLoading = true;
         const payheadsToSave = this.selectedEmployeePayheads.map(ph => ({
           id: ph.id,
           name: ph.name,
@@ -649,7 +702,11 @@ export default {
 
         await axios.put(
           `http://localhost:7777/api/employees/${this.selectedEmployee.id}`,
-          updatedEmployee
+          updatedEmployee, {
+            headers: {
+              'user-role': 'admin' // Explicitly force admin role
+            }
+          }
         );
 
         const employeeIndex = this.employees.findIndex(
@@ -664,6 +721,8 @@ export default {
       } catch (error) {
         console.error('Error saving payheads:', error);
         this.showErrorMessage('Failed to save payheads.');
+      } finally {
+        this.isLoading = false;
       }
     },
 

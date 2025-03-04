@@ -7,4 +7,4 @@ const payHeadSchema = new mongoose.Schema({
   type: { type: String, enum: ['Earnings', 'Deductions'], required: true }
 });
 
-module.exports = mongoose.model('PayHead', payHeadSchema);
+module.exports = mongoose.model('PayHead', payHeadSchema); 

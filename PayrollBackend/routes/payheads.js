@@ -1,170 +1,99 @@
-// C:\Users\ASUS\Desktop\Payroll_system\PayrollBackend\routes\pendingRequest.js
+// C:\Users\ASUS\Desktop\Payroll_system\PayrollBackend\routes\payheads.js
 const express = require('express');
 const router = express.Router();
-const PendingRequest = require('../models/PendingRequest');
-const Employee = require('../models/Employee');
+const PayHead = require('../models/Payhead'); // Use the PayHead model
 
 const isAdmin = (req, res, next) => {
+  console.log('All request headers for payheads:', req.headers); // Log all headers for debugging
   const userRole = req.headers['user-role'] || 'employee';
-  if (userRole !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+  if (userRole.toLowerCase() !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required', headers: req.headers });
+  }
   next();
 };
 
-// Get max ID (EmployeeLogin - used to assign unique ID for new requests)
-router.get('/max-id', async (req, res) => {
-  try {
-    const maxIdDoc = await PendingRequest.findOne().sort({ id: -1 }).select('id');
-    const maxId = maxIdDoc ? maxIdDoc.id : 0;
-    console.log('Fetched max ID:', maxId);
-    res.status(200).json({ maxId });
-  } catch (error) {
-    console.error('Error fetching max ID:', error);
-    res.status(500).json({ error: 'Failed to fetch max ID', message: error.message });
-  }
-});
-
-// Get all pending requests (AdminEmployeeManagement)
+// Get all pay heads (Admin access only)
 router.get('/', isAdmin, async (req, res) => {
   try {
-    const requests = await PendingRequest.find({ status: 'pending' }); // Only return Pending requests for approval list
-    console.log('Fetched pending requests:', requests.length);
-    res.status(200).json(requests);
+    const payheads = await PayHead.find().sort({ id: 1 }); // Sort by ID for consistency
+    console.log('Fetched pay heads:', payheads.length);
+    res.status(200).json(payheads);
   } catch (error) {
-    console.error('Error fetching pending requests:', error);
-    res.status(500).json({ error: 'Failed to fetch pending requests', message: error.message });
+    console.error('Error fetching pay heads:', error);
+    res.status(500).json({ error: 'Failed to fetch pay heads', message: error.message });
   }
 });
 
-// Create a new pending request (EmployeeLogin)
-router.post('/', async (req, res) => {
+// Create a new pay head (Admin access only)
+router.post('/', isAdmin, async (req, res) => {
   try {
-    console.log('Received request data:', req.body);
-    const requiredFields = ['id', 'empNo', 'firstName', 'lastName', 'positionApplied', 'email', 'contactNumber', 'salary', 'username', 'password'];
+    console.log('Received pay head data:', req.body);
+    const requiredFields = ['name', 'amount', 'type'];
     const missingFields = requiredFields.filter(field => !req.body[field]);
     if (missingFields.length > 0) {
       console.error('Missing required fields:', missingFields);
       return res.status(400).json({ error: `Missing required fields: ${missingFields.join(', ')}` });
     }
 
-    const request = new PendingRequest(req.body);
-    await request.save();
-    console.log('Saved request:', request);
-    res.status(201).json(request);
+    // Find the highest existing ID and increment it
+    const maxIdPayhead = await PayHead.findOne().sort({ id: -1 }).select('id');
+    const newId = maxIdPayhead ? maxIdPayhead.id + 1 : 1;
+
+    const payhead = new PayHead({ ...req.body, id: newId });
+    await payhead.save();
+    console.log('Saved pay head:', payhead);
+    res.status(201).json(payhead);
   } catch (error) {
-    console.error('Error creating pending request:', error);
-    if (error.code === 11000) { // Duplicate key error (e.g., id, empNo, or username)
-      res.status(400).json({ error: 'Duplicate ID, Employee Number, or username detected', message: error.message });
+    console.error('Error creating pay head:', error);
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ error: 'Validation failed', message: error.message, details: error.errors });
+    } else if (error.code === 11000) {
+      res.status(400).json({ error: 'Duplicate ID detected', message: error.message });
     } else {
-      res.status(500).json({ error: 'Failed to create pending request', message: error.message });
+      res.status(500).json({ error: 'Failed to create pay head', message: error.message });
     }
   }
 });
 
-// Update a pending request (AdminEmployeeManagement - Save Changes in Request Modal)
+// Update a pay head (Admin access only)
 router.put('/:id', isAdmin, async (req, res) => {
   try {
-    const request = await PendingRequest.findOneAndUpdate(
+    const payhead = await PayHead.findOneAndUpdate(
       { id: parseInt(req.params.id) },
       req.body,
-      { new: true }
+      { new: true, runValidators: true }
     );
-    if (!request) {
-      console.error(`Request not found for ID: ${req.params.id}`);
-      return res.status(404).json({ error: 'Request not found' });
+    if (!payhead) {
+      console.error(`Pay head not found for ID: ${req.params.id}`);
+      return res.status(404).json({ error: 'Pay head not found' });
     }
-    console.log('Updated request:', request);
-    res.status(200).json(request);
+    console.log('Updated pay head:', payhead);
+    res.status(200).json(payhead);
   } catch (error) {
-    console.error('Error updating request:', error);
-    if (error.code === 11000) {
-      res.status(400).json({ error: 'Duplicate ID, Employee Number, or username detected', message: error.message });
+    console.error('Error updating pay head:', error);
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ error: 'Validation failed', message: error.message, details: error.errors });
+    } else if (error.code === 11000) {
+      res.status(400).json({ error: 'Duplicate ID detected', message: error.message });
     } else {
-      res.status(500).json({ error: 'Failed to update request', message: error.message });
+      res.status(500).json({ error: 'Failed to update pay head', message: error.message });
     }
   }
 });
 
-// Approve a pending request and create an employee (AdminEmployeeManagement)
-router.put('/:id/approve', isAdmin, async (req, res) => {
-  try {
-    const request = await PendingRequest.findOne({ id: parseInt(req.params.id) });
-    if (!request) return res.status(404).json({ error: 'Request not found' });
-
-    // Check if employee already exists to prevent duplicate creation
-    const existingEmployee = await Employee.findOne({ empNo: request.empNo });
-    if (existingEmployee) {
-      return res.status(400).json({ error: 'Employee with this Employee Number already exists' });
-    }
-
-    const employee = new Employee({
-      id: request.id, // Use same ID as request for consistency
-      empNo: request.empNo,
-      firstName: request.firstName,
-      middleName: request.middleName,
-      lastName: request.lastName,
-      position: request.positionApplied,
-      salary: request.salary,
-      hourlyRate: request.hourlyRate,
-      email: request.email,
-      contactInfo: request.contactNumber,
-      sss: request.sss,
-      philhealth: request.philhealth,
-      pagibig: request.pagibig,
-      tin: request.tin,
-      civilStatus: request.civilStatus,
-      username: request.username,
-      password: request.password, // Already hashed by pre-save hook
-      role: 'employee' // Default role
-    });
-
-    await employee.save();
-    await PendingRequest.updateOne({ id: request.id }, { status: 'approved' });
-
-    console.log('Approved request and created employee:', employee);
-    res.status(200).json(employee);
-  } catch (error) {
-    console.error('Error approving request:', error);
-    if (error.code === 11000) {
-      res.status(400).json({ error: 'Duplicate ID, Employee Number, or username in employees collection', message: error.message });
-    } else {
-      res.status(500).json({ error: 'Failed to approve request', message: error.message });
-    }
-  }
-});
-
-// Reject a pending request (AdminEmployeeManagement)
-router.put('/:id/reject', isAdmin, async (req, res) => {
-  try {
-    const request = await PendingRequest.findOneAndUpdate(
-      { id: parseInt(req.params.id) },
-      { status: 'rejected' },
-      { new: true }
-    );
-    if (!request) {
-      console.error(`Request not found for ID: ${req.params.id}`);
-      return res.status(404).json({ error: 'Request not found' });
-    }
-    console.log('Rejected request:', request);
-    res.status(200).json(request);
-  } catch (error) {
-    console.error('Error rejecting request:', error);
-    res.status(500).json({ error: 'Failed to reject request', message: error.message });
-  }
-});
-
-// Delete a pending request (AdminEmployeeManagement)
+// Delete a pay head (Admin access only)
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
-    const result = await PendingRequest.deleteOne({ id: parseInt(req.params.id) });
+    const result = await PayHead.deleteOne({ id: parseInt(req.params.id) });
     if (result.deletedCount === 0) {
-      console.error(`Request not found for ID: ${req.params.id}`);
-      return res.status(404).json({ error: 'Request not found' });
+      console.error(`Pay head not found for ID: ${req.params.id}`);
+      return res.status(404).json({ error: 'Pay head not found' });
     }
-    console.log(`Deleted request with ID: ${req.params.id}`);
+    console.log(`Deleted pay head with ID: ${req.params.id}`);
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting request:', error);
-    res.status(500).json({ error: 'Failed to delete request', message: error.message });
+    console.error('Error deleting pay head:', error);
+    res.status(500).json({ error: 'Failed to delete pay head', message: error.message });
   }
 });
 

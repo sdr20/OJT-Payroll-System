@@ -150,15 +150,17 @@
                     <span class="material-icons text-xs">visibility</span>
                     View
                   </button>
-                  <button v-if="leave.status !== 'Disapproved'" @click="approveLeave(leave.id)" 
+                  <button @click="approveLeave(leave.id)" 
+                          :disabled="leave.status === 'Approved'"
                           class="inline-flex items-center gap-1.5 bg-green-50 text-green-600 py-1.5 px-2.5 rounded-md text-sm font-medium 
-                                 hover:bg-green-100 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                                 hover:bg-green-100 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 disabled:opacity-50">
                     <span class="material-icons text-xs">check</span>
                     Approve
                   </button>
                   <button @click="disapproveLeave(leave.id)" 
+                          :disabled="leave.status === 'Disapproved'"
                           class="inline-flex items-center gap-1.5 bg-red-50 text-red-600 py-1.5 px-2.5 rounded-md text-sm font-medium 
-                                 hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                                 hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 disabled:opacity-50">
                     <span class="material-icons text-xs">close</span>
                     Disapprove
                   </button>
@@ -228,12 +230,14 @@
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
-              <button v-if="selectedLeave.status !== 'Disapproved'" @click="approveLeave(selectedLeave.id)" 
-                      class="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+              <button @click="approveLeave(selectedLeave.id)" 
+                      :disabled="selectedLeave.status === 'Approved'"
+                      class="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-50">
                 Approve
               </button>
               <button @click="disapproveLeave(selectedLeave.id)" 
-                      class="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                      :disabled="selectedLeave.status === 'Disapproved'"
+                      class="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-50">
                 Disapprove
               </button>
               <button @click="closeDetailsModal" 
@@ -389,6 +393,9 @@ export default {
           this.leaveRequests = this.leaveRequests.map(leave => 
             leave.id === id ? { ...leave, status: 'Approved' } : leave
           );
+          if (this.showDetailsModalVisible) {
+            this.selectedLeave.status = 'Approved';
+          }
           this.showToast('Leave approved successfully!', 'success');
         }
       } catch (error) {
@@ -403,6 +410,9 @@ export default {
           this.leaveRequests = this.leaveRequests.map(leave => 
             leave.id === id ? { ...leave, status: 'Disapproved' } : leave
           );
+          if (this.showDetailsModalVisible) {
+            this.selectedLeave.status = 'Disapproved';
+          }
           this.showToast('Leave disapproved successfully!', 'success');
         }
       } catch (error) {
@@ -485,6 +495,13 @@ export default {
 /* Button hover effects */
 button:hover:not(:disabled) {
   transform: translateY(-2px);
+}
+
+/* Disabled button styles */
+button:disabled {
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* Responsive adjustments */

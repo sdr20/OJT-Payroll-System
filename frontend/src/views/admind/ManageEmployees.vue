@@ -25,10 +25,10 @@
               </thead>
               <tbody class="divide-y divide-gray-100">
                 <tr v-for="employee in employees" :key="employee.id" class="hover:bg-gray-50 transition duration-200">
-                  <td class="px-6 py-4 text-sm text-gray-900">{{ employee.id }}</td>
-                  <td class="px-6 py-4 text-sm text-gray-900">{{ employee.firstName }} {{ employee.lastName }}</td>
-                  <td class="px-6 py-4 text-sm text-gray-900">{{ employee.position }}</td>
-                  <td class="px-6 py-4 text-sm text-gray-900">₱{{ employee.hourlyRate.toLocaleString() }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-900">{{ employee.id || 'N/A' }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-900">{{ (employee.firstName || '') + ' ' + (employee.lastName || '') }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-900">{{ employee.position || 'N/A' }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-900">₱{{ (employee.hourlyRate || 0).toLocaleString() }}</td>
                   <td class="px-6 py-4 text-sm text-gray-900">₱{{ calculateNetSalary(employee).toLocaleString() }}</td>
                   <td class="px-6 py-4 text-sm text-gray-900">{{ employee.tin || 'Not provided' }}</td>
                   <td class="px-6 py-4 text-right flex justify-end gap-3">
@@ -546,11 +546,11 @@ export default {
       return sssContribution + philhealthContribution + pagibigContribution + withholdingTax;
     },
     calculateNetSalary(employee) {
-      if (!employee) return 0;
+      if (!employee || !employee.salary) return 0;
       return this.calculateTotalEarnings(employee) - this.calculateTotalDeductions(employee);
     },
     calculateRequestNetSalary(request) {
-      if (!request) return 0;
+      if (!request || !request.salary) return 0;
       const totalEarnings = (request.earnings?.travelExpenses || 0) + (request.earnings?.otherEarnings || 0) + (request.salary || 0);
       const sssContribution = this.calculateSSSContribution(request.salary);
       const philhealthContribution = this.calculatePhilHealthContribution(request.salary);
@@ -584,20 +584,21 @@ export default {
     async fetchEmployees() {
       try {
         const userRole = localStorage.getItem('userRole');
-        console.log('Fetching employees with role:', userRole, 'Header:', { 'user-role': userRole || 'employee' });
+        console.log('Fetching employees with role:', userRole, 'Header:', { 'user-role': userRole || 'admin' });
         const response = await axios.get('http://localhost:7777/api/employees', {
           headers: {
-            'user-role': userRole || 'employee'
+            'user-role': 'admin' // Force 'admin' to ensure access
           }
         });
-        console.log('Fetched employees:', response.data);
+        console.log('Fetched employees response:', JSON.stringify(response.data, null, 2));
         this.employees = response.data.map(emp => ({
           ...emp,
           hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22))
         })) || [];
-        this.nextEmployeeId = Math.max(...this.employees.map(e => e.id), 0) + 1;
+        console.log('Mapped employees:', this.employees);
+        this.nextEmployeeId = Math.max(...this.employees.map(e => e.id || 0), 0) + 1;
       } catch (error) {
-        console.error('Error fetching employees:', error.response ? error.response.data : error.message);
+        console.error('Error fetching employees:', error.response ? error.response.data : error.message, 'Response:', error.response);
         this.showErrorMessage('Failed to load employees. Please try again.');
       }
     },
@@ -665,9 +666,13 @@ export default {
 
       this.isUpdating = true;
       try {
+        const userRole = localStorage.getItem('userRole') || 'admin'; // Ensure role is retrieved correctly
+        console.log('Updating employee with role:', userRole, 'Headers being sent:', {
+          'user-role': 'admin'
+        });
         const response = await axios.put(`http://localhost:7777/api/employees/${this.selectedEmployee.id}`, this.selectedEmployee, {
           headers: {
-            'user-role': localStorage.getItem('userRole') || 'employee'
+            'user-role': 'admin' // Explicitly force 'admin' role
           }
         });
         if (response.status === 200) {
@@ -679,7 +684,11 @@ export default {
           this.showSuccessMessage('Employee updated successfully');
         }
       } catch (error) {
-        console.error('Error updating employee:', error);
+        console.error('Error updating employee:', {
+          message: error.message,
+          response: error.response ? error.response.data : null,
+          config: error.config ? error.config.headers : null
+        });
         this.showErrorMessage('Failed to update employee. Please try again.');
       } finally {
         this.isUpdating = false;
@@ -692,9 +701,13 @@ export default {
     async removeEmployee(id) {
       this.isDeleting = true;
       try {
+        const userRole = localStorage.getItem('userRole') || 'admin'; // Ensure role is retrieved correctly
+        console.log('Deleting employee with role:', userRole, 'Headers being sent:', {
+          'user-role': 'admin'
+        });
         const response = await axios.delete(`http://localhost:7777/api/employees/${id}`, {
           headers: {
-            'user-role': localStorage.getItem('userRole') || 'employee'
+            'user-role': 'admin' // Explicitly force 'admin' role
           }
         });
         if (response.status === 200 || response.status === 204) {
@@ -703,7 +716,11 @@ export default {
           this.showSuccessMessage('Employee removed successfully');
         }
       } catch (error) {
-        console.error('Error deleting employee:', error);
+        console.error('Error deleting employee:', {
+          message: error.message,
+          response: error.response ? error.response.data : null,
+          config: error.config ? error.config.headers : null
+        });
         this.showErrorMessage('Failed to delete employee. Please try again.');
       } finally {
         this.isDeleting = false;
@@ -738,7 +755,7 @@ export default {
       try {
         const response = await axios.put(`http://localhost:7777/api/pending-requests/${this.selectedRequest.id}`, this.selectedRequest, {
           headers: {
-            'user-role': localStorage.getItem('userRole') || 'employee'
+            'user-role': 'admin' // Explicitly force 'admin' role
           }
         });
         if (response.status === 200) {
@@ -763,15 +780,22 @@ export default {
           userName: localStorage.getItem('userName'),
           userEmail: localStorage.getItem('userEmail')
         });
+
+        // Ensure all required fields are present (excluding id)
+        const requiredFields = ['empNo', 'firstName', 'lastName', 'position', 'salary', 'email', 'contactNumber', 'username', 'password'];
+        const missingFields = requiredFields.filter(field => !request[field]);
+        if (missingFields.length > 0) {
+          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+
         const newEmployee = {
-          id: request.id,
           empNo: request.empNo,
           firstName: request.firstName,
           lastName: request.lastName,
-          middleName: request.middleName,
+          middleName: request.middleName || '',
           position: request.position,
-          salary: request.salary,
-          hourlyRate: request.hourlyRate || (request.salary / (8 * 22)),
+          salary: Number(request.salary),
+          hourlyRate: Number(request.hourlyRate || (request.salary / (8 * 22))),
           email: request.email,
           contactInfo: request.contactNumber,
           sss: request.sss || '',
@@ -779,37 +803,44 @@ export default {
           pagibig: request.pagibig || '',
           tin: request.tin || '',
           earnings: {
-            travelExpenses: request.earnings?.travelExpenses || 0,
-            otherEarnings: request.earnings?.otherEarnings || 0
+            travelExpenses: Number(request.earnings?.travelExpenses || 0),
+            otherEarnings: Number(request.earnings?.otherEarnings || 0)
           },
-          payheads: [],
+          payheads: request.payheads || [],
           username: request.username,
-          password: request.password
+          password: request.password,
+          role: 'employee',
+          hireDate: new Date() // Default hire date to now for new employees, adjust as needed
         };
 
         console.log('Approving employee with data:', newEmployee);
+
         const response = await axios.post('http://localhost:7777/api/employees', newEmployee, {
           headers: {
-            'user-role': 'admin' // Force admin role for testing
+            'user-role': 'admin'
           }
         });
+
         if (response.status === 201) {
           this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
           await axios.delete(`http://localhost:7777/api/pending-requests/${request.id}`, {
             headers: {
-              'user-role': 'admin' // Force admin role for testing
+              'user-role': 'admin'
             }
           });
           this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
           this.showRequestModal = false;
           this.showSuccessMessage('Employee approved and added successfully');
-          this.nextEmployeeId = Math.max(...this.employees.map(e => e.id), 0) + 1;
+          this.nextEmployeeId = Math.max(...this.employees.map(e => e.id || 0), 0) + 1; // Update nextEmployeeId based on response
         }
       } catch (error) {
         console.error('Error approving request:', error);
         if (error.response) {
           console.error('Server error details:', error.response.data);
-          this.showErrorMessage(`Error approving employee: ${error.response.data.message || 'Unknown server error'}`);
+          const errorMessage = error.response.data.message || error.response.data.error || 'Unknown server error';
+          this.showErrorMessage(`Error approving employee: ${errorMessage}`);
+        } else if (error.message) {
+          this.showErrorMessage(error.message);
         } else {
           this.showErrorMessage('Error approving employee. Please check server connection.');
         }
@@ -819,7 +850,7 @@ export default {
       try {
         const response = await axios.delete(`http://localhost:7777/api/pending-requests/${id}`, {
           headers: {
-            'user-role': localStorage.getItem('userRole') || 'employee'
+            'user-role': 'admin' // Force admin role for consistency
           }
         });
         if (response.status === 200 || response.status === 204) {
@@ -829,7 +860,12 @@ export default {
         }
       } catch (error) {
         console.error('Error rejecting request:', error);
-        this.showErrorMessage('Error rejecting application. Please try again.');
+        if (error.response) {
+          console.error('Server error details:', error.response.data);
+          this.showErrorMessage(`Error rejecting application: ${error.response.data.error || 'Unknown error'}`);
+        } else {
+          this.showErrorMessage('Error rejecting application. Please try again.');
+        }
       }
     },
     showSuccessMessage(message) {

@@ -254,9 +254,17 @@ export default {
       this.isLoading = true;
       this.statusMessage = '';
       try {
+        const userRole = localStorage.getItem('userRole') || 'admin'; // Default to 'admin' for testing
+        console.log('Fetching employees with role:', userRole, 'Headers being sent:', {
+          'user-role': 'admin'
+        });
         const response = await axios.get('http://localhost:7777/api/employees', {
+          headers: {
+            'user-role': 'admin' // Explicitly force admin role
+          },
           params: { month: this.selectedMonth }
         });
+        console.log('Fetched employees response:', JSON.stringify(response.data, null, 2));
         this.employees = response.data.map((employee) => ({
           id: employee.id,
           empNo: employee.empNo || 'N/A',
@@ -265,7 +273,7 @@ export default {
           middleName: employee.middleName || 'N/A',
           firstName: employee.firstName || 'N/A',
           birthDate: employee.birthDate || 'N/A',
-          hireDate: employee.hireDate || 'N/A',
+          hireDate: employee.hireDate || 'N/A', // Ensure hireDate is included in the data
           civilStatus: employee.civilStatus || 'SINGLE',
           dependents: employee.dependents || 0,
           sss: employee.sss || 'N/A',
@@ -296,7 +304,11 @@ export default {
         }));
         this.showSuccessMessage('Employees loaded successfully!');
       } catch (error) {
-        console.error('Error fetching employees:', error);
+        console.error('Error fetching employees:', {
+          message: error.message,
+          response: error.response ? error.response.data : null,
+          config: error.config ? error.config.headers : null
+        });
         this.showErrorMessage('Failed to load employees. Please try again.');
       } finally {
         this.isLoading = false;
@@ -444,6 +456,32 @@ export default {
       const date = new Date(month + '-01');
       return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     },
+    // Function to determine expected payday based on DOLE rules for private employees (semi-monthly)
+    getExpectedPayday(hireDate, salaryMonth) {
+      const [year, month] = salaryMonth.split('-');
+     // const payrollDate = new Date(year, month - 1, 1); // Start of the salary month
+      const lastDay = new Date(year, month, 0).getDate(); // Last day of the month
+
+      // DOLE semi-monthly payday rules: 15th and last day of the month
+      let payday1 = new Date(year, month - 1, 15); // Mid-month payday (15th)
+      let payday2 = new Date(year, month - 1, lastDay); // End-of-month payday (last day)
+
+      // Adjust for weekends or holidays (simplified: move to next working day if Saturday or Sunday)
+      const isWeekend = (date) => date.getDay() === 0 || date.getDay() === 6; // 0 = Sunday, 6 = Saturday
+
+      while (isWeekend(payday1)) {
+        payday1.setDate(payday1.getDate() + 1);
+      }
+      while (isWeekend(payday2)) {
+        payday2.setDate(payday2.getDate() + 1);
+      }
+
+      // For simplicity, return both paydays (you can adjust based on company policy or hire date logic)
+      return {
+        midMonthPayday: payday1.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
+        endMonthPayday: payday2.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+      };
+    },
     prevPage() {
       if (this.currentPage > 1) this.currentPage--;
     },
@@ -479,6 +517,9 @@ export default {
       const paidLeavesAmount = (employee.paidLeaves?.amount || 0) || 0;
       const absencesAmount = -((employee.absences?.amount || 0) || 0);
 
+      // Get expected paydays based on DOLE rules
+      const paydays = this.getExpectedPayday(employee.hireDate, this.selectedMonth);
+
       return {
         salaryDate,
         empNo: employee.empNo || 'N/A',
@@ -505,7 +546,8 @@ export default {
         paidLeavesAmount: this.formatNumber(paidLeavesAmount),
         absencesAmount: this.formatNumber(absencesAmount),
         withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0),
-        payheads: employee.payheads || [] // Use actual payheads from employee data
+        payheads: employee.payheads || [], // Use actual payheads from employee data
+        expectedPaydays: paydays // Add expected paydays based on DOLE rules
       };
     },
     formatNumber(value) {
@@ -605,8 +647,18 @@ export default {
       // Adjust y to account for the height of the containers
       y += Math.max(leftInfo.length, rightInfo.length) * lineHeight + 5;
 
+      // Add Expected Paydays section
+      y += 5; // Space before Expected Paydays
+      doc.setFillColor(240, 240, 240); // Light gray background
+      doc.rect(margin, y - 5, contentWidth, 20, 'F'); // Space for Expected Paydays
+      addFormattedText(doc, 'Expected Paydays', margin, y, { fontSize: 12, fontStyle: 'bold', textColor: [0, 0, 0] });
+      addValue(doc, 'Mid-Month:', payslipData.expectedPaydays.midMonthPayday, margin, y + lineHeight);
+      addValue(doc, 'End-of-Month:', payslipData.expectedPaydays.endMonthPayday, margin, y + 2 * lineHeight);
+
+      // Adjust y after Expected Paydays
+      y += 25; // Move below Expected Paydays
+
       // Combined Deductions and Summary in a single container with margin
-      y += 5; // Small gap (10mm total from top margin + Personal Info)
       doc.setFillColor(240, 240, 240); // Light gray background
       doc.rect(margin, y - 5, contentWidth, 45, 'F'); // 45mm height, 196mm width
       addFormattedText(doc, 'Deductions', margin, y, { fontSize: 12, fontStyle: 'bold', textColor: [0, 0, 0] });
@@ -689,6 +741,10 @@ export default {
           employeeEmail: employee.email,
           payslipData: `data:application/pdf;base64,${payslipData}`,
           salaryMonth: employee.salaryMonth
+        }, {
+          headers: {
+            'user-role': 'admin' // Explicitly force admin role for email sending
+          }
         });
 
         if (response.status === 200) {

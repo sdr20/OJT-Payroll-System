@@ -8,13 +8,23 @@ router.post('/login', async (req, res) => {
     const { username, password } = req.body;
     console.log('Login attempt:', { username });
 
-    const user = await Employee.findOne({ username: username.trim() });
+    // Trim and validate input
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedUsername || !trimmedPassword) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    // Find user by username
+    const user = await Employee.findOne({ username: trimmedUsername });
     if (!user) {
       console.log('User not found');
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    const isMatch = await user.comparePassword(password.trim());
+    // Compare password
+    const isMatch = await user.comparePassword(trimmedPassword);
     if (!isMatch) {
       console.log('Password mismatch');
       return res.status(401).json({ error: 'Invalid username or password' });
@@ -34,4 +44,4 @@ router.post('/login', async (req, res) => {
   }
 });
 
-module.exports = router; // Ensure this line is present
+module.exports = router;
