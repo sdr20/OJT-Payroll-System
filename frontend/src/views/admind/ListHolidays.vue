@@ -22,12 +22,16 @@
           'calendar-cell', 
           { 'other-month': !day.isCurrentMonth },
           { 'today': day.isToday },
-          { 'has-holiday': day.holiday }
+          { 'has-holiday': day.holiday },
+          { 'has-tasks': day.tasks && day.tasks.length > 0 }
         ]"
         @click="selectDay(day)"
       >
         <div class="date-number">{{ day.date }}</div>
         <div v-if="day.holiday" class="holiday-indicator" :class="day.holiday.type.toLowerCase().replace(' ', '-')"></div>
+        <div v-if="day.tasks && day.tasks.length" class="task-indicator">
+          {{ day.tasks.length }} task{{ day.tasks.length > 1 ? 's' : '' }}
+        </div>
       </div>
     </div>
     
@@ -48,32 +52,61 @@
       </div>
     </div>
     
-    <!-- Holiday Modal Popup -->
+    <!-- Day Detail Modal -->
     <div class="modal-overlay" v-if="showModal" @click.self="closeModal">
-      <div class="modal-content" :class="selectedDay.holiday.type.toLowerCase().replace(' ', '-')">
+      <div class="modal-content" :class="{ 'has-holiday': selectedDay.holiday }">
         <button class="close-button" @click="closeModal">×</button>
+        
         <div class="modal-header">
-          <div class="holiday-date">{{ formatDate(selectedDay.fullDate) }}</div>
-          <h3 class="holiday-name">{{ selectedDay.holiday.name }}</h3>
-          <div class="holiday-badge" :class="selectedDay.holiday.type.toLowerCase().replace(' ', '-')">
-            {{ selectedDay.holiday.type }}
+          <div class="date-header">{{ formatDate(selectedDay.fullDate) }}</div>
+          <div v-if="selectedDay.holiday" class="holiday-section">
+            <h3 class="holiday-name">{{ selectedDay.holiday.name }}</h3>
+            <div class="holiday-badge" :class="selectedDay.holiday.type.toLowerCase().replace(' ', '-')">
+              {{ selectedDay.holiday.type }}
+            </div>
           </div>
         </div>
+
         <div class="modal-body">
-          <p class="holiday-description">{{ selectedDay.holiday.description }}</p>
-          <div class="holiday-info">
-            <div class="info-item">
-              <strong>Pay Rules:</strong>
-              <span v-if="selectedDay.holiday.type === 'Regular Holiday'">
-                100% additional pay for working, or 100% pay if not working
-              </span>
-              <span v-else-if="selectedDay.holiday.type === 'Special Non-Working'">
-                30% additional pay for working, or no pay if not working
-              </span>
-              <span v-else>
-                No additional pay for working
-              </span>
+          <!-- Holiday Info -->
+          <div v-if="selectedDay.holiday" class="holiday-info-section">
+            <p class="holiday-description">{{ selectedDay.holiday.description }}</p>
+            <div class="holiday-info">
+              <div class="info-item">
+                <strong>Pay Rules:</strong>
+                <span v-if="selectedDay.holiday.type === 'Regular Holiday'">
+                  100% additional pay for working, or 100% pay if not working
+                </span>
+                <span v-else-if="selectedDay.holiday.type === 'Special Non-Working'">
+                  30% additional pay for working, or no pay if not working
+                </span>
+                <span v-else>
+                  No additional pay for working
+                </span>
+              </div>
             </div>
+          </div>
+
+          <!-- Tasks Section -->
+          <div class="tasks-section">
+            <h4>Tasks</h4>
+            <div class="task-list">
+              <div 
+                v-for="(task, index) in selectedDay.tasks" 
+                :key="index" 
+                class="task-item"
+              >
+                <input
+                  type="text"
+                  v-model="selectedDay.tasks[index]"
+                  @blur="updateTask(selectedDay, index)"
+                  class="task-input"
+                  placeholder="Enter task description"
+                />
+                <button @click="removeTask(index)" class="remove-task">×</button>
+              </div>
+            </div>
+            <button @click="addTask" class="add-task-btn">+ Add Task</button>
           </div>
         </div>
       </div>
@@ -90,6 +123,7 @@ export default {
       selectedDay: null,
       showModal: false,
       daysOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      tasksByDay: {}, // Store tasks by date string (YYYY-MM-DD)
       holidays: [
         { 
           date: "January 1", 
@@ -257,7 +291,6 @@ export default {
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
       ].indexOf(month);
-      
       return new Date(this.currentYear, monthIndex, parseInt(day));
     },
     
@@ -275,95 +308,91 @@ export default {
       const days = [];
       const firstDayOfMonth = new Date(this.currentYear, this.currentMonth, 1);
       const lastDayOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0);
-      
-      // Get the day of the week for the first day (0-6, where 0 is Sunday)
       const firstDayWeekday = firstDayOfMonth.getDay();
-      
-      // Add days from previous month
       const prevMonthLastDay = new Date(this.currentYear, this.currentMonth, 0).getDate();
+      
+      // Previous month days
       for (let i = firstDayWeekday - 1; i >= 0; i--) {
         const dayNumber = prevMonthLastDay - i;
         const fullDate = new Date(this.currentYear, this.currentMonth - 1, dayNumber);
+        const dateKey = fullDate.toISOString().split('T')[0];
         days.push({
           date: dayNumber,
           fullDate: fullDate,
           isCurrentMonth: false,
-          isToday: false,
-          holiday: this.getHolidayForDate(fullDate)
+          isToday: this.isToday(fullDate),
+          holiday: this.getHolidayForDate(fullDate),
+          tasks: this.tasksByDay[dateKey] || []
         });
       }
       
-      // Add days from current month
-      const today = new Date();
+      // Current month days
       for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
         const fullDate = new Date(this.currentYear, this.currentMonth, i);
-        const isToday = 
-          today.getDate() === i && 
-          today.getMonth() === this.currentMonth && 
-          today.getFullYear() === this.currentYear;
-        
+        const dateKey = fullDate.toISOString().split('T')[0];
         days.push({
           date: i,
           fullDate: fullDate,
           isCurrentMonth: true,
-          isToday: isToday,
-          holiday: this.getHolidayForDate(fullDate)
+          isToday: this.isToday(fullDate),
+          holiday: this.getHolidayForDate(fullDate),
+          tasks: this.tasksByDay[dateKey] || []
         });
       }
       
-      // Add days from next month
-      const daysNeeded = 42 - days.length; // 6 rows of 7 days
+      // Next month days
+      const daysNeeded = 42 - days.length;
       for (let i = 1; i <= daysNeeded; i++) {
         const fullDate = new Date(this.currentYear, this.currentMonth + 1, i);
+        const dateKey = fullDate.toISOString().split('T')[0];
         days.push({
           date: i,
           fullDate: fullDate,
           isCurrentMonth: false,
-          isToday: false,
-          holiday: this.getHolidayForDate(fullDate)
+          isToday: this.isToday(fullDate),
+          holiday: this.getHolidayForDate(fullDate),
+          tasks: this.tasksByDay[dateKey] || []
         });
       }
       
       return days;
     },
     
+    isToday(date) {
+      const today = new Date();
+      return date.getDate() === today.getDate() &&
+             date.getMonth() === today.getMonth() &&
+             date.getFullYear() === today.getFullYear();
+    },
+    
     getHolidayForDate(date) {
       const month = date.toLocaleString('default', { month: 'long' });
       const day = date.getDate();
       const dateString = `${month} ${day}`;
-      
       return this.holidays.find(holiday => holiday.date === dateString) || null;
     },
     
     prevMonth() {
       this.currentDate = new Date(this.currentYear, this.currentMonth - 1, 1);
-      this.selectedDay = null;
-      this.showModal = false;
+      this.closeModal();
     },
     
     nextMonth() {
       this.currentDate = new Date(this.currentYear, this.currentMonth + 1, 1);
-      this.selectedDay = null;
-      this.showModal = false;
+      this.closeModal();
     },
     
     selectDay(day) {
-      if (day.holiday) {
-        this.selectedDay = day;
-        this.showModal = true;
-      }
+      this.selectedDay = { ...day, tasks: [...(day.tasks || [])] };
+      this.showModal = true;
     },
     
     selectHoliday(holiday) {
       const holidayDate = this.parseHolidayDate(holiday.date);
-      
-      // Find the day in the calendar that matches this holiday
       const holidayDay = this.calendarDays.find(day => 
-        day.fullDate && 
         day.fullDate.getDate() === holidayDate.getDate() && 
         day.fullDate.getMonth() === holidayDate.getMonth()
       );
-      
       if (holidayDay) {
         this.selectDay(holidayDay);
       }
@@ -371,28 +400,53 @@ export default {
     
     closeModal() {
       this.showModal = false;
+      this.selectedDay = null;
+    },
+    
+    addTask() {
+      if (!this.selectedDay.tasks) {
+        this.selectedDay.tasks = [];
+      }
+      this.selectedDay.tasks.push('');
+      this.updateTasksInStorage();
+    },
+    
+    updateTask(day, index) {
+      if (this.selectedDay.tasks[index].trim() === '') {
+        this.removeTask(index);
+      } else {
+        this.updateTasksInStorage();
+      }
+    },
+    
+    removeTask(index) {
+      this.selectedDay.tasks.splice(index, 1);
+      this.updateTasksInStorage();
+    },
+    
+    updateTasksInStorage() {
+      const dateKey = this.selectedDay.fullDate.toISOString().split('T')[0];
+      this.$set(this.tasksByDay, dateKey, [...this.selectedDay.tasks]);
+      this.$forceUpdate();
+    },
+    
+    handleEscape(e) {
+      if (e.key === 'Escape' && this.showModal) {
+        this.closeModal();
+      }
     }
   },
-  // Close modal when escape key is pressed
   mounted() {
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.showModal) {
-        this.closeModal();
-      }
-    });
+    document.addEventListener('keydown', this.handleEscape);
   },
-  // Clean up event listener
   beforeUnmount() {
-    document.removeEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.showModal) {
-        this.closeModal();
-      }
-    });
+    document.removeEventListener('keydown', this.handleEscape);
   }
 };
 </script>
 
 <style scoped>
+/* Styles remain unchanged from your previous version */
 .calendar-wrapper {
   max-width: 1000px;
   margin: 0 auto;
@@ -490,7 +544,10 @@ export default {
 
 .has-holiday {
   position: relative;
-  overflow: hidden;
+}
+
+.has-tasks {
+  background-color: #f0f8ff;
 }
 
 .holiday-indicator {
@@ -511,6 +568,18 @@ export default {
 
 .holiday-indicator.special-non-working {
   background-color: #9b59b6;
+}
+
+.task-indicator {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #4682b4;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2px 5px;
+  border-radius: 10px;
 }
 
 /* Monthly Holidays */
@@ -608,7 +677,7 @@ export default {
 .modal-content {
   background-color: white;
   width: 90%;
-  max-width: 500px;
+  max-width: 600px;
   border-radius: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   position: relative;
@@ -623,7 +692,7 @@ export default {
   to { transform: translateY(0); opacity: 1; }
 }
 
-.modal-content:before {
+.modal-content.has-holiday:before {
   content: '';
   position: absolute;
   top: 0;
@@ -632,15 +701,15 @@ export default {
   height: 8px;
 }
 
-.modal-content.regular-holiday:before {
+.modal-content.has-holiday.regular-holiday:before {
   background-color: #e74c3c;
 }
 
-.modal-content.special-working:before {
+.modal-content.has-holiday.special-working:before {
   background-color: #f39c12;
 }
 
-.modal-content.special-non-working:before {
+.modal-content.has-holiday.special-non-working:before {
   background-color: #9b59b6;
 }
 
@@ -671,8 +740,22 @@ export default {
   padding: 25px 25px 15px;
 }
 
+.date-header {
+  color: #7f8c8d;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.holiday-section {
+  margin-top: 10px;
+}
+
 .modal-body {
   padding: 0 25px 25px;
+}
+
+.holiday-info-section {
+  margin-bottom: 20px;
 }
 
 .holiday-date {
@@ -728,6 +811,75 @@ export default {
   margin-bottom: 0;
 }
 
+.tasks-section {
+  margin-top: 20px;
+}
+
+.tasks-section h4 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.task-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.task-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+.task-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+.remove-task {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-task:hover {
+  background: #c0392b;
+}
+
+.add-task-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.add-task-btn:hover {
+  background: #2980b9;
+}
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .calendar-cell {
@@ -747,5 +899,5 @@ export default {
     max-height: 80vh;
     overflow-y: auto;
   }
-}      
-</style>   
+}
+</style>
