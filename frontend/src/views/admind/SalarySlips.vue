@@ -549,45 +549,46 @@ export default {
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [216, 279] // 8.5" x 11"
+        format: [216, 279] // Letter size: 8.5" x 11"
       });
 
-      // Load a font that supports Unicode (e.g., DejaVu Sans) - Requires installing 'jspdf-fonts-dejavu'
-      doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal'); // You need to add this font file to your project
-      doc.setFont('DejaVuSans');
+      // Use Helvetica as the default font (supports basic Unicode, fallback for ₱)
+      doc.setFont('Helvetica');
 
       const margin = 10;
       const pageWidth = doc.internal.pageSize.getWidth();
       const contentWidth = pageWidth - 2 * margin;
-      const columnWidth = (contentWidth - 10) / 2; // Two columns with 10mm gap
-      const lineHeight = 6;
+      const columnWidth = (contentWidth - 20) / 2; // Two columns with 10mm gap between them
+      const lineHeight = 5;
       const pageHeight = doc.internal.pageSize.getHeight();
 
       // Helper function to add text with options
       function addText(doc, text, x, y, options = {}) {
         text = text || 'N/A';
+        // Replace ₱ with P for fallback (if ₱ doesn't render properly)
+        text = text.replace('₱', 'P');
         doc.setFontSize(options.fontSize || 10);
-        doc.setFont('DejaVuSans', options.fontStyle || 'normal');
+        doc.setFont(options.font || 'Helvetica', options.fontStyle || 'normal');
         doc.setTextColor(...(options.textColor || [0, 0, 0]));
         doc.text(text, x, y, { align: options.align || 'left', maxWidth: options.maxWidth });
       }
 
-      // Helper function to add label-value pair
+      // Helper function to add label-value pair with proper alignment
       function addLabelValue(doc, label, value, x, y) {
-        addText(doc, label, x, y, { fontStyle: 'bold' });
-        addText(doc, value, x + 25, y, { maxWidth: columnWidth - 25 });
+        addText(doc, label, x, y, { fontSize: 9, fontStyle: 'bold' });
+        addText(doc, value, x + 35, y, { fontSize: 9, maxWidth: columnWidth - 35 });
       }
 
       // Header
-      doc.setFillColor(0, 128, 0);
+      doc.setFillColor(0, 128, 0); // Green background
       doc.rect(margin, margin, contentWidth, 10, 'F');
       addText(doc, 'RIGHTJOB Solutions', margin + 5, margin + 7, { fontSize: 12, fontStyle: 'bold', textColor: [255, 255, 255] });
-      addText(doc, 'PAYSLIP', margin + contentWidth / 2, margin + 7, { fontSize: 12, align: 'center', textColor: [255, 255, 255] });
+      addText(doc, 'PAYSLIP', margin + contentWidth / 2, margin + 7, { fontSize: 12, fontStyle: 'bold', textColor: [255, 255, 255], align: 'center' });
 
       // Salary Date (Top Right)
       let y = margin + 15;
-      addText(doc, 'Salary Date:', margin + contentWidth - 40, y, { fontSize: 10 });
-      addText(doc, payslipData.salaryDate, margin + contentWidth - 20, y, { fontSize: 10 });
+      addText(doc, 'Salary Date:', margin + contentWidth - 40, y, { fontSize: 9 });
+      addText(doc, payslipData.salaryDate, margin + contentWidth - 20, y, { fontSize: 9 });
 
       // Two-Column Layout
       y += 10;
@@ -603,13 +604,13 @@ export default {
         ['Birth Date', payslipData.birthDate],
         ['Hire Date', payslipData.hireDate],
         ['Position', payslipData.position],
-        ['Basic Salary', `₱${payslipData.basicSalary}`]
+        ['Basic Salary', `P${payslipData.basicSalary}`]
       ];
       leftPersonalInfo.forEach(([label, value], index) => {
         addLabelValue(doc, label, value, margin, y + index * lineHeight);
       });
 
-      // Right Column (Civil Status, Dependents, IDs)
+      // Additional Info (Right Column)
       let yRight = y;
       addText(doc, 'Additional Info', margin + columnWidth + 10, yRight, { fontSize: 11, fontStyle: 'bold' });
       yRight += lineHeight;
@@ -631,25 +632,25 @@ export default {
       // Expected Paydays (Two Columns)
       addText(doc, 'Expected Paydays', margin, y, { fontSize: 11, fontStyle: 'bold' });
       addText(doc, 'Mid-Month:', margin, y + lineHeight);
-      addText(doc, payslipData.expectedPaydays.midMonthPayday, margin + 25, y + lineHeight, { maxWidth: columnWidth - 25 });
+      addText(doc, payslipData.expectedPaydays.midMonthPayday, margin + 35, y + lineHeight, { maxWidth: columnWidth - 35 });
       addText(doc, 'End-of-Month:', margin + columnWidth + 10, y + lineHeight);
-      addText(doc, payslipData.expectedPaydays.endMonthPayday, margin + columnWidth + 35, y + lineHeight, { maxWidth: columnWidth - 25 });
+      addText(doc, payslipData.expectedPaydays.endMonthPayday, margin + columnWidth + 45, y + lineHeight, { maxWidth: columnWidth - 35 });
       y += 2 * lineHeight + 10;
 
       // Deductions (Two Columns)
       addText(doc, 'Deductions', margin, y, { fontSize: 11, fontStyle: 'bold' });
       y += lineHeight;
       const leftDeductions = [
-        ['SSS', `₱${payslipData.sssDeduction}`],
-        ['Philhealth', `₱${payslipData.philhealthDeduction}`],
-        ['HDMF', `₱${payslipData.hdmfDeduction}`]
+        ['SSS', `P${payslipData.sssDeduction}`],
+        ['Philhealth', `P${payslipData.philhealthDeduction}`],
+        ['HDMF', `P${payslipData.hdmfDeduction}`]
       ];
       leftDeductions.forEach(([label, value], index) => {
         addLabelValue(doc, label, value, margin, y + index * lineHeight);
       });
 
       const rightDeductions = [
-        ['Withholding Tax', `₱${payslipData.withholdingTax}`]
+        ['Withholding Tax', `P${payslipData.withholdingTax}`]
       ];
       rightDeductions.forEach(([label, value], index) => {
         addLabelValue(doc, label, value, margin + columnWidth + 10, y + index * lineHeight);
@@ -659,39 +660,11 @@ export default {
       // Summary (Two Columns)
       addText(doc, 'Summary', margin, y, { fontSize: 11, fontStyle: 'bold' });
       y += lineHeight;
-      addText(doc, 'Total Deductions:', margin, y);
-      addText(doc, `(₱${payslipData.totalDeductions})`, margin + 35, y);
-      addText(doc, 'Net Salary:', margin + columnWidth + 10, y);
-      addText(doc, `₱${payslipData.netSalary}`, margin + columnWidth + 35, y);
+      addText(doc, 'Total Deductions:', margin, y, { fontSize: 9, fontStyle: 'bold' });
+      addText(doc, `(P${payslipData.totalDeductions})`, margin + 35, y, { fontSize: 9 });
+      addText(doc, 'Net Salary:', margin + columnWidth + 10, y, { fontSize: 9, fontStyle: 'bold' });
+      addText(doc, `P${payslipData.netSalary}`, margin + columnWidth + 45, y, { fontSize: 9 });
       y += lineHeight + 10;
-
-      // Miscellaneous Computations (Full Width Table)
-      if (payslipData.payheads.length > 0) {
-        addText(doc, 'Miscellaneous Computations', margin, y, { fontSize: 11, fontStyle: 'bold' });
-        y += lineHeight;
-
-        const miscTableData = payslipData.payheads.map(payhead => [
-          payhead.name || 'N/A',
-          payhead.type === 'Earnings' ? `${payhead.amount || 0} day(s)` : '',
-          `₱${this.formatNumber(payhead.amount || 0)}`
-        ]);
-
-        doc.autoTable({
-          startY: y,
-          head: [['Description', 'Details', 'Amount']],
-          body: miscTableData,
-          theme: 'grid',
-          styles: { fontSize: 10, cellPadding: 2 },
-          columnStyles: {
-            0: { cellWidth: columnWidth + 5 },
-            1: { cellWidth: columnWidth - 15 },
-            2: { cellWidth: 30, halign: 'right' }
-          },
-          headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0] },
-          margin: { left: margin, right: margin }
-        });
-        y = doc.lastAutoTable.finalY + 10;
-      }
 
       // Footer
       const footerY = pageHeight - margin - 5;
