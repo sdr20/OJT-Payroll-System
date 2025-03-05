@@ -1,9 +1,10 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center p-4">
     <div class="w-full max-w-md">
-      <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 space-y-6">
+      <!-- Login Card with Fade-In Animation -->
+      <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 space-y-6 transform transition-all duration-500 ease-out animate-fadeIn">
         <div class="text-center space-y-2">
-          <div class="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div class="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-slow">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
@@ -19,7 +20,7 @@
               v-model="username"
               type="text"
               id="username"
-              class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
               placeholder="Enter your username"
               required
             />
@@ -32,14 +33,14 @@
                 v-model="password"
                 :type="showLoginPassword ? 'text' : 'password'"
                 id="password"
-                class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 transition-all duration-300 ease-in-out hover:border-blue-300"
                 placeholder="Enter your password"
                 required
               />
               <button
                 type="button"
                 @click="toggleLoginPasswordVisibility"
-                class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center transition-transform duration-300 hover:scale-110"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -64,17 +65,17 @@
             </div>
           </div>
 
-          <div v-if="loginError" class="text-red-500 text-sm text-center">
+          <div v-if="loginError" class="text-red-500 text-sm text-center animate-pulse-fast">
             {{ loginError }}
           </div>
 
           <div class="text-right">
-            <a href="#" @click.prevent="forgotPassword" class="text-sm text-blue-500 hover:underline">Forgot Password?</a>
+            <a href="#" @click.prevent="forgotPassword" class="text-sm text-blue-500 hover:underline transition-colors duration-300 hover:text-blue-700">Forgot Password?</a>
           </div>
 
           <button
             type="submit"
-            class="w-full bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition duration-200"
+            class="w-full bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition-all duration-300 ease-in-out transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed"
             :disabled="isLoggingIn"
           >
             {{ isLoggingIn ? 'Signing in...' : 'Sign in' }}
@@ -84,15 +85,15 @@
         <div class="text-center">
           <p class="text-sm text-gray-700">
             Don't have an account?
-            <a href="#" @click.prevent="showRegisterModal = true" class="text-blue-500 hover:underline">Request an account</a>
+            <a href="#" @click.prevent="showRegisterModal = true" class="text-blue-500 hover:underline transition-colors duration-300 hover:text-blue-700">Request an account</a>
           </p>
         </div>
       </div>
     </div>
 
-    <!-- Register Modal -->
+    <!-- Register Modal with Slide-In Animation -->
     <div v-if="showRegisterModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-500 ease-out animate-slideIn">
         <h2 class="text-2xl font-bold mb-6 text-gray-900">Request Account Creation</h2>
         <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-6">
           <div class="col-span-2">
@@ -104,7 +105,7 @@
                   v-model="newRequest.empNo"
                   type="text"
                   id="empNo"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="Enter your employee number"
                   required
                 />
@@ -115,7 +116,7 @@
                   v-model="newRequest.firstName"
                   type="text"
                   id="firstName"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="Enter your first name"
                   required
                 />
@@ -126,7 +127,7 @@
                   v-model="newRequest.middleName"
                   type="text"
                   id="middleName"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="Enter your middle name"
                 />
               </div>
@@ -136,7 +137,7 @@
                   v-model="newRequest.lastName"
                   type="text"
                   id="lastName"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="Enter your last name"
                   required
                 />
@@ -147,12 +148,12 @@
                   v-model="newRequest.email"
                   type="email"
                   id="email"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="Enter your email"
                   required
                   @input="validateEmail"
                 />
-                <p v-if="emailError" class="text-red-500 text-xs mt-1">{{ emailError }}</p>
+                <p v-if="emailError" class="text-red-500 text-xs mt-1 animate-pulse-fast">{{ emailError }}</p>
               </div>
               <div class="space-y-1">
                 <label for="contactNumber" class="text-sm font-medium text-gray-700">Contact Number</label>
@@ -160,21 +161,21 @@
                   v-model="newRequest.contactNumber"
                   type="text"
                   id="contactNumber"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="09123456789"
                   required
                   pattern="\d{11}"
                   title="Please enter an 11-digit phone number (e.g., 09123456789)"
                   @input="validatePhoneNumber"
                 />
-                <p v-if="phoneError" class="text-red-500 text-xs mt-1">{{ phoneError }}</p>
+                <p v-if="phoneError" class="text-red-500 text-xs mt-1 animate-pulse-fast">{{ phoneError }}</p>
               </div>
               <div class="space-y-1">
                 <label for="position" class="text-sm font-medium text-gray-700">Position</label>
                 <select
                   v-model="newRequest.position"
                   id="position"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   required
                 >
                   <option v-for="position in positions" :key="position" :value="position">{{ position }}</option>
@@ -185,7 +186,7 @@
                 <select
                   v-model="newRequest.civilStatus"
                   id="civilStatus"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   required
                 >
                   <option value="Single">Single</option>
@@ -200,7 +201,7 @@
                   v-model="newRequest.hireDate"
                   type="date"
                   id="hireDate"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   required
                 />
               </div>
@@ -210,7 +211,7 @@
                   v-model="newRequest.sss"
                   type="text"
                   id="sss"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="1234567890"
                   pattern="\d{10}"
                   title="Please enter a 10-digit SSS ID (e.g., 1234567890)"
@@ -222,7 +223,7 @@
                   v-model="newRequest.philhealth"
                   type="text"
                   id="philhealth"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="123456789012"
                   pattern="\d{12}"
                   title="Please enter a 12-digit PhilHealth ID (e.g., 123456789012)"
@@ -234,7 +235,7 @@
                   v-model="newRequest.hdmf"
                   type="text"
                   id="hdmf"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="123456789012"
                   pattern="\d{12}"
                   title="Please enter a 12-digit Pag-IBIG ID (e.g., 123456789012)"
@@ -246,7 +247,7 @@
                   v-model="newRequest.tin"
                   type="text"
                   id="tin"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="123456789"
                   pattern="\d{9,12}"
                   title="Please enter a 9-12 digit TIN (e.g., 123456789)"
@@ -264,7 +265,7 @@
                   v-model.number="newRequest.salary"
                   type="number"
                   id="salary"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="Enter proposed salary"
                   required
                   min="0"
@@ -276,7 +277,7 @@
                   :value="newRequest.hourlyRate.toLocaleString()"
                   type="text"
                   id="hourlyRate"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
                   disabled
                 />
               </div>
@@ -285,7 +286,7 @@
                 <input
                   :value="calculateSSSContribution(newRequest.salary).toLocaleString()"
                   type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
                   disabled
                 />
               </div>
@@ -294,7 +295,7 @@
                 <input
                   :value="calculatePhilHealthContribution(newRequest.salary).toLocaleString()"
                   type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
                   disabled
                 />
               </div>
@@ -303,7 +304,7 @@
                 <input
                   :value="calculatePagIBIGContribution(newRequest.salary).toLocaleString()"
                   type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
                   disabled
                 />
               </div>
@@ -312,7 +313,7 @@
                 <input
                   :value="calculateWithholdingTax(newRequest.salary).toLocaleString()"
                   type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100"
+                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
                   disabled
                 />
               </div>
@@ -328,7 +329,7 @@
                   v-model="newRequest.username"
                   type="text"
                   id="newUsername"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   placeholder="Choose a username"
                   required
                   minlength="4"
@@ -341,7 +342,7 @@
                     v-model="newRequest.password"
                     :type="showPassword ? 'text' : 'password'"
                     id="newPassword"
-                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 transition-all duration-300 ease-in-out hover:border-blue-300"
                     placeholder="Choose a password"
                     required
                     minlength="8"
@@ -350,7 +351,7 @@
                   <button
                     type="button"
                     @click="togglePasswordVisibility"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center transition-transform duration-300 hover:scale-110"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -376,7 +377,7 @@
                 <div class="text-sm text-gray-600 mt-2">
                   Password strength: <span :class="passwordStrengthClass">{{ passwordStrength }}</span>
                 </div>
-                <p v-if="passwordError" class="text-red-500 text-xs mt-1">{{ passwordError }}</p>
+                <p v-if="passwordError" class="text-red-500 text-xs mt-1 animate-pulse-fast">{{ passwordError }}</p>
               </div>
               <div class="space-y-1">
                 <label for="confirmPassword" class="text-sm font-medium text-gray-700">Confirm Password</label>
@@ -385,7 +386,7 @@
                     v-model="confirmPassword"
                     :type="showConfirmPassword ? 'text' : 'password'"
                     id="confirmPassword"
-                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                    class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 transition-all duration-300 ease-in-out hover:border-blue-300"
                     placeholder="Confirm your password"
                     required
                     @input="validatePassword"
@@ -393,7 +394,7 @@
                   <button
                     type="button"
                     @click="toggleConfirmPasswordVisibility"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center transition-transform duration-300 hover:scale-110"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -416,7 +417,7 @@
                     </svg>
                   </button>
                 </div>
-                <div class="text-sm text-red-500 mt-1" v-if="!passwordsMatch">
+                <div class="text-sm text-red-500 mt-1 animate-pulse-fast" v-if="!passwordsMatch">
                   Passwords do not match
                 </div>
               </div>
@@ -427,14 +428,14 @@
             <button
               type="button"
               @click="showRegisterModal = false"
-              class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-200"
+              class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-all duration-300 ease-in-out transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed"
               :disabled="isSubmitting"
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-200"
+              class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-all duration-300 ease-in-out transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed"
               :disabled="isSubmitDisabled"
             >
               {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
@@ -444,7 +445,7 @@
         <div
           v-if="statusMessage"
           :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
-          class="mt-4 p-3 rounded-lg text-center"
+          class="mt-4 p-3 rounded-lg text-center animate-bounce-in"
         >
           {{ statusMessage }}
         </div>
@@ -766,5 +767,104 @@ calculatePhilHealthContribution(salary) {
 </script>
 
 <style scoped>
-/* Tailwind CSS classes are sufficient */
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bounceIn {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes pulseFast {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Animation Classes */
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.5s ease-out;
+}
+
+.animate-bounce-in {
+  animation: bounceIn 0.5s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 2s infinite ease-in-out;
+}
+
+.animate-pulse-fast {
+  animation: pulseFast 1s infinite ease-in-out;
+}
+
+/* Custom Styles for Better UX */
+input:focus, select:focus, button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); /* Blue focus ring */
+}
+
+.disabled:bg-gray-400:disabled {
+  opacity: 0.7;
+}
+
+.bg-gray-100:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 640px) {
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+  
+  .w-full.max-w-4xl {
+    max-width: 90%;
+  }
+  
+  .p-8 {
+    padding: 4;
+  }
+}
 </style>
