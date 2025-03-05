@@ -737,10 +737,18 @@ calculatePhilHealthContribution(salary) {
   const cappedSalary = Math.min(Math.max(monthlySalary, minSalary), maxSalary);
   return Math.round(cappedSalary * 0.025); // Employee’s 2.5% share
 },
-    calculatePagIBIGContribution(salary) {
-      const cappedSalary = Math.min(salary || 0, 10000);
-      return Math.round(cappedSalary * 0.02);
-    },
+  calculatePagIBIGContribution(salary) {
+  const monthlySalary = Math.max(salary || 0, 0);
+  const maxSalary = 5000; // Pag-IBIG maximum monthly compensation
+  const cappedSalary = Math.min(monthlySalary, maxSalary);
+  
+  let rate = 0.02; // Default to 2% for salaries over ₱1,500
+  if (cappedSalary <= 1500) {
+    rate = 0.01; // 1% for salaries of ₱1,500 and below
+  }
+  
+  return Math.round(cappedSalary * rate); // Employee’s contribution
+},
     calculateWithholdingTax(salary) {
       const taxableIncome = salary || 0;
       if (taxableIncome <= 20833) return 0;
