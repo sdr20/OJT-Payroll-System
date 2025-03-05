@@ -551,6 +551,11 @@ export default {
         unit: 'mm',
         format: [216, 279] // 8.5" x 11"
       });
+
+      // Load a font that supports Unicode (e.g., DejaVu Sans) - Requires installing 'jspdf-fonts-dejavu'
+      doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal'); // You need to add this font file to your project
+      doc.setFont('DejaVuSans');
+
       const margin = 10;
       const pageWidth = doc.internal.pageSize.getWidth();
       const contentWidth = pageWidth - 2 * margin;
@@ -562,7 +567,7 @@ export default {
       function addText(doc, text, x, y, options = {}) {
         text = text || 'N/A';
         doc.setFontSize(options.fontSize || 10);
-        doc.setFont(undefined, options.fontStyle || 'normal');
+        doc.setFont('DejaVuSans', options.fontStyle || 'normal');
         doc.setTextColor(...(options.textColor || [0, 0, 0]));
         doc.text(text, x, y, { align: options.align || 'left', maxWidth: options.maxWidth });
       }
