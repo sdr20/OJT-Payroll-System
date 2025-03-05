@@ -701,13 +701,42 @@ export default {
       setTimeout(() => { this.statusMessage = ''; }, 5000);
     },
     calculateSSSContribution(salary) {
-      const salaryCredit = Math.min(Math.max(salary || 0, 5000), 35000);
-      return Math.round(salaryCredit * 0.045);
-    },
-    calculatePhilHealthContribution(salary) {
-      const cappedSalary = Math.min(salary || 0, 100000);
-      return Math.round(cappedSalary * 0.025);
-    },
+  const monthlySalary = Math.max(salary || 0, 0);
+  if (monthlySalary < 5000) {
+    return 250; // Fixed contribution for salaries below 5,000
+  }
+  
+  // Calculate salary credit (capped between 5,000 and 35,000)
+  const salaryCredit = Math.min(Math.max(monthlySalary, 5000), 35000);
+  
+  // Calculate regular SSS contribution (5% of salary credit, matching the table)
+  const regularSSContribution = Math.round(salaryCredit * 0.05);
+  
+  // Calculate MPF contribution (2.5% of amount above 20,000, up to 35,000)
+  let mpfContribution = 0;
+  if (salaryCredit > 20000) {
+    const mpfBase = Math.min(salaryCredit, 35000) - 20000;
+    mpfContribution = Math.round(mpfBase * 0.025);
+  }
+  
+  // Calculate total employee contribution
+  let totalEmployeeContribution = regularSSContribution + mpfContribution;
+  
+  // Cap total contribution at 1,750 for salary credits above 34,750
+  if (salaryCredit > 34750) {
+    totalEmployeeContribution = 1750;
+  }
+  
+  return totalEmployeeContribution;
+},
+
+calculatePhilHealthContribution(salary) {
+  const monthlySalary = Math.max(salary || 0, 0);
+  const minSalary = 10000; // PhilHealth minimum salary base for employed individuals
+  const maxSalary = 100000; // PhilHealth maximum salary base for employed individuals
+  const cappedSalary = Math.min(Math.max(monthlySalary, minSalary), maxSalary);
+  return Math.round(cappedSalary * 0.025); // Employee’s 2.5% share
+},
     calculatePagIBIGContribution(salary) {
       const cappedSalary = Math.min(salary || 0, 10000);
       return Math.round(cappedSalary * 0.02);
