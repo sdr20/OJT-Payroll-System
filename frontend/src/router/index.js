@@ -13,7 +13,7 @@ import SalarySlips from '../views/admind/SalarySlips.vue';
 import ManagePayHeads from '../views/admind/ManagePayHeads.vue';
 import MonthSelection from '../views/admind/MonthSelection.vue';
 import PayrollWithDeductions from '../views/admind/PayrollWithDeductions.vue';
-import AdminLeaveManagement from '../views/admind/EmployeeLeaveManagement.vue'; // Corrected import
+import AdminLeaveManagement from '../views/admind/EmployeeLeaveManagement.vue';
 import ListHolidays from '../views/admind/ListHolidays.vue';
 import EmployeeReports from '../views/employee/EmployeeReports.vue';
 import AdminLayout from '../layouts/AdminLayout.vue';
@@ -22,6 +22,7 @@ import EmployeeSalarySlips from '../views/employee/EmployeeSalarySlips.vue';
 import EmployeeHolidays from '../views/employee/EmployeeHolidays.vue';
 import EmployeeReportsView from '../views/employee/EmployeeReports.vue';
 import EmployeeLeaveRequest from '../views/employee/EmployeeLeaveRequest.vue';
+import Records from '../views/admind/EmployeeRecords.vue';
 
 const routes = [
   { path: '/', component: LoginSelection },
@@ -41,9 +42,10 @@ const routes = [
       { path: 'manage-pay-heads', component: ManagePayHeads },
       { path: 'month-selection', component: MonthSelection },
       { path: 'payroll-with-deductions', component: PayrollWithDeductions },
-      { path: 'employee-leave-management', component: AdminLeaveManagement }, // Corrected component
+      { path: 'employee-leave-management', component: AdminLeaveManagement },
       { path: 'list-holidays', component: ListHolidays },
       { path: 'employee-reports', component: EmployeeReports },
+      { path: 'records', component: Records },
     ],
   },
   {
@@ -85,4 +87,4 @@ router.beforeEach((to, from, next) => {
   }
 });
 
-export default router;
+export default router; // Single default export

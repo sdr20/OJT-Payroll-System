@@ -24,8 +24,7 @@
 
           <button @click="logout" 
                   class="flex items-center px-2 py-1 sm:px-4 sm:py-2 rounded-lg bg-white/10 hover:bg-white/20 
-                         transition-all duration-200 focus:outline-none focus:ring-2 
-                         focus:ring-white/50 active:scale-95 whitespace-nowrap">
+                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50 active:scale-95 whitespace-nowrap">
             <span class="material-icons text-sm">logout</span>
             <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium hidden sm:inline">Logout</span>
           </button>
@@ -35,8 +34,8 @@
 
     <div class="flex flex-1 h-[calc(100vh-4rem)]">
       <!-- Enhanced Sidebar -->
-      <aside class="w-20 md:w-64 bg-white shadow-lg flex flex-col">
-        <nav class="flex-1 py-4 px-2 md:px-4">
+      <aside class="w-20 md:w-64 bg-white shadow-lg flex flex-col transition-all duration-300">
+        <nav class="flex-1 py-4 px-2 md:px-4 overflow-y-auto">
           <div class="space-y-1">
             <router-link v-for="link in navigationLinks" 
                          :key="link.path" 
@@ -87,7 +86,8 @@ export default {
         { path: '/admin/salary-slips', name: 'Salary Slips' },
         { path: '/admin/manage-pay-heads', name: 'Manage Pay Heads' },
         { path: '/admin/employee-leave-management', name: 'Leave Management' },
-      ]
+        { path: '/admin/records', name: 'Records' },
+      ],
     };
   },
   computed: {
@@ -114,9 +114,10 @@ export default {
         'Manage Employees': 'people',
         'Salary Slips': 'receipt',
         'Manage Pay Heads': 'attach_money',
-        'Leave Management': 'event_available'
+        'Leave Management': 'event_available',
+        'Records': 'archive',
       }[name] || 'widgets';
-    }
+    },
   },
   mounted() {
     this.updateDateTime();
@@ -124,44 +125,66 @@ export default {
   },
   beforeUnmount() {
     clearInterval(this.updateDateTime);
-  }
+  },
 };
 </script>
 
 <style scoped>
+/* Remove @apply directives and use direct Tailwind classes */
 .router-link-active {
-  @apply bg-blue-50 text-blue-700;
+  background-color: #bfdbfe; /* bg-blue-50 */
+  color: #1d4ed8; /* text-blue-700 */
 }
 
 .router-link-active .material-icons {
-  @apply text-blue-600;
+  color: #2563eb; /* text-blue-600 */
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  @apply transition-opacity duration-200;
+  transition: opacity 0.2s ease-in-out; /* transition-opacity duration-200 */
 }
 
 .fade-enter-from,
 .fade-leave-to {
-  @apply opacity-0;
+  opacity: 0;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  @apply w-2;
+  width: 0.5rem; /* w-2 */
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background-color: transparent; /* bg-transparent */
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full hover:bg-gray-400 transition-colors;
+  background-color: #d1d5db; /* bg-gray-300 */
+  border-radius: 9999px; /* rounded-full */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af; /* bg-gray-400 */
+  transition: background-color 0.2s ease-in-out; /* transition-colors */
 }
 
 /* Ensure header content doesn’t overflow */
 header {
   min-height: 4rem; /* Minimum height for small screens */
+}
+
+/* Responsive Sidebar Adjustments */
+@media (max-width: 768px) {
+  aside {
+    width: 80px; /* Fixed width on mobile */
+  }
+  .md\\:w-64 {
+    width: 80px; /* Override Tailwind's md:w-64 on mobile */
+  }
+  nav {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 </style>
