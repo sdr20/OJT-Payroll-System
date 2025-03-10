@@ -1,21 +1,19 @@
 <template>
-  <div class="min-h-screen p-2 bg-gray-100">
-    <div class="max-w-7xl mx-auto space-y-4">
-      <!-- Header Section -->
+  <div class="min-h-screen p-1">
+    <div class="max-w-8xl mx-auto space-y-4">
       <header class="bg-white rounded-lg shadow-md p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
         <h1 class="text-lg font-bold text-gray-800 flex items-center gap-1">
           <span class="material-icons text-indigo-600 text-xl">schedule</span>
           Employee Attendance
         </h1>
         <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          <!-- Date Range Picker -->
           <div class="flex gap-2 items-center">
             <div class="relative">
               <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">event</span>
               <input
                 type="date"
                 v-model="dateRange.start"
-                @change="fetchAttendance"
+                @change="fetchEmployeesAndAttendance"
                 class="pl-8 pr-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 shadow-sm hover:shadow-md transition-all w-32"
               />
             </div>
@@ -25,12 +23,11 @@
               <input
                 type="date"
                 v-model="dateRange.end"
-                @change="fetchAttendance"
+                @change="fetchEmployeesAndAttendance"
                 class="pl-8 pr-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 shadow-sm hover:shadow-md transition-all w-32"
               />
             </div>
           </div>
-          <!-- Search Bar -->
           <div class="relative w-full sm:w-48">
             <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">search</span>
             <input
@@ -43,7 +40,6 @@
               <span class="material-icons text-sm">close</span>
             </button>
           </div>
-          <!-- Export Button -->
           <button @click="generateReport" 
             class="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1 text-sm">
             <span class="material-icons text-sm">download</span>
@@ -52,7 +48,6 @@
         </div>
       </header>
 
-      <!-- Attendance Table -->
       <div class="bg-white rounded-lg shadow-md overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-indigo-50">
@@ -76,15 +71,15 @@
                 <div class="h-3 bg-gray-200 rounded w-full"></div>
               </td>
             </tr>
-            <tr v-for="employee in paginatedAttendance" :key="employee.id" 
+            <tr v-for="employee in paginatedEmployees" :key="employee.id" 
               class="hover:bg-indigo-50 transition-colors cursor-pointer"
               @click="showDetails(employee)">
               <td class="px-4 py-3 text-xs text-gray-700">{{ employee.id }}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
-                  <img :src="`https://ui-avatars.com/api/?name=${employee.name}&background=4f46e5&color=fff`" 
+                  <img :src="`https://ui-avatars.com/api/?name=${employee.firstName}+${employee.lastName}&background=4f46e5&color=fff`" 
                     class="h-6 w-6 rounded-full" />
-                  <span class="text-xs text-gray-800">{{ employee.name }}</span>
+                  <span class="text-xs text-gray-800">{{ employee.firstName }} {{ employee.lastName }}</span>
                 </div>
               </td>
               <td class="px-4 py-3 text-xs text-gray-700">{{ employee.position }}</td>
@@ -96,18 +91,17 @@
               </td>
               <td class="px-4 py-3 text-xs text-gray-700">{{ formatDate(employee.date) }}</td>
             </tr>
-            <tr v-if="!isLoading && paginatedAttendance.length === 0">
+            <tr v-if="!isLoading && paginatedEmployees.length === 0">
               <td colspan="6" class="px-4 py-8 text-center text-gray-500 text-xs">
                 No records found
               </td>
             </tr>
           </tbody>
         </table>
-        <!-- Pagination -->
-        <div v-if="filteredAttendance.length > itemsPerPage" 
+        <div v-if="filteredEmployees.length > itemsPerPage" 
           class="p-3 flex justify-between items-center bg-gray-50">
           <span class="text-xs text-gray-600">
-            Showing {{ paginationInfo.start }} to {{ paginationInfo.end }} of {{ filteredAttendance.length }}
+            Showing {{ paginationInfo.start }} to {{ paginationInfo.end }} of {{ filteredEmployees.length }}
           </span>
           <div class="flex gap-2">
             <button @click="prevPage" :disabled="currentPage === 1" 
@@ -122,22 +116,21 @@
         </div>
       </div>
 
-      <!-- Details Modal -->
       <transition name="modal">
-        <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div v-if="showDetailsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div class="bg-white rounded-lg shadow-2xl w-full max-w-sm p-4">
             <div class="flex justify-between items-center mb-3">
               <h2 class="text-base font-semibold text-gray-800">Attendance Details</h2>
-              <button @click="showModal = false" class="text-gray-600 hover:text-gray-800">
+              <button @click="showDetailsModal = false" class="text-gray-600 hover:text-gray-800">
                 <span class="material-icons text-sm">close</span>
               </button>
             </div>
             <div class="space-y-3">
               <div class="flex items-center gap-2">
-                <img :src="`https://ui-avatars.com/api/?name=${selectedEmployee?.name}&background=4f46e5&color=fff`" 
+                <img :src="`https://ui-avatars.com/api/?name=${selectedEmployee?.firstName}+${selectedEmployee?.lastName}&background=4f46e5&color=fff`" 
                   class="h-8 w-8 rounded-full" />
                 <div>
-                  <p class="text-sm font-medium text-gray-800">{{ selectedEmployee?.name }}</p>
+                  <p class="text-sm font-medium text-gray-800">{{ selectedEmployee?.firstName }} {{ selectedEmployee?.lastName }}</p>
                   <p class="text-xs text-gray-600">{{ selectedEmployee?.position }}</p>
                 </div>
               </div>
@@ -192,143 +185,183 @@
           </div>
         </div>
       </transition>
+
+      <div
+        v-if="statusMessage"
+        :class="statusMessage.includes('successfully') ? 'bg-green-500' : 'bg-red-500'"
+        class="fixed bottom-4 right-4 p-3 text-white rounded-lg shadow-lg animate-fade-in text-sm"
+      >
+        {{ statusMessage }}
+      </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script>
 import axios from 'axios';
+import moment from 'moment';
+import * as XLSX from 'xlsx';
 
-interface EmployeeAttendance {
-  id: string;
-  name: string;
-  position: string;
-  timeInAM: string | null;
-  timeInPM: string | null;
-  date: string;
-  status: string;
-}
-
-export default defineComponent({
+export default {
+  name: 'EmployeeAttendance',
   data() {
     return {
-      dateRange: {
+      employees: [], // From EmployeeManagement.vue
+      selectedEmployee: null, // From EmployeeManagement.vue
+      showDetailsModal: false, // From EmployeeManagement.vue
+      isLoading: false, // From EmployeeManagement.vue
+      searchQuery: '', // From EmployeeManagement.vue
+      currentPage: 1, // From EmployeeManagement.vue
+      itemsPerPage: 10, // From EmployeeManagement.vue
+      statusMessage: '', // From EmployeeManagement.vue
+      dateRange: { // Attendance-specific
         start: new Date().toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
+        end: new Date().toISOString().split('T')[0],
       },
-      attendanceRecords: [] as EmployeeAttendance[],
-      allEmployees: [] as any[],
-      searchQuery: '',
-      sortKey: 'id',
-      sortDirection: 'asc' as 'asc' | 'desc',
-      currentPage: 1,
-      itemsPerPage: 10,
-      showModal: false,
-      selectedEmployee: null as EmployeeAttendance | null,
-      isLoading: false,
-      headers: [
+      sortKey: 'id', // Attendance-specific
+      sortDirection: 'asc', // Attendance-specific
+      headers: [ // Attendance-specific
         { key: 'id', label: 'ID', icon: 'badge' },
-        { key: 'name', label: 'Name', icon: 'person' },
+        { key: 'firstName', label: 'Name', icon: 'person' },
         { key: 'position', label: 'Position', icon: 'work' },
         { key: 'timeInAM', label: 'Time In', icon: 'wb_sunny' },
         { key: 'timeInPM', label: 'Time Out', icon: 'nights_stay' },
-        { key: 'date', label: 'Date', icon: 'calendar_today' }
+        { key: 'date', label: 'Date', icon: 'calendar_today' },
       ],
-      isClient: false
     };
   },
   computed: {
-    filteredAttendance(): EmployeeAttendance[] {
-      if (!this.allEmployees || !Array.isArray(this.allEmployees)) return [];
-      const employeeAttendanceMap = this.attendanceRecords.reduce((map, record) => {
-        map[record.id] = record;
-        return map;
-      }, {} as { [key: string]: EmployeeAttendance });
-      return this.allEmployees.map(employee => {
-        const attendanceRecord = employeeAttendanceMap[employee.id] || {
-          ...employee,
-          date: this.dateRange.start,
-          timeInAM: null,
-          timeInPM: null,
-          status: 'Absent'
-        };
-        return attendanceRecord;
-      }).filter(record => {
-        if (!this.isClient) return true;
-        const moment = require('moment');
-        const recordDate = moment(record.date);
-        return recordDate.isBetween(this.dateRange.start, this.dateRange.end, undefined, '[]');
-      }).filter(record => 
-        !this.searchQuery || 
-        record.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        record.id.toLowerCase().includes(this.searchQuery.toLowerCase())
-      ).sort((a, b) => {
-        const valueA = a[this.sortKey] || '';
-        const valueB = b[this.sortKey] || '';
-        return this.sortDirection === 'asc' 
-          ? valueA < valueB ? -1 : 1 
-          : valueA > valueB ? -1 : 1;
-      });
+    filteredEmployees() { // From EmployeeManagement.vue
+      if (!this.employees || !Array.isArray(this.employees)) return [];
+      return this.employees
+        .filter(record => {
+          const recordDate = moment(record.date);
+          return recordDate.isBetween(this.dateRange.start, this.dateRange.end, undefined, '[]');
+        })
+        .filter(record =>
+          !this.searchQuery ||
+          `${record.firstName} ${record.lastName}`.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+          record.id.toString().toLowerCase().includes(this.searchQuery.toLowerCase())
+        )
+        .sort((a, b) => {
+          const valueA = a[this.sortKey] || '';
+          const valueB = b[this.sortKey] || '';
+          return this.sortDirection === 'asc'
+            ? valueA < valueB ? -1 : 1
+            : valueA > valueB ? -1 : 1;
+        });
     },
-    paginatedAttendance(): EmployeeAttendance[] {
+    paginatedEmployees() { // From EmployeeManagement.vue
       const start = (this.currentPage - 1) * this.itemsPerPage;
-      return this.filteredAttendance.slice(start, start + this.itemsPerPage);
+      return this.filteredEmployees.slice(start, start + this.itemsPerPage);
     },
-    totalPages() {
-      return Math.ceil(this.filteredAttendance.length / this.itemsPerPage) || 1;
+    totalPages() { // From EmployeeManagement.vue
+      return Math.ceil(this.filteredEmployees.length / this.itemsPerPage) || 1;
     },
     paginationInfo() {
       const start = (this.currentPage - 1) * this.itemsPerPage + 1;
-      const end = Math.min(start + this.itemsPerPage - 1, this.filteredAttendance.length);
+      const end = Math.min(start + this.itemsPerPage - 1, this.filteredEmployees.length);
       return { start, end };
-    }
+    },
   },
   mounted() {
-    this.isClient = true;
-    this.fetchAttendance();
-    this.fetchAllEmployees();
+    this.fetchEmployeesAndAttendance();
   },
   methods: {
-    async fetchAttendance() {
+    async fetchEmployeesAndAttendance() {
       this.isLoading = true;
+      this.statusMessage = 'Loading attendance data...';
       try {
-        const response = await axios.get('http://localhost:7777/api/attendance', {
+        // Fetch employees
+        const empResponse = await axios.get('http://localhost:7777/api/employees', {
+          headers: { 'user-role': 'admin' },
+        }).catch(error => {
+          throw new Error(`Employees API failed: ${error.message}`);
+        });
+
+        const baseEmployees = (empResponse.data || []).map(emp => ({
+          id: emp.id,
+          empNo: emp.empNo || 'N/A',
+          firstName: emp.firstName || 'Unknown',
+          lastName: emp.lastName || '',
+          middleName: emp.middleName || '',
+          position: emp.position || 'N/A',
+          salary: emp.salary || 0,
+          hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)) || 0,
+          email: emp.email || 'N/A',
+          contactInfo: emp.contactInfo || 'N/A',
+          sss: emp.sss || 'N/A',
+          philhealth: emp.philhealth || 'N/A',
+          pagibig: emp.pagibig || 'N/A',
+          tin: emp.tin || 'N/A',
+          earnings: emp.earnings || { travelExpenses: 0, otherEarnings: 0 },
+          payheads: emp.payheads || [],
+          username: emp.username || 'N/A',
+          password: emp.password || 'N/A',
+          role: emp.role || 'Employee',
+          hireDate: emp.hireDate || new Date().toISOString(),
+        }));
+
+        // Fetch attendance
+        const attResponse = await axios.get('http://localhost:7777/api/attendance', {
           params: {
             startDate: this.dateRange.start,
-            endDate: this.dateRange.end
+            endDate: this.dateRange.end,
           },
-          headers: { 'user-role': 'admin' }
+          headers: { 'user-role': 'admin' },
+        }).catch(error => {
+          throw new Error(`Attendance API failed: ${error.message}`);
         });
-        this.attendanceRecords = (response.data || []).map((record: any) => ({
-          ...record,
-          date: this.isClient ? require('moment')(record.date).format('YYYY-MM-DD') : record.date,
-          status: this.calculateStatus(record.timeInAM, record.timeInPM)
+
+        const attendanceRecords = (attResponse.data || []).map(record => ({
+          id: record.id,
+          date: moment(record.date).format('YYYY-MM-DD'),
+          timeInAM: record.timeInAM || null,
+          timeInPM: record.timeInPM || null,
+          status: this.calculateStatus(record.timeInAM, record.timeInPM),
         }));
+
+        // Merge data
+        const attendanceMap = attendanceRecords.reduce((map, record) => {
+          map[record.id] = map[record.id] || [];
+          map[record.id].push(record);
+          return map;
+        }, {});
+
+        this.employees = [];
+        baseEmployees.forEach(employee => {
+          const employeeAttendance = attendanceMap[employee.id] || [];
+          if (employeeAttendance.length === 0) {
+            this.employees.push({
+              ...employee,
+              date: this.dateRange.start,
+              timeInAM: null,
+              timeInPM: null,
+              status: 'Absent',
+            });
+          } else {
+            employeeAttendance.forEach(att => {
+              this.employees.push({
+                ...employee,
+                date: att.date,
+                timeInAM: att.timeInAM,
+                timeInPM: att.timeInPM,
+                status: att.status,
+              });
+            });
+          }
+        });
+
+        this.showSuccessMessage('Attendance data loaded successfully');
       } catch (error) {
-        console.error('Error fetching attendance:', error);
-        this.showErrorMessage('Failed to load attendance');
+        console.error('Error fetching data:', error);
+        this.showErrorMessage(`Failed to load data: ${error.message}. Check if the server is running on localhost:7777.`);
+        this.employees = [];
       } finally {
         this.isLoading = false;
       }
     },
-    async fetchAllEmployees() {
-      try {
-        const response = await axios.get('http://localhost:7777/api/employees', {
-          headers: { 'user-role': 'admin' }
-        });
-        this.allEmployees = (response.data || []).map((emp: any) => ({
-          ...emp,
-          name: `${emp.firstName} ${emp.lastName}`
-        }));
-      } catch (error) {
-        console.error('Error fetching employees:', error);
-        this.showErrorMessage('Failed to load employees');
-      }
-    },
-    calculateStatus(timeInAM: string | null, timeInPM: string | null): string {
-      if (!this.isClient) return 'Absent';
-      const moment = require('moment');
+    calculateStatus(timeInAM, timeInPM) {
       if (!timeInAM && !timeInPM) return 'Absent';
       if (timeInAM) {
         const timeMomentAM = moment(timeInAM, 'HH:mm');
@@ -342,7 +375,7 @@ export default defineComponent({
       }
       return 'Present';
     },
-    sortTable(key: string) {
+    sortTable(key) {
       if (this.sortKey === key) {
         this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
       } else {
@@ -350,11 +383,11 @@ export default defineComponent({
         this.sortDirection = 'asc';
       }
     },
-    getStatusClass(status: string) {
+    getStatusClass(status) {
       return {
-        'Present': 'text-green-600 bg-green-100 px-1 py-0.5 rounded-full text-xs',
-        'Absent': 'text-red-600 bg-red-100 px-1 py-0.5 rounded-full text-xs',
-        'Late': 'text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded-full text-xs'
+        Present: 'text-green-600 bg-green-100 px-1 py-0.5 rounded-full text-xs',
+        Absent: 'text-red-600 bg-red-100 px-1 py-0.5 rounded-full text-xs',
+        Late: 'text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded-full text-xs',
       }[status] || '';
     },
     prevPage() {
@@ -363,16 +396,17 @@ export default defineComponent({
     nextPage() {
       if (this.currentPage < this.totalPages) this.currentPage++;
     },
-    showDetails(employee: EmployeeAttendance) {
+    showDetails(employee) {
       this.selectedEmployee = { ...employee };
-      this.showModal = true;
+      this.showDetailsModal = true;
     },
-    async markTime(period: 'am' | 'pm') {
+    async markTime(period) {
       try {
         const timeField = period === 'am' ? 'timeInAM' : 'timeInPM';
-        const timeValue = this.isClient ? require('moment')().format('HH:mm') : null;
-        if (timeValue) {
+        const timeValue = moment().format('HH:mm');
+        if (this.selectedEmployee && timeValue) {
           this.selectedEmployee[timeField] = timeValue;
+          this.selectedEmployee.status = this.calculateStatus(this.selectedEmployee.timeInAM, this.selectedEmployee.timeInPM);
           await this.updateAttendance(timeField);
         }
       } catch (error) {
@@ -380,23 +414,26 @@ export default defineComponent({
         this.showErrorMessage('Failed to mark time');
       }
     },
-    async updateAttendance(field: keyof EmployeeAttendance) {
+    async updateAttendance(field) {
+      if (!this.selectedEmployee) return;
       try {
-        const payload: Partial<EmployeeAttendance> = {
+        const payload = {
           date: this.selectedEmployee.date,
-          [field]: this.selectedEmployee[field]
+          [field]: this.selectedEmployee[field],
         };
-        if (field === 'status') {
-          payload.status = this.selectedEmployee.status;
-        }
-        const response = await axios.put(`http://localhost:7777/api/attendance/${this.selectedEmployee.id}`, payload, {
-          headers: { 'user-role': 'admin' }
-        });
+        if (field === 'status') payload.status = this.selectedEmployee.status;
+
+        const response = await axios.put(
+          `http://localhost:7777/api/attendance/${this.selectedEmployee.id}`,
+          payload,
+          { headers: { 'user-role': 'admin' } }
+        );
+
         if (response.status === 200) {
-          this.attendanceRecords = this.attendanceRecords.map(record =>
-            record.id === this.selectedEmployee.id && record.date === this.selectedEmployee.date
-              ? { ...record, ...payload }
-              : record
+          this.employees = this.employees.map(emp =>
+            emp.id === this.selectedEmployee.id && emp.date === this.selectedEmployee.date
+              ? { ...emp, ...payload, status: this.calculateStatus(emp.timeInAM, emp.timeInPM) }
+              : emp
           );
           this.showSuccessMessage('Attendance updated successfully');
         }
@@ -405,50 +442,30 @@ export default defineComponent({
         this.showErrorMessage('Failed to update attendance');
       }
     },
-    formatTime(time: string | null) {
-      if (!this.isClient) return time || '--';
-      const moment = require('moment');
+    formatTime(time) {
       return time ? moment(time, 'HH:mm').format('h:mm A') : '--';
     },
-    formatDate(date: string) {
-      if (!this.isClient) return date;
-      const moment = require('moment');
+    formatDate(date) {
       return moment(date).format('MM/DD/YYYY');
     },
     async generateReport() {
-      if (!this.isClient) return;
       try {
-        const XLSX = await import('xlsx');
-        const employeeAttendanceMap = this.attendanceRecords.reduce((map, record) => {
-          map[record.id] = record;
-          return map;
-        }, {} as { [key: string]: EmployeeAttendance });
-
         const reportData = [
-          ['Date', 'Employee ID', 'Name', 'Position', 'Time In', 'Time Out', 'Status'],
-          ...this.allEmployees.map(employee => {
-            const attendanceRecord = employeeAttendanceMap[employee.id] || {
-              ...employee,
-              date: this.dateRange.start,
-              timeInAM: null,
-              timeInPM: null,
-              status: 'Absent'
-            };
-            return [
-              this.formatDate(attendanceRecord.date),
-              attendanceRecord.id,
-              attendanceRecord.name,
-              attendanceRecord.position,
-              attendanceRecord.timeInAM ? this.formatTime(attendanceRecord.timeInAM) : '--',
-              attendanceRecord.timeInPM ? this.formatTime(attendanceRecord.timeInPM) : '--',
-              attendanceRecord.status || 'Absent'
-            ];
-          })
+          ['Date', 'Employee ID', 'First Name', 'Last Name', 'Position', 'Time In', 'Time Out', 'Status'],
+          ...this.filteredEmployees.map(employee => [
+            this.formatDate(employee.date),
+            employee.id,
+            employee.firstName,
+            employee.lastName,
+            employee.position,
+            employee.timeInAM ? this.formatTime(employee.timeInAM) : '--',
+            employee.timeInPM ? this.formatTime(employee.timeInPM) : '--',
+            employee.status || 'Absent',
+          ]),
         ];
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(reportData);
-        
         const range = XLSX.utils.decode_range(ws['!ref']);
         for (let R = range.s.r; R <= range.e.r; R++) {
           for (let C = range.s.c; C <= range.e.c; C++) {
@@ -456,40 +473,34 @@ export default defineComponent({
             if (!ws[cellAddress]) continue;
             if (R === 0) {
               ws[cellAddress].s = {
-                font: { bold: true, color: { rgb: "FFFFFF" } },
-                fill: { fgColor: { rgb: "4F46E5" } }
+                font: { bold: true, color: { rgb: 'FFFFFF' } },
+                fill: { fgColor: { rgb: '4F46E5' } },
               };
             }
           }
         }
-        
+
         XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
         XLSX.writeFile(wb, `Attendance_Report_${this.dateRange.start}_to_${this.dateRange.end}.xlsx`);
+        this.showSuccessMessage('Report generated successfully');
       } catch (error) {
         console.error('Error generating report:', error);
         this.showErrorMessage('Failed to generate report');
       }
     },
-    showSuccessMessage(message: string) {
-      const toast = document.createElement('div');
-      toast.className = 'fixed bottom-4 right-4 p-3 bg-green-500 text-white rounded-lg shadow-lg text-sm';
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
+    showSuccessMessage(message) {
+      this.statusMessage = message;
+      setTimeout(() => (this.statusMessage = ''), 3000);
     },
-    showErrorMessage(message: string) {
-      const toast = document.createElement('div');
-      toast.className = 'fixed bottom-4 right-4 p-3 bg-red-500 text-white rounded-lg shadow-lg text-sm';
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    }
-  }
-});
+    showErrorMessage(message) {
+      this.statusMessage = message;
+      setTimeout(() => (this.statusMessage = ''), 3000);
+    },
+  },
+};
 </script>
 
 <style scoped>
-/* Modal transition animations */
 .modal-enter-active,
 .modal-leave-active {
   transition: all 0.3s ease;
@@ -501,13 +512,11 @@ export default defineComponent({
   transform: translateY(-20px);
 }
 
-/* Hover effects for buttons */
 button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -527,149 +536,50 @@ button:hover:not(:disabled) {
   background: #555;
 }
 
-/* Responsive adjustments */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (max-width: 640px) {
-  .min-h-screen {
-    padding: 1rem;
-  }
-
-  header {
-    padding: 0.75rem;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  h1 {
-    font-size: 1rem;
-  }
-
-  .material-icons {
-    font-size: 1rem !important;
-  }
-
-  .flex-col.sm\:flex-row {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  input[type="date"] {
-    width: 100%;
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem 0.25rem 1.75rem;
-  }
-
-  .relative.w-full.sm\:w-48 {
-    width: 100%;
-  }
-
-  input[type="text"] {
-    font-size: 0.75rem;
-    padding: 0.25rem 1.75rem 0.25rem 1.75rem;
-  }
-
-  input[type="time"] {
-    font-size: 0.75rem;
-    padding: 0.25rem;
-  }
-
-  select {
-    font-size: 0.75rem;
-    padding: 0.25rem;
-  }
-
-  button {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-  }
-
-  table {
-    font-size: 0.75rem;
-  }
-
-  th, td {
-    padding: 0.5rem;
-  }
-
-  img.h-6.w-6 {
-    height: 1rem;
-    width: 1rem;
-  }
-
-  .bg-white.rounded-lg {
-    overflow-x: auto;
-  }
-
-  .p-3 {
-    padding: 0.5rem;
-  }
-
-  .text-xs {
-    font-size: 0.65rem;
-  }
-
-  .max-w-sm.p-4 {
-    padding: 0.75rem;
-    max-width: 90%;
-  }
-
-  .text-base {
-    font-size: 0.875rem;
-  }
-
-  .h-8.w-8 {
-    height: 1.5rem;
-    width: 1.5rem;
-  }
-
-  .grid-cols-2.gap-3 {
-    gap: 0.5rem;
-  }
+  .min-h-screen { padding: 1rem; }
+  header { padding: 0.75rem; flex-direction: column; gap: 1rem; }
+  h1 { font-size: 1rem; }
+  .material-icons { font-size: 1rem !important; }
+  .flex-col.sm\:flex-row { flex-direction: column; gap: 0.5rem; }
+  input[type="date"] { width: 100%; font-size: 0.75rem; padding: 0.25rem 0.5rem 0.25rem 1.75rem; }
+  .relative.w-full.sm\:w-48 { width: 100%; }
+  input[type="text"] { font-size: 0.75rem; padding: 0.25rem 1.75rem; }
+  input[type="time"] { font-size: 0.75rem; padding: 0.25rem; }
+  select { font-size: 0.75rem; padding: 0.25rem; }
+  button { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+  table { font-size: 0.75rem; }
+  th, td { padding: 0.5rem; }
+  img.h-6.w-6 { height: 1rem; width: 1rem; }
+  .bg-white.rounded-lg { overflow-x: auto; }
+  .p-3 { padding: 0.5rem; }
+  .text-xs { font-size: 0.65rem; }
+  .max-w-sm.p-4 { padding: 0.75rem; max-width: 90%; }
+  .text-base { font-size: 0.875rem; }
+  .h-8.w-8 { height: 1.5rem; width: 1.5rem; }
+  .grid-cols-2.gap-3 { gap: 0.5rem; }
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {
-  .min-h-screen {
-    padding: 1.5rem;
-  }
-
-  header {
-    padding: 1rem;
-  }
-
-  h1 {
-    font-size: 1.25rem;
-  }
-
-  input[type="date"] {
-    width: 8rem;
-    font-size: 0.875rem;
-  }
-
-  input[type="text"] {
-    font-size: 0.875rem;
-  }
-
-  input[type="time"] {
-    font-size: 0.875rem;
-  }
-
-  select {
-    font-size: 0.875rem;
-  }
-
-  button {
-    font-size: 0.875rem;
-  }
-
-  table {
-    font-size: 0.875rem;
-  }
-
-  th, td {
-    padding: 0.75rem;
-  }
-
-  .text-xs {
-    font-size: 0.75rem;
-  }
+  .min-h-screen { padding: 1.5rem; }
+  header { padding: 1rem; }
+  h1 { font-size: 1.25rem; }
+  input[type="date"] { width: 8rem; font-size: 0.875rem; }
+  input[type="text"] { font-size: 0.875rem; }
+  input[type="time"] { font-size: 0.875rem; }
+  select { font-size: 0.875rem; }
+  button { font-size: 0.875rem; }
+  table { font-size: 0.875rem; }
+  th, td { padding: 0.75rem; }
+  .text-xs { font-size: 0.75rem; }
 }
 </style>
