@@ -1,308 +1,348 @@
 <template>
-  <div class="min-h-screen md: p-1">
-    <div class="max-w-8xl  mx-auto space-y-6">
-      <!-- Header Section - Polished with Modern Design -->
-      <header class="bg-white rounded-xl shadow-lg p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center justify-between border-l-4 border-blue-500">
-        <div class="text-center md:text-left w-full md:w-auto">
-          <h1 class="text-x md:text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <span class="material-icons text-blue-600 text-lg md:text-xl">schedule</span>
-            Employee Attendance
-          </h1>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-          <!-- Date Picker - Enhanced with Icon and Animation -->
-          <div class="relative w-full sm:w-56">
-            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs md:text-sm">calendar_today</span>
-            <input
-              type="date"
-              v-model="selectedDate"
-              id="attendanceDate"
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-all duration-300 text-xs md:text-sm bg-white shadow-sm hover:shadow-md"
-              @change="fetchAttendance"
-              aria-label="Select attendance date"
-            />
+  <div class="min-h-screen p-2 bg-gray-100">
+    <div class="max-w-7xl mx-auto space-y-4">
+      <!-- Header Section -->
+      <header class="bg-white rounded-lg shadow-md p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <h1 class="text-lg font-bold text-gray-800 flex items-center gap-1">
+          <span class="material-icons text-indigo-600 text-xl">schedule</span>
+          Employee Attendance
+        </h1>
+        <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <!-- Date Range Picker -->
+          <div class="flex gap-2 items-center">
+            <div class="relative">
+              <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">event</span>
+              <input
+                type="date"
+                v-model="dateRange.start"
+                @change="fetchAttendance"
+                class="pl-8 pr-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 shadow-sm hover:shadow-md transition-all w-32"
+              />
+            </div>
+            <span class="text-gray-600 text-sm">to</span>
+            <div class="relative">
+              <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">event</span>
+              <input
+                type="date"
+                v-model="dateRange.end"
+                @change="fetchAttendance"
+                class="pl-8 pr-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 shadow-sm hover:shadow-md transition-all w-32"
+              />
+            </div>
           </div>
-          <!-- Search Bar - Enhanced with Clear Button and Animation -->
-          <div class="relative w-full sm:w-72">
-            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs md:text-sm">search</span>
+          <!-- Search Bar -->
+          <div class="relative w-full sm:w-48">
+            <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">search</span>
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search by name or ID..."
-              class="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-all duration-300 text-xs md:text-sm bg-white shadow-sm hover:shadow-md"
-              aria-label="Search employees by name or ID"
+              placeholder="Search employees..."
+              class="w-full pl-8 pr-8 py-1 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 shadow-sm hover:shadow-md transition-all"
             />
-            <button 
-              v-if="searchQuery" 
-              @click="searchQuery = ''"
-              class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-all duration-200 text-xs md:text-sm"
-            >
-              <span class="material-icons text-xs md:text-sm">close</span>
+            <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+              <span class="material-icons text-sm">close</span>
             </button>
           </div>
+          <!-- Export Button -->
+          <button @click="generateReport" 
+            class="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1 text-sm">
+            <span class="material-icons text-sm">download</span>
+            Export
+          </button>
         </div>
       </header>
 
-      <!-- Attendance Table - Enhanced with Card Design and Animations -->
-      <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-100 sticky top-0 z-20">
-              <tr>
-                <th
-                  v-for="header in headers"
-                  :key="header.key"
-                  class="px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors duration-200"
-                  :class="header.align === 'center' ? 'text-center' : 'text-left'"
-                  @click="sortTable(header.key)"
-                  :aria-sort="sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'"
-                >
-                  <div class="flex items-center gap-2" :class="header.align === 'center' ? 'justify-center' : 'justify-start'">
-                    <span class="material-icons text-gray-500 text-xs md:text-sm">{{ header.icon }}</span>
-                    {{ header.label }}
-                    <span v-if="sortKey === header.key" class="material-icons text-xs md:text-sm text-gray-500">
-                      {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
-                    </span>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-              <!-- Loading State - Polished Animation -->
-              <template v-if="isLoading">
-                <tr v-for="n in 5" :key="n" class="animate-pulse">
-                  <td v-for="m in 4" :key="m" class="px-6 py-4">
-                    <div class="h-3 bg-gray-200 rounded w-3/4"></div>
-                  </td>
-                </tr>
-              </template>
-              <!-- Data Rows - Enhanced with Hover and Click Effects -->
-              <transition-group name="table-slide" tag="template">
-                <tr
-                  v-for="employee in paginatedAttendance"
-                  :key="employee.id"
-                  class="hover:bg-blue-50 transition-all duration-300 cursor-pointer"
-                  @click="showDetails(employee)"
-                  @mouseenter="hoverEmployee = employee.id"
-                  @mouseleave="hoverEmployee = null"
-                >
-                  <td class="px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-700" :class="{ 'bg-blue-100': hoverEmployee === employee.id }">
-                    {{ employee.id }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-3">
-                      <img
-                        :src="`https://ui-avatars.com/api/?name=${employee.name}&background=random&color=fff`"
-                        alt="Employee avatar"
-                        class="h-8 w-8 rounded-full object-cover border border-gray-100"
-                        loading="lazy"
-                      />
-                      <span class="text-xs md:text-sm text-gray-700">{{ employee.name }}</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-700" :class="{ 'bg-blue-100': hoverEmployee === employee.id }">
-                    {{ employee.position }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium" :class="[getStatusClass(employee.status), { 'bg-blue-100': hoverEmployee === employee.id }]">
-                    {{ employee.status }}
-                  </td>
-                </tr>
-                <tr v-if="paginatedAttendance.length === 0 && !isLoading">
-                  <td colspan="4" class="px-6 py-12 text-center text-xs md:text-sm text-gray-500">
-                    <div class="flex flex-col items-center gap-3">
-                      <span class="material-icons text-3xl md:text-4xl text-gray-400">event_busy</span>
-                      <p class="text-xs md:text-sm font-medium text-gray-700">No attendance records for this date.</p>
-                      <p class="text-xs md:text-sm text-gray-500">Try adjusting the date or search criteria.</p>
-                    </div>
-                  </td>
-                </tr>
-              </transition-group>
-            </tbody>
-          </table>
-        </div>
-        <!-- Pagination - Enhanced Design with Animation -->
-        <div v-if="!isLoading && filteredAttendance.length > itemsPerPage" class="p-4 flex justify-between items-center bg-gray-50 border-t transition-all duration-300">
-          <div class="text-xs md:text-sm text-gray-600">
-            Showing <span class="font-medium text-gray-800">{{ paginationInfo.start }}</span> to 
-            <span class="font-medium text-gray-800">{{ paginationInfo.end }}</span> of 
-            <span class="font-medium text-gray-800">{{ filteredAttendance.length }}</span> records
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              @click="prevPage"
-              :disabled="currentPage === 1"
-              class="p-2 rounded-md bg-white border border-gray-200 hover:bg-blue-100 text-gray-700 transition-all duration-200 disabled:opacity-50 disabled:hover:bg-white text-xs md:text-sm"
-              aria-label="Previous page"
-            >
-              <span class="material-icons text-base">chevron_left</span>
+      <!-- Attendance Table -->
+      <div class="bg-white rounded-lg shadow-md overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-indigo-50">
+            <tr>
+              <th v-for="header in headers" :key="header.key" 
+                class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+                @click="sortTable(header.key)">
+                <div class="flex items-center gap-1">
+                  <span class="material-icons text-indigo-600 text-sm">{{ header.icon }}</span>
+                  <span class="text-xs">{{ header.label }}</span>
+                  <span v-if="sortKey === header.key" class="material-icons text-xs">
+                    {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr v-if="isLoading" class="animate-pulse">
+              <td colspan="6" class="px-4 py-3">
+                <div class="h-3 bg-gray-200 rounded w-full"></div>
+              </td>
+            </tr>
+            <tr v-for="employee in paginatedAttendance" :key="employee.id" 
+              class="hover:bg-indigo-50 transition-colors cursor-pointer"
+              @click="showDetails(employee)">
+              <td class="px-4 py-3 text-xs text-gray-700">{{ employee.id }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <img :src="`https://ui-avatars.com/api/?name=${employee.name}&background=4f46e5&color=fff`" 
+                    class="h-6 w-6 rounded-full" />
+                  <span class="text-xs text-gray-800">{{ employee.name }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-xs text-gray-700">{{ employee.position }}</td>
+              <td class="px-4 py-3 text-xs" :class="getStatusClass(employee.timeInAM ? employee.status : 'Absent')">
+                {{ employee.timeInAM ? formatTime(employee.timeInAM) : '--' }}
+              </td>
+              <td class="px-4 py-3 text-xs" :class="getStatusClass(employee.timeInPM ? employee.status : 'Absent')">
+                {{ employee.timeInPM ? formatTime(employee.timeInPM) : '--' }}
+              </td>
+              <td class="px-4 py-3 text-xs text-gray-700">{{ formatDate(employee.date) }}</td>
+            </tr>
+            <tr v-if="!isLoading && paginatedAttendance.length === 0">
+              <td colspan="6" class="px-4 py-8 text-center text-gray-500 text-xs">
+                No records found
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- Pagination -->
+        <div v-if="filteredAttendance.length > itemsPerPage" 
+          class="p-3 flex justify-between items-center bg-gray-50">
+          <span class="text-xs text-gray-600">
+            Showing {{ paginationInfo.start }} to {{ paginationInfo.end }} of {{ filteredAttendance.length }}
+          </span>
+          <div class="flex gap-2">
+            <button @click="prevPage" :disabled="currentPage === 1" 
+              class="px-2 py-1 bg-indigo-600 text-white rounded-md disabled:bg-gray-400 hover:bg-indigo-700 text-xs">
+              Previous
             </button>
-            <span class="text-xs md:text-sm text-gray-700">{{ currentPage }} / {{ totalPages }}</span>
-            <button
-              @click="nextPage"
-              :disabled="currentPage === totalPages"
-              class="p-2 rounded-md bg-white border border-gray-200 hover:bg-blue-100 text-gray-700 transition-all duration-200 disabled:opacity-50 disabled:hover:bg-white text-xs md:text-sm"
-              aria-label="Next page"
-            >
-              <span class="material-icons text-base">chevron_right</span>
+            <button @click="nextPage" :disabled="currentPage === totalPages" 
+              class="px-2 py-1 bg-indigo-600 text-white rounded-md disabled:bg-gray-400 hover:bg-indigo-700 text-xs">
+              Next
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Details Modal - Polished with Modern Design and Animation -->
-      <transition name="modal-slide">
-        <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-95 hover:scale-100">
-            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h2 class="text-lg md:text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <span class="material-icons text-blue-600 text-lg md:text-xl">person</span> Employee Attendance Details
-              </h2>
-              <button @click="showModal = false" class="text-gray-600 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100 transition-all duration-200">
-                <span class="material-icons text-base md:text-lg">close</span>
+      <!-- Details Modal -->
+      <transition name="modal">
+        <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg shadow-2xl w-full max-w-sm p-4">
+            <div class="flex justify-between items-center mb-3">
+              <h2 class="text-base font-semibold text-gray-800">Attendance Details</h2>
+              <button @click="showModal = false" class="text-gray-600 hover:text-gray-800">
+                <span class="material-icons text-sm">close</span>
               </button>
             </div>
-            <div class="p-6 space-y-5">
-              <div class="flex items-center gap-3">
-                <img
-                  :src="`https://ui-avatars.com/api/?name=${selectedEmployee?.name}&background=random&color=fff`"
-                  alt="Employee avatar"
-                  class="h-12 w-12 rounded-full object-cover border border-gray-200"
-                  loading="lazy"
-                />
+            <div class="space-y-3">
+              <div class="flex items-center gap-2">
+                <img :src="`https://ui-avatars.com/api/?name=${selectedEmployee?.name}&background=4f46e5&color=fff`" 
+                  class="h-8 w-8 rounded-full" />
                 <div>
-                  <p class="text-sm md:text-base font-medium text-gray-800">{{ selectedEmployee?.name }}</p>
-                  <p class="text-xs md:text-sm text-gray-600">{{ selectedEmployee?.position }}</p>
+                  <p class="text-sm font-medium text-gray-800">{{ selectedEmployee?.name }}</p>
+                  <p class="text-xs text-gray-600">{{ selectedEmployee?.position }}</p>
                 </div>
               </div>
-              <p class="text-gray-700 text-xs md:text-sm"><strong>ID:</strong> {{ selectedEmployee?.id }}</p>
-              <p class="text-gray-700 text-xs md:text-sm"><strong>Status:</strong> <span :class="getStatusClass(selectedEmployee?.status)">{{ selectedEmployee?.status }}</span></p>
-              <p class="text-gray-700 text-xs md:text-sm"><strong>Date:</strong> {{ formatDate(selectedEmployee?.date) }}</p>
-              <button 
-                @click="markAttendance(selectedEmployee?.id)" 
-                :disabled="!selectedEmployee || selectedEmployee.status === 'Present'"
-                class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium text-xs md:text-sm hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                :aria-label="`Mark ${selectedEmployee?.name} as present`"
-              >
-                Mark Present
-              </button>
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                <p><strong>ID:</strong> {{ selectedEmployee?.id }}</p>
+                <p><strong>Date:</strong> {{ formatDate(selectedEmployee?.date) }}</p>
+                <div>
+                  <label for="timeInAM" class="block text-xs font-medium">Time In AM:</label>
+                  <input
+                    id="timeInAM"
+                    v-model="selectedEmployee.timeInAM"
+                    type="time"
+                    class="mt-1 p-1 w-full text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500"
+                    @change="updateAttendance('timeInAM')"
+                  />
+                </div>
+                <div>
+                  <label for="timeInPM" class="block text-xs font-medium">Time Out PM:</label>
+                  <input
+                    id="timeInPM"
+                    v-model="selectedEmployee.timeInPM"
+                    type="time"
+                    class="mt-1 p-1 w-full text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500"
+                    @change="updateAttendance('timeInPM')"
+                  />
+                </div>
+                <div>
+                  <label for="status" class="block text-xs font-medium">Status:</label>
+                  <select
+                    id="status"
+                    v-model="selectedEmployee.status"
+                    class="mt-1 p-1 w-full text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500"
+                    @change="updateAttendance('status')"
+                  >
+                    <option value="Present">Present</option>
+                    <option value="Late">Late</option>
+                    <option value="Absent">Absent</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button @click="markTime('am')" 
+                  class="flex-1 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 text-xs">
+                  Time In AM
+                </button>
+                <button @click="markTime('pm')" 
+                  class="flex-1 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 text-xs">
+                  Time Out PM
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </transition>
-
-      <!-- Status Message - Enhanced with Animation and Design -->
-      <transition name="slide-fade">
-        <div
-          v-if="statusMessage"
-          class="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg z-50 flex items-center gap-3 max-w-sm w-full"
-          :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700 border-l-4 border-green-600' : 'bg-red-50 text-red-700 border-l-4 border-red-600'"
-        >
-          <span class="material-icons text-base md:text-lg">
-            {{ statusMessage.includes('successfully') ? 'check_circle' : 'error' }}
-          </span>
-          <p class="text-xs md:text-sm font-medium">{{ statusMessage }}</p>
-          <button
-            @click="statusMessage = ''"
-            class="ml-auto p-1 rounded-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200"
-            aria-label="Close notification"
-          >
-            <span class="material-icons text-base md:text-lg">close</span>
-          </button>
         </div>
       </transition>
     </div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import axios from 'axios';
-import moment from 'moment'; // Add this to format dates
 
-export default {
-  name: 'EmployeeAttendance',
+interface EmployeeAttendance {
+  id: string;
+  name: string;
+  position: string;
+  timeInAM: string | null;
+  timeInPM: string | null;
+  date: string;
+  status: string;
+}
+
+export default defineComponent({
   data() {
     return {
-      selectedDate: new Date().toISOString().split('T')[0],
-      attendanceRecords: [],
-      statusMessage: '',
-      isLoading: false,
+      dateRange: {
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+      },
+      attendanceRecords: [] as EmployeeAttendance[],
+      allEmployees: [] as any[],
       searchQuery: '',
       sortKey: 'id',
-      sortDirection: 'asc',
+      sortDirection: 'asc' as 'asc' | 'desc',
       currentPage: 1,
       itemsPerPage: 10,
       showModal: false,
-      selectedEmployee: null,
-      hoverEmployee: null,
+      selectedEmployee: null as EmployeeAttendance | null,
+      isLoading: false,
       headers: [
-        { key: 'id', label: 'Employee ID', icon: 'badge', align: 'left' },
-        { key: 'name', label: 'Name', icon: 'person', align: 'left' },
-        { key: 'position', label: 'Position', icon: 'work', align: 'left' },
-        { key: 'status', label: 'Status', icon: 'info', align: 'center' }
-      ]
+        { key: 'id', label: 'ID', icon: 'badge' },
+        { key: 'name', label: 'Name', icon: 'person' },
+        { key: 'position', label: 'Position', icon: 'work' },
+        { key: 'timeInAM', label: 'Time In', icon: 'wb_sunny' },
+        { key: 'timeInPM', label: 'Time Out', icon: 'nights_stay' },
+        { key: 'date', label: 'Date', icon: 'calendar_today' }
+      ],
+      isClient: false
     };
   },
   computed: {
-    filteredAttendance() {
-      let filtered = [...this.attendanceRecords];
-      if (this.selectedDate) {
-        filtered = filtered.filter(record => record.date === this.selectedDate);
-      }
-      if (this.searchQuery) {
-        filtered = filtered.filter(record => 
-          record.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-          record.id.toLowerCase().includes(this.searchQuery.toLowerCase())
-        );
-      }
-      // Sorting
-      filtered.sort((a, b) => {
+    filteredAttendance(): EmployeeAttendance[] {
+      if (!this.allEmployees || !Array.isArray(this.allEmployees)) return [];
+      const employeeAttendanceMap = this.attendanceRecords.reduce((map, record) => {
+        map[record.id] = record;
+        return map;
+      }, {} as { [key: string]: EmployeeAttendance });
+      return this.allEmployees.map(employee => {
+        const attendanceRecord = employeeAttendanceMap[employee.id] || {
+          ...employee,
+          date: this.dateRange.start,
+          timeInAM: null,
+          timeInPM: null,
+          status: 'Absent'
+        };
+        return attendanceRecord;
+      }).filter(record => {
+        if (!this.isClient) return true;
+        const moment = require('moment');
+        const recordDate = moment(record.date);
+        return recordDate.isBetween(this.dateRange.start, this.dateRange.end, undefined, '[]');
+      }).filter(record => 
+        !this.searchQuery || 
+        record.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        record.id.toLowerCase().includes(this.searchQuery.toLowerCase())
+      ).sort((a, b) => {
         const valueA = a[this.sortKey] || '';
         const valueB = b[this.sortKey] || '';
-        if (this.sortDirection === 'asc') {
-          return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
-        } else {
-          return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
-        }
+        return this.sortDirection === 'asc' 
+          ? valueA < valueB ? -1 : 1 
+          : valueA > valueB ? -1 : 1;
       });
-      return filtered;
     },
-    paginatedAttendance() {
+    paginatedAttendance(): EmployeeAttendance[] {
       const start = (this.currentPage - 1) * this.itemsPerPage;
-      const end = start + this.itemsPerPage;
-      return this.filteredAttendance.slice(start, end);
+      return this.filteredAttendance.slice(start, start + this.itemsPerPage);
     },
     totalPages() {
       return Math.ceil(this.filteredAttendance.length / this.itemsPerPage) || 1;
     },
     paginationInfo() {
-      if (this.filteredAttendance.length === 0) return { start: 0, end: 0 };
       const start = (this.currentPage - 1) * this.itemsPerPage + 1;
       const end = Math.min(start + this.itemsPerPage - 1, this.filteredAttendance.length);
       return { start, end };
     }
   },
-  created() {
+  mounted() {
+    this.isClient = true;
     this.fetchAttendance();
+    this.fetchAllEmployees();
   },
   methods: {
     async fetchAttendance() {
       this.isLoading = true;
-      this.statusMessage = '';
       try {
-        const response = await axios.get(`http://localhost:7777/api/attendance?date=${this.selectedDate}`);
-        this.attendanceRecords = response.data.map(record => ({
+        const response = await axios.get('http://localhost:7777/api/attendance', {
+          params: {
+            startDate: this.dateRange.start,
+            endDate: this.dateRange.end
+          },
+          headers: { 'user-role': 'admin' }
+        });
+        this.attendanceRecords = (response.data || []).map((record: any) => ({
           ...record,
-          date: moment(record.date).format('YYYY-MM-DD')
-        })) || [];
-        this.currentPage = 1; // Reset to first page on new fetch
+          date: this.isClient ? require('moment')(record.date).format('YYYY-MM-DD') : record.date,
+          status: this.calculateStatus(record.timeInAM, record.timeInPM)
+        }));
       } catch (error) {
         console.error('Error fetching attendance:', error);
-        this.showErrorMessage('Failed to load attendance records.');
+        this.showErrorMessage('Failed to load attendance');
       } finally {
         this.isLoading = false;
       }
     },
-    sortTable(key) {
+    async fetchAllEmployees() {
+      try {
+        const response = await axios.get('http://localhost:7777/api/employees', {
+          headers: { 'user-role': 'admin' }
+        });
+        this.allEmployees = (response.data || []).map((emp: any) => ({
+          ...emp,
+          name: `${emp.firstName} ${emp.lastName}`
+        }));
+      } catch (error) {
+        console.error('Error fetching employees:', error);
+        this.showErrorMessage('Failed to load employees');
+      }
+    },
+    calculateStatus(timeInAM: string | null, timeInPM: string | null): string {
+      if (!this.isClient) return 'Absent';
+      const moment = require('moment');
+      if (!timeInAM && !timeInPM) return 'Absent';
+      if (timeInAM) {
+        const timeMomentAM = moment(timeInAM, 'HH:mm');
+        const cutoffAM = moment('09:00', 'HH:mm');
+        if (timeMomentAM.isAfter(cutoffAM)) return 'Late';
+      }
+      if (timeInPM && !timeInAM) {
+        const timeMomentPM = moment(timeInPM, 'HH:mm');
+        const cutoffPM = moment('14:00', 'HH:mm');
+        if (timeMomentPM.isAfter(cutoffPM)) return 'Late';
+      }
+      return 'Present';
+    },
+    sortTable(key: string) {
       if (this.sortKey === key) {
         this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
       } else {
@@ -310,13 +350,12 @@ export default {
         this.sortDirection = 'asc';
       }
     },
-    getStatusClass(status) {
-      switch (status?.toLowerCase()) {
-        case 'present': return 'text-green-600 bg-green-50 px-2 py-1 rounded-full inline-flex items-center gap-1';
-        case 'absent': return 'text-red-600 bg-red-50 px-2 py-1 rounded-full inline-flex items-center gap-1';
-        case 'late': return 'text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full inline-flex items-center gap-1';
-        default: return 'text-gray-600 bg-gray-50 px-2 py-1 rounded-full inline-flex items-center gap-1';
-      }
+    getStatusClass(status: string) {
+      return {
+        'Present': 'text-green-600 bg-green-100 px-1 py-0.5 rounded-full text-xs',
+        'Absent': 'text-red-600 bg-red-100 px-1 py-0.5 rounded-full text-xs',
+        'Late': 'text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded-full text-xs'
+      }[status] || '';
     },
     prevPage() {
       if (this.currentPage > 1) this.currentPage--;
@@ -324,167 +363,313 @@ export default {
     nextPage() {
       if (this.currentPage < this.totalPages) this.currentPage++;
     },
-    showDetails(employee) {
-      this.selectedEmployee = { ...employee, date: this.selectedDate };
+    showDetails(employee: EmployeeAttendance) {
+      this.selectedEmployee = { ...employee };
       this.showModal = true;
     },
-    async markAttendance(employeeId) {
-      if (!employeeId) return;
+    async markTime(period: 'am' | 'pm') {
       try {
-        const response = await axios.put(`http://localhost:7777/api/attendance/${employeeId}`, {
-          date: this.selectedDate,
-          status: 'Present'
+        const timeField = period === 'am' ? 'timeInAM' : 'timeInPM';
+        const timeValue = this.isClient ? require('moment')().format('HH:mm') : null;
+        if (timeValue) {
+          this.selectedEmployee[timeField] = timeValue;
+          await this.updateAttendance(timeField);
+        }
+      } catch (error) {
+        console.error('Error marking time:', error);
+        this.showErrorMessage('Failed to mark time');
+      }
+    },
+    async updateAttendance(field: keyof EmployeeAttendance) {
+      try {
+        const payload: Partial<EmployeeAttendance> = {
+          date: this.selectedEmployee.date,
+          [field]: this.selectedEmployee[field]
+        };
+        if (field === 'status') {
+          payload.status = this.selectedEmployee.status;
+        }
+        const response = await axios.put(`http://localhost:7777/api/attendance/${this.selectedEmployee.id}`, payload, {
+          headers: { 'user-role': 'admin' }
         });
         if (response.status === 200) {
           this.attendanceRecords = this.attendanceRecords.map(record =>
-            record.id === employeeId && record.date === this.selectedDate
-              ? { ...record, status: 'Present' }
+            record.id === this.selectedEmployee.id && record.date === this.selectedEmployee.date
+              ? { ...record, ...payload }
               : record
           );
-          this.showSuccessMessage('Attendance marked as present successfully!');
-          this.showModal = false;
+          this.showSuccessMessage('Attendance updated successfully');
         }
       } catch (error) {
-        console.error('Error marking attendance:', error);
-        this.showErrorMessage('Failed to mark attendance. Please try again.');
+        console.error('Error updating attendance:', error);
+        this.showErrorMessage('Failed to update attendance');
       }
     },
-    formatDate(date) {
-      return moment(date).format('MMMM D, YYYY');
+    formatTime(time: string | null) {
+      if (!this.isClient) return time || '--';
+      const moment = require('moment');
+      return time ? moment(time, 'HH:mm').format('h:mm A') : '--';
     },
-    showSuccessMessage(message) {
-      this.statusMessage = message;
-      setTimeout(() => this.statusMessage = '', 3000);
+    formatDate(date: string) {
+      if (!this.isClient) return date;
+      const moment = require('moment');
+      return moment(date).format('MM/DD/YYYY');
     },
-    showErrorMessage(message) {
-      this.statusMessage = message;
-      setTimeout(() => this.statusMessage = '', 3000);
+    async generateReport() {
+      if (!this.isClient) return;
+      try {
+        const XLSX = await import('xlsx');
+        const employeeAttendanceMap = this.attendanceRecords.reduce((map, record) => {
+          map[record.id] = record;
+          return map;
+        }, {} as { [key: string]: EmployeeAttendance });
+
+        const reportData = [
+          ['Date', 'Employee ID', 'Name', 'Position', 'Time In', 'Time Out', 'Status'],
+          ...this.allEmployees.map(employee => {
+            const attendanceRecord = employeeAttendanceMap[employee.id] || {
+              ...employee,
+              date: this.dateRange.start,
+              timeInAM: null,
+              timeInPM: null,
+              status: 'Absent'
+            };
+            return [
+              this.formatDate(attendanceRecord.date),
+              attendanceRecord.id,
+              attendanceRecord.name,
+              attendanceRecord.position,
+              attendanceRecord.timeInAM ? this.formatTime(attendanceRecord.timeInAM) : '--',
+              attendanceRecord.timeInPM ? this.formatTime(attendanceRecord.timeInPM) : '--',
+              attendanceRecord.status || 'Absent'
+            ];
+          })
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(reportData);
+        
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        for (let R = range.s.r; R <= range.e.r; R++) {
+          for (let C = range.s.c; C <= range.e.c; C++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!ws[cellAddress]) continue;
+            if (R === 0) {
+              ws[cellAddress].s = {
+                font: { bold: true, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "4F46E5" } }
+              };
+            }
+          }
+        }
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
+        XLSX.writeFile(wb, `Attendance_Report_${this.dateRange.start}_to_${this.dateRange.end}.xlsx`);
+      } catch (error) {
+        console.error('Error generating report:', error);
+        this.showErrorMessage('Failed to generate report');
+      }
+    },
+    showSuccessMessage(message: string) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 p-3 bg-green-500 text-white rounded-lg shadow-lg text-sm';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    },
+    showErrorMessage(message: string) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 p-3 bg-red-500 text-white rounded-lg shadow-lg text-sm';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
     }
   }
-};
+});
 </script>
 
 <style scoped>
-/* Table row slide animation */
-.table-slide-enter-active, .table-slide-leave-active {
-  transition: all 0.4s ease-in-out;
+/* Modal transition animations */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease;
 }
-.table-slide-enter-from, .table-slide-leave-to {
+
+.modal-enter-from,
+.modal-leave-to {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(-20px);
 }
 
-/* Modal slide animation */
-.modal-slide-enter-active, .modal-slide-leave-active {
-  transition: all 0.4s ease-in-out;
-}
-.modal-slide-enter-from, .modal-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-20px) scale(0.95);
+/* Hover effects for buttons */
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Slide fade animation for status message */
-.slide-fade-enter-active, .slide-fade-leave-active {
-  transition: all 0.4s ease-in-out;
-}
-.slide-fade-enter-from, .slide-fade-leave-to {
-  transform: translateY(20px);
-  opacity: 0;
-}
-
-/* Pulse animation for loading state */
-.animate-pulse {
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* Hover and focus enhancements */
-.hover\:bg-gray-200:hover, .hover\:bg-blue-50:hover {
-  background-color: rgba(226, 232, 240, 0.8);
-}
-button:focus, input:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-}
-
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  table {
-    display: block;
-    overflow-x: auto;
-  }
-  thead {
-    display: none; /* Hide headers on mobile */
-  }
-  tr {
-    display: block;
-    margin-bottom: 1rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    background: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
-  td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  td:last-child {
-    border-bottom: none;
-  }
-  td:before {
-    content: attr(data-label);
-    font-weight: 600;
-    color: #4b5563;
-    margin-right: 1rem;
-    flex-shrink: 0;
-    width: 100px;
-    font-size: 0.75rem; /* Smaller text for labels on mobile */
-  }
-  .px-6 {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-  .text-xl, .text-2xl, .text-3xl {
-    font-size: 1.125rem; /* Smaller base text for mobile */
-  }
-  .p-4, .p-6 {
-    padding: 1rem;
-  }
-}
-
-/* Custom scrollbar for better UX */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 10px;
+  border-radius: 8px;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #888;
-  border-radius: 10px;
-  transition: background-color 0.3s;
+  border-radius: 8px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
 
-/* Enhanced hover effects for interactivity */
-button:hover:not(:disabled), .cursor-pointer:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .min-h-screen {
+    padding: 1rem;
+  }
+
+  header {
+    padding: 0.75rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  h1 {
+    font-size: 1rem;
+  }
+
+  .material-icons {
+    font-size: 1rem !important;
+  }
+
+  .flex-col.sm\:flex-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  input[type="date"] {
+    width: 100%;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem 0.25rem 1.75rem;
+  }
+
+  .relative.w-full.sm\:w-48 {
+    width: 100%;
+  }
+
+  input[type="text"] {
+    font-size: 0.75rem;
+    padding: 0.25rem 1.75rem 0.25rem 1.75rem;
+  }
+
+  input[type="time"] {
+    font-size: 0.75rem;
+    padding: 0.25rem;
+  }
+
+  select {
+    font-size: 0.75rem;
+    padding: 0.25rem;
+  }
+
+  button {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  table {
+    font-size: 0.75rem;
+  }
+
+  th, td {
+    padding: 0.5rem;
+  }
+
+  img.h-6.w-6 {
+    height: 1rem;
+    width: 1rem;
+  }
+
+  .bg-white.rounded-lg {
+    overflow-x: auto;
+  }
+
+  .p-3 {
+    padding: 0.5rem;
+  }
+
+  .text-xs {
+    font-size: 0.65rem;
+  }
+
+  .max-w-sm.p-4 {
+    padding: 0.75rem;
+    max-width: 90%;
+  }
+
+  .text-base {
+    font-size: 0.875rem;
+  }
+
+  .h-8.w-8 {
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+
+  .grid-cols-2.gap-3 {
+    gap: 0.5rem;
+  }
 }
 
-/* Accessibility improvements */
-[aria-label]:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+@media (min-width: 641px) and (max-width: 1024px) {
+  .min-h-screen {
+    padding: 1.5rem;
+  }
+
+  header {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+  }
+
+  input[type="date"] {
+    width: 8rem;
+    font-size: 0.875rem;
+  }
+
+  input[type="text"] {
+    font-size: 0.875rem;
+  }
+
+  input[type="time"] {
+    font-size: 0.875rem;
+  }
+
+  select {
+    font-size: 0.875rem;
+  }
+
+  button {
+    font-size: 0.875rem;
+  }
+
+  table {
+    font-size: 0.875rem;
+  }
+
+  th, td {
+    padding: 0.75rem;
+  }
+
+  .text-xs {
+    font-size: 0.75rem;
+  }
 }
 </style>
