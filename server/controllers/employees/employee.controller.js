@@ -1,5 +1,5 @@
 import asyncHandler from 'express-async-handler';
-import bcrypt from 'bcrypt'; // Add this import
+import bcrypt from 'bcrypt';
 import { Employee } from '../../models/employee.model.js';
 import {
     calculateSSSContribution,
@@ -245,10 +245,7 @@ export const deleteEmployee = asyncHandler(async (req, res) => {
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        res.status(500).json({ 
-            message: 'Error deleting employee and related data', 
-            error: error.message 
-        });
+        res.status(500).json({ message: 'Error deleting employee and related data', error: error.message });
     }
 });
 
