@@ -1,4 +1,3 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes\auth.js
 const express = require('express');
 const router = express.Router();
 const Employee = require('../models/Employee');
@@ -6,7 +5,9 @@ const Employee = require('../models/Employee');
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    console.log('Login attempt:', { username, password: '[hidden]' }); // Avoid logging plain passwords
+
+    // Debugging logs
+    console.log('Login request received:', { username, password: '[hidden]' });
 
     // Trim and validate input
     const trimmedUsername = username?.trim();
@@ -24,17 +25,23 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
+    // Debugging logs
     console.log('User found:', { id: user.id, username: user.username, role: user.role });
+    console.log('Stored hashed password:', user.password);
 
     // Compare password
     const isMatch = await user.comparePassword(trimmedPassword);
     console.log('Password match result:', isMatch);
+
     if (!isMatch) {
       console.log('Password mismatch for user:', trimmedUsername);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
+    // Debugging logs
     console.log('Login successful:', { id: user.id, username: user.username, role: user.role });
+
+    // Return user details
     res.status(200).json({
       id: user.id,
       empNo: user.empNo,
@@ -55,13 +62,13 @@ router.post('/login', async (req, res) => {
       hdmf: user.hdmf || '',
       tin: user.tin || '',
       civilStatus: user.civilStatus || 'Single',
-      earnings: user.earnings || { travelExpenses: 0, otherEarnings: 0 }
+      earnings: user.earnings || { travelExpenses: 0, otherEarnings: 0 },
     });
   } catch (error) {
     console.error('Login error:', {
       message: error.message,
       stack: error.stack,
-      requestBody: { username: req.body.username, password: '[hidden]' }
+      requestBody: { username: req.body.username, password: '[hidden]' },
     });
     res.status(500).json({ error: 'Login failed', message: error.message });
   }

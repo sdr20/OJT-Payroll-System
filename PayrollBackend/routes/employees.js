@@ -1,7 +1,7 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes\employees.js
 const express = require('express');
 const router = express.Router();
 const Employee = require('../models/Employee');
+const bcrypt = require('bcryptjs');
 
 const isAdmin = (req, res, next) => {
   console.log('All request headers for employees:', req.headers);
@@ -12,6 +12,44 @@ const isAdmin = (req, res, next) => {
   }
   next();
 };
+
+// Employee Login Endpoint
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Validate input
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    // Find the employee by username
+    const employee = await Employee.findOne({ username });
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    // Compare the provided password with the hashed password
+    const isMatch = await employee.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Return success response (you can also generate a JWT token here)
+    res.status(200).json({
+      message: 'Login successful',
+      employee: {
+        id: employee.id,
+        username: employee.username,
+        role: employee.role,
+        name: `${employee.firstName} ${employee.lastName}`,
+      },
+    });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: 'Failed to login', message: error.message });
+  }
+});
 
 // GET all employees with optional month filtering using hireDate
 router.get('/', isAdmin, async (req, res) => {
@@ -39,15 +77,15 @@ router.get('/', isAdmin, async (req, res) => {
       query = {
         hireDate: {
           $gte: new Date(parsedYear, parsedMonth - 1, 1), // Start of the month
-          $lt: new Date(parsedYear, parsedMonth, 1)       // Start of the next month
-        }
+          $lt: new Date(parsedYear, parsedMonth, 1), // Start of the next month
+        },
       };
     }
 
     console.log('Executing query:', JSON.stringify(query, null, 2));
     const employees = await Employee.find(query)
       .sort({ empNo: 1 })
-      .catch(err => {
+      .catch((err) => {
         throw new Error(`Database query failed: ${err.message}`);
       });
 
@@ -57,7 +95,7 @@ router.get('/', isAdmin, async (req, res) => {
     console.error('Error in GET /api/employees:', {
       message: error.message,
       stack: error.stack,
-      query: req.query
+      query: req.query,
     });
     res.status(500).json({ error: 'Failed to fetch employees', message: error.message });
   }
@@ -77,7 +115,7 @@ router.post('/', isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error creating employee:', error);
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map(err => err.message);
+      const validationErrors = Object.values(error.errors).map((err) => err.message);
       res.status(400).json({ error: 'Validation failed', message: 'Invalid employee data', details: validationErrors });
     } else if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
@@ -94,7 +132,7 @@ router.put('/:id', isAdmin, async (req, res) => {
     const employee = await Employee.findOneAndUpdate(
       { id: parseInt(req.params.id) },
       req.body,
-      { new: true }
+      { new: true },
     );
     if (!employee) {
       console.log(`Employee not found for ID: ${req.params.id}`);
@@ -105,7 +143,7 @@ router.put('/:id', isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error updating employee:', error);
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map(err => err.message);
+      const validationErrors = Object.values(error.errors).map((err) => err.message);
       res.status(400).json({ error: 'Validation failed', message: 'Invalid employee data', details: validationErrors });
     } else if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];

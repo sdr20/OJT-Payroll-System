@@ -1,109 +1,92 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes\attendance.js
 const express = require('express');
 const router = express.Router();
-const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
-const { createObjectCsvWriter } = require('csv-writer'); // Import csv-writer
-const fs = require('fs').promises; // Use promises version of fs for async file handling
 
 const isAdmin = (req, res, next) => {
-  const userRole = req.headers['user-role'] || 'employee';
-  if (userRole !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+  const userRole = req.headers['user-role'];
+  if (!userRole || userRole.toLowerCase() !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   next();
 };
 
-// Get attendance records
-router.get('/', async (req, res) => {
+// GET all employees
+router.get('/', isAdmin, async (req, res) => {
   try {
-    const { date } = req.query;
-    if (!date) return res.status(400).json({ error: 'Date parameter is required' });
-    const records = await Attendance.find({ date });
-    res.json(records);
+    const employees = await Employee.find().sort({ empNo: 1 });
+    res.status(200).json(employees);
   } catch (error) {
-    console.error('Error fetching attendance records:', error);
-    res.status(500).json({ error: 'Failed to fetch attendance records' });
+    console.error('Error in GET /api/employees:', error);
+    res.status(500).json({ error: 'Failed to fetch employees', message: error.message });
   }
 });
 
-// Get late employees count
-router.get('/late', isAdmin, async (req, res) => {
+// GET count of employees
+router.get('/count', isAdmin, async (req, res) => {
   try {
-    const { date } = req.query;
-    if (!date) return res.status(400).json({ error: 'Date parameter is required' });
-    const lateRecords = await Attendance.find({ date, status: 'Late' });
-    res.json({ total: lateRecords.length });
+    const count = await Employee.countDocuments();
+    res.status(200).json({ count });
   } catch (error) {
-    console.error('Error fetching late records:', error);
-    res.status(500).json({ error: 'Failed to fetch late records' });
+    console.error('Error counting employees:', error);
+    res.status(500).json({ error: 'Failed to count employees', message: error.message });
   }
 });
 
-// Export attendance as CSV
-router.get('/export', isAdmin, async (req, res) => {
+// GET employees eligible for salary
+router.get('/eligible-for-salary', isAdmin, async (req, res) => {
   try {
-    const records = await Attendance.find();
-    const filename = `attendance-${new Date().toISOString().split('T')[0]}.csv`;
-    const csvWriter = createObjectCsvWriter({
-      path: filename,
-      header: [
-        { id: 'id', title: 'ID' },
-        { id: 'employeeId', title: 'Employee ID' },
-        { id: 'firstName', title: 'First Name' },
-        { id: 'lastName', title: 'Last Name' },
-        { id: 'position', title: 'Position' },
-        { id: 'email', title: 'Email' },
-        { id: 'date', title: 'Date' },
-        { id: 'timeIn', title: 'Time In' },
-        { id: 'timeOut', title: 'Time Out' },
-        { id: 'status', title: 'Status' }
-      ]
-    });
-
-    await csvWriter.writeRecords(records);
-    res.download(filename, filename, async (err) => {
-      if (err) {
-        console.error('Error during download:', err);
-        return res.status(500).json({ error: 'Failed to download CSV' });
-      }
-      try {
-        await fs.unlink(filename); // Remove the file after successful download
-        console.log(`Temporary file ${filename} deleted`);
-      } catch (unlinkErr) {
-        console.error('Error deleting temp file:', unlinkErr);
-      }
-    });
+    const employees = await Employee.find({ /* Add your eligibility criteria here */ });
+    res.status(200).json(employees);
   } catch (error) {
-    console.error('Error exporting attendance:', error);
-    res.status(500).json({ error: 'Failed to export attendance' });
+    console.error('Error fetching eligible employees:', error);
+    res.status(500).json({ error: 'Failed to fetch eligible employees', message: error.message });
   }
 });
 
-// Delete attendance record
-router.delete('/:id', isAdmin, async (req, res) => {
+// POST a new employee
+router.post('/', isAdmin, async (req, res) => {
   try {
-    const result = await Attendance.deleteOne({ id: parseInt(req.params.id) });
-    if (result.deletedCount === 0) return res.status(404).json({ error: 'Attendance record not found' });
-    res.status(204).send();
+    const maxIdEmployee = await Employee.findOne().sort({ id: -1 });
+    const newId = maxIdEmployee ? maxIdEmployee.id + 1 : 1;
+    const employeeData = { ...req.body, id: newId };
+    const employee = new Employee(employeeData);
+    await employee.save();
+    res.status(201).json(employee);
   } catch (error) {
-    console.error('Error deleting attendance record:', error);
-    res.status(500).json({ error: 'Failed to delete attendance record' });
+    console.error('Error creating employee:', error);
+    res.status(500).json({ error: 'Failed to add employee', message: error.message });
   }
 });
 
-// Update attendance
-router.put('/:id', async (req, res) => {
+// PUT (update) an existing employee by ID
+router.put('/:id', isAdmin, async (req, res) => {
   try {
-    const { date, status } = req.body;
-    const attendance = await Attendance.findOneAndUpdate(
-      { id: parseInt(req.params.id), date },
-      { status },
+    const employee = await Employee.findOneAndUpdate(
+      { id: parseInt(req.params.id) },
+      req.body,
       { new: true }
     );
-    if (!attendance) return res.status(404).json({ error: 'Attendance record not found' });
-    res.json(attendance);
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+    res.json(employee);
   } catch (error) {
-    console.error('Error updating attendance:', error);
-    res.status(500).json({ error: 'Failed to update attendance' });
+    console.error('Error updating employee:', error);
+    res.status(500).json({ error: 'Failed to update employee', message: error.message });
+  }
+});
+
+// DELETE an employee by ID
+router.delete('/:id', isAdmin, async (req, res) => {
+  try {
+    const result = await Employee.deleteOne({ id: parseInt(req.params.id) });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting employee:', error);
+    res.status(500).json({ error: 'Failed to delete employee', message: error.message });
   }
 });
 

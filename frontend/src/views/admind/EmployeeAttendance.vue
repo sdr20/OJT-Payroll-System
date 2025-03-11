@@ -1,185 +1,189 @@
 <template>
-  <div class="min-h-screen bg-gray-100 p-4 md:p-6">
-    <div class="max-w-7xl mx-auto space-y-6">
-      <!-- Header -->
-      <header class="bg-white rounded-xl shadow-lg p-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <h1 class="text-2xl font-semibold text-gray-800 flex items-center gap-2">
-          <span class="material-icons text-indigo-600 text-2xl">schedule</span>
-          Employee Attendance
+  <div class="min-h-screen bg-gray-50 p-2">
+    <div class="max-w-7xl mx-auto">
+      <!-- Header - Streamlined -->
+      <header class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+        <h1 class="text-xl font-semibold text-gray-800 flex items-center gap-1">
+          <span class="material-icons text-indigo-500 text-xl">schedule</span>
+          Attendance
         </h1>
-        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <div class="flex items-center gap-2">
           <div class="relative">
-            <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">event</span>
+            <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">event</span>
             <input
               type="date"
               v-model="date"
               @change="fetchEmployeesAndAttendance"
-              class="pl-10 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all w-40 bg-white"
+              class="pl-8 pr-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 w-32 bg-white"
             />
           </div>
-          <div class="relative w-full sm:w-64">
-            <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">search</span>
+          <div class="relative">
+            <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search employees..."
-              class="w-full pl-10 pr-10 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all bg-white"
+              placeholder="Search..."
+              class="w-36 pl-8 pr-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
             />
-            <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
-              <span class="material-icons text-lg">close</span>
+            <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <span class="material-icons text-xs">close</span>
             </button>
           </div>
           <button @click="generateReport" 
-            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
-            <span class="material-icons text-lg">download</span>
+            class="px-3 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600 flex items-center gap-1">
+            <span class="material-icons text-xs">download</span>
             Export
           </button>
         </div>
       </header>
 
-      <!-- Table -->
-      <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+      <!-- Table - Compact design -->
+      <div class="bg-white rounded-lg shadow mt-3 overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-indigo-50">
+          <table class="w-full divide-y divide-gray-100">
+            <thead class="bg-gray-50">
               <tr>
                 <th v-for="header in headers" :key="header.key" 
-                  class="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider hover:bg-indigo-100 transition-colors cursor-pointer"
+                  class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider hover:bg-gray-100 transition-colors cursor-pointer"
                   @click="sortTable(header.key)">
-                  <div class="flex items-center gap-2">
-                    <span class="material-icons text-indigo-600">{{ header.icon }}</span>
+                  <div class="flex items-center gap-1">
+                    <span class="material-icons text-indigo-400 text-xs">{{ header.icon }}</span>
                     <span>{{ header.label }}</span>
-                    <span v-if="sortKey === header.key" class="material-icons text-sm">
+                    <span v-if="sortKey === header.key" class="material-icons text-xs">
                       {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
                     </span>
                   </div>
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-100 bg-white">
               <tr v-if="isLoading" class="animate-pulse">
-                <td colspan="6" class="px-6 py-4">
+                <td colspan="6" class="px-3 py-2">
                   <div class="h-4 bg-gray-200 rounded w-full"></div>
                 </td>
               </tr>
               <tr v-for="employee in paginatedEmployees" :key="employee.id" 
-                class="hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-4 text-sm text-gray-700">{{ employee.id }}</td>
-                <td class="px-6 py-4">
-                  <div class="flex items-center gap-3">
-                    <img :src="`https://ui-avatars.com/api/?name=${employee.firstName}+${employee.lastName}&background=4f46e5&color=fff`" 
-                      class="h-8 w-8 rounded-full shadow-sm" />
-                    <span class="text-sm font-medium text-gray-800">{{ employee.firstName }} {{ employee.lastName }}</span>
+                class="hover:bg-gray-50 transition-colors text-xs">
+                <td class="px-3 py-2 text-gray-700">{{ employee.id }}</td>
+                <td class="px-3 py-2">
+                  <div class="flex items-center gap-2">
+                    <img :src="`https://ui-avatars.com/api/?name=${employee.firstName}+${employee.lastName}&background=4f46e5&color=fff&size=24`" 
+                      class="h-6 w-6 rounded-full" />
+                    <span class="font-medium text-gray-800">{{ employee.firstName }} {{ employee.lastName }}</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-700">
+                <td class="px-3 py-2 text-gray-700">
                   <input
                     type="time"
                     v-model="employee.timeIn"
                     @change="updateAttendance(employee, 'timeIn')"
-                    class="w-24 p-1 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all bg-white"
+                    class="w-20 py-1 px-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                   />
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-700">
+                <td class="px-3 py-2 text-gray-700">
                   <input
                     type="time"
                     v-model="employee.timeOut"
                     @change="updateAttendance(employee, 'timeOut')"
-                    class="w-24 p-1 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all bg-white"
+                    class="w-20 py-1 px-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                   />
                 </td>
-                <td class="px-6 py-4 text-sm" :class="getStatusClass(employee.status)">
-                  {{ employee.status }}
+                <td class="px-3 py-2">
+                  <span :class="getStatusClass(employee.status)" class="text-xs px-2 py-1 rounded-full">
+                    {{ employee.status }}
+                  </span>
                 </td>
-                <td class="px-6 py-4 text-sm flex items-center gap-2">
+                <td class="px-3 py-2 flex items-center gap-1">
                   <select
                     v-model="employee.status"
                     @change="updateAttendance(employee, 'status')"
-                    class="w-28 p-1 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all bg-white"
+                    class="w-20 py-1 px-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                   >
                     <option value="Present">Present</option>
                     <option value="Absent">Absent</option>
                     <option value="Late">Late</option>
                   </select>
                   <button @click="showDetails(employee)" 
-                    class="p-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all"
+                    class="p-1 bg-indigo-500 text-white rounded hover:bg-indigo-600"
                     title="Edit Details">
-                    <span class="material-icons text-lg">edit</span>
+                    <span class="material-icons text-xs">edit</span>
                   </button>
                 </td>
               </tr>
               <tr v-if="!isLoading && paginatedEmployees.length === 0">
-                <td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm">
+                <td colspan="6" class="px-3 py-4 text-center text-gray-500 text-xs">
                   No employees found
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+        
+        <!-- Pagination - Simplified -->
         <div v-if="filteredEmployees.length > itemsPerPage" 
-          class="p-4 flex justify-between items-center bg-gray-50 border-t border-gray-200">
-          <span class="text-sm text-gray-600">
-            Showing {{ paginationInfo.start }} to {{ paginationInfo.end }} of {{ filteredEmployees.length }}
+          class="p-2 flex justify-between items-center bg-gray-50 border-t border-gray-100">
+          <span class="text-xs text-gray-500">
+            {{ paginationInfo.start }}-{{ paginationInfo.end }} of {{ filteredEmployees.length }}
           </span>
-          <div class="flex gap-3">
+          <div class="flex gap-2">
             <button @click="prevPage" :disabled="currentPage === 1" 
-              class="px-3 py-1 bg-indigo-600 text-white rounded-md disabled:bg-gray-400 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all">
-              Previous
+              class="px-2 py-1 bg-indigo-500 text-white text-xs rounded disabled:bg-gray-300 hover:bg-indigo-600">
+              Prev
             </button>
             <button @click="nextPage" :disabled="currentPage === totalPages" 
-              class="px-3 py-1 bg-indigo-600 text-white rounded-md disabled:bg-gray-400 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all">
+              class="px-2 py-1 bg-indigo-500 text-white text-xs rounded disabled:bg-gray-300 hover:bg-indigo-600">
               Next
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Modal -->
+      <!-- Modal - Compact -->
       <transition name="modal">
-        <div v-if="showDetailsModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-xl font-semibold text-gray-800">Attendance Details</h2>
-              <button @click="showDetailsModal = false" class="text-gray-600 hover:text-gray-800 transition-colors">
-                <span class="material-icons text-xl">close</span>
+        <div v-if="showDetailsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg shadow w-full max-w-sm p-4">
+            <div class="flex justify-between items-center mb-3">
+              <h2 class="text-lg font-medium text-gray-800">Edit Attendance</h2>
+              <button @click="showDetailsModal = false" class="text-gray-500 hover:text-gray-700">
+                <span class="material-icons text-lg">close</span>
               </button>
             </div>
-            <div class="space-y-4">
-              <div class="flex items-center gap-3">
+            <div class="space-y-3">
+              <div class="flex items-center gap-2">
                 <img :src="`https://ui-avatars.com/api/?name=${selectedEmployee?.firstName}+${selectedEmployee?.lastName}&background=4f46e5&color=fff`" 
-                  class="h-10 w-10 rounded-full shadow-sm" />
+                  class="h-8 w-8 rounded-full" />
                 <div>
-                  <p class="text-lg font-medium text-gray-800">{{ selectedEmployee?.firstName }} {{ selectedEmployee?.lastName }}</p>
-                  <p class="text-sm text-gray-600">ID: {{ selectedEmployee?.id }}</p>
+                  <p class="font-medium text-gray-800">{{ selectedEmployee?.firstName }} {{ selectedEmployee?.lastName }}</p>
+                  <p class="text-xs text-gray-500">ID: {{ selectedEmployee?.id }}</p>
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label for="timeIn" class="block text-sm font-medium text-gray-700">Time In</label>
+                  <label for="timeIn" class="block text-xs font-medium text-gray-700">Time In</label>
                   <input
                     id="timeIn"
                     v-model="selectedEmployee.timeIn"
                     type="time"
-                    class="mt-1 p-2 w-full text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all bg-white"
+                    class="mt-1 p-1 w-full text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                     @change="updateAttendance(selectedEmployee, 'timeIn')"
                   />
                 </div>
                 <div>
-                  <label for="timeOut" class="block text-sm font-medium text-gray-700">Time Out</label>
+                  <label for="timeOut" class="block text-xs font-medium text-gray-700">Time Out</label>
                   <input
                     id="timeOut"
                     v-model="selectedEmployee.timeOut"
                     type="time"
-                    class="mt-1 p-2 w-full text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all bg-white"
+                    class="mt-1 p-1 w-full text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                     @change="updateAttendance(selectedEmployee, 'timeOut')"
                   />
                 </div>
                 <div class="col-span-2">
-                  <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                  <label for="status" class="block text-xs font-medium text-gray-700">Status</label>
                   <select
                     id="status"
                     v-model="selectedEmployee.status"
-                    class="mt-1 p-2 w-full text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all bg-white"
+                    class="mt-1 p-1 w-full text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                     @change="updateAttendance(selectedEmployee, 'status')"
                   >
                     <option value="Present">Present</option>
@@ -188,14 +192,14 @@
                   </select>
                 </div>
               </div>
-              <div class="flex gap-3">
+              <div class="flex gap-2 mt-4">
                 <button @click="markTime('in')" 
-                  class="flex-1 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all">
-                  Time In
+                  class="flex-1 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600">
+                  Time In Now
                 </button>
                 <button @click="markTime('out')" 
-                  class="flex-1 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all">
-                  Time Out
+                  class="flex-1 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600">
+                  Time Out Now
                 </button>
               </div>
             </div>
@@ -203,13 +207,13 @@
         </div>
       </transition>
 
-      <!-- Status Message -->
+      <!-- Status Message - More compact -->
       <div
         v-if="statusMessage"
-        :class="statusMessage.includes('successfully') ? 'bg-green-600' : 'bg-red-600'"
-        class="fixed bottom-6 right-6 p-4 text-white rounded-lg shadow-xl animate-fade-in text-sm flex items-center gap-2"
+        :class="statusMessage.includes('successfully') ? 'bg-green-500' : 'bg-red-500'"
+        class="fixed bottom-4 right-4 px-3 py-2 text-white text-xs rounded-md shadow-lg animate-fade-in flex items-center gap-1"
       >
-        <span class="material-icons text-lg">
+        <span class="material-icons text-xs">
           {{ statusMessage.includes('successfully') ? 'check_circle' : 'error' }}
         </span>
         {{ statusMessage }}
@@ -243,8 +247,8 @@ export default {
       headers: [
         { key: 'id', label: 'ID', icon: 'badge' },
         { key: 'firstName', label: 'Name', icon: 'person' },
-        { key: 'timeIn', label: 'Time In', icon: 'wb_sunny' },
-        { key: 'timeOut', label: 'Time Out', icon: 'nights_stay' },
+        { key: 'timeIn', label: 'In', icon: 'wb_sunny' },
+        { key: 'timeOut', label: 'Out', icon: 'nights_stay' },
         { key: 'status', label: 'Status', icon: 'check_circle' },
         { key: 'actions', label: 'Actions', icon: 'settings' },
       ],
@@ -286,7 +290,7 @@ export default {
   methods: {
     async fetchEmployeesAndAttendance() {
       this.isLoading = true;
-      this.statusMessage = 'Loading attendance data...';
+      this.statusMessage = 'Loading data...';
       try {
         const empResponse = await axios.get(`${API_BASE_URL}/api/employees`, {
           headers: { 'user-role': 'admin' },
@@ -334,10 +338,10 @@ export default {
           };
         });
 
-        this.showSuccessMessage('Attendance data loaded successfully');
+        this.showSuccessMessage('Data loaded');
       } catch (error) {
         console.error('Error fetching data:', error);
-        this.showErrorMessage(`Failed to load data: ${error.message}. Check server logs for details.`);
+        this.showErrorMessage(`Failed to load data: ${error.message}`);
         this.employees = [];
       } finally {
         this.isLoading = false;
@@ -353,9 +357,9 @@ export default {
     },
     getStatusClass(status) {
       return {
-        Present: 'text-green-600 bg-green-50 px-2 py-1 rounded-md',
-        Absent: 'text-red-600 bg-red-50 px-2 py-1 rounded-md',
-        Late: 'text-yellow-600 bg-yellow-50 px-2 py-1 rounded-md',
+        Present: 'text-green-600 bg-green-100',
+        Absent: 'text-red-600 bg-red-100',
+        Late: 'text-yellow-600 bg-yellow-100',
       }[status] || 'text-gray-600';
     },
     prevPage() {
@@ -407,11 +411,11 @@ export default {
           if (employee === this.selectedEmployee) {
             this.selectedEmployee = { ...this.selectedEmployee, ...response.data };
           }
-          this.showSuccessMessage('Attendance updated successfully');
+          this.showSuccessMessage('Updated successfully');
         }
       } catch (error) {
         console.error('Error updating attendance:', error);
-        this.showErrorMessage('Failed to update attendance');
+        this.showErrorMessage('Update failed');
       }
     },
     formatTime(time) {
@@ -435,35 +439,21 @@ export default {
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(reportData);
-        const range = XLSX.utils.decode_range(ws['!ref']);
-        for (let R = range.s.r; R <= range.e.r; R++) {
-          for (let C = range.s.c; C <= range.e.c; C++) {
-            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-            if (!ws[cellAddress]) continue;
-            if (R === 0 || R === 1) {
-              ws[cellAddress].s = {
-                font: { bold: true, color: { rgb: 'FFFFFF' } },
-                fill: { fgColor: { rgb: '4F46E5' } },
-              };
-            }
-          }
-        }
-
         XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
-        XLSX.writeFile(wb, `Attendance_Report_${this.date}.xlsx`);
-        this.showSuccessMessage('Report generated successfully');
+        XLSX.writeFile(wb, `Attendance_${this.date}.xlsx`);
+        this.showSuccessMessage('Report exported');
       } catch (error) {
         console.error('Error generating report:', error);
-        this.showErrorMessage('Failed to generate report');
+        this.showErrorMessage('Export failed');
       }
     },
     showSuccessMessage(message) {
       this.statusMessage = message;
-      setTimeout(() => (this.statusMessage = ''), 3000);
+      setTimeout(() => (this.statusMessage = ''), 2000);
     },
     showErrorMessage(message) {
       this.statusMessage = message;
-      setTimeout(() => (this.statusMessage = ''), 3000);
+      setTimeout(() => (this.statusMessage = ''), 2000);
     },
   },
 };
@@ -473,7 +463,7 @@ export default {
 /* Transitions */
 .modal-enter-active,
 .modal-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .modal-enter-from,
@@ -484,74 +474,24 @@ export default {
 
 button:hover:not(:disabled) {
   transform: translateY(-1px);
-  transition: all 0.2s ease;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #a0aec0;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #718096;
+  transition: all 0.15s ease;
 }
 
 /* Animations */
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-in-out;
+  animation: fadeIn 0.2s ease-in-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Responsive Design */
+/* Responsive fixes */
 @media (max-width: 640px) {
-  .min-h-screen { padding: 1rem; }
-  header { padding: 1rem; flex-direction: column; gap: 1rem; }
-  h1 { font-size: 1.25rem; }
-  .material-icons { font-size: 1.25rem !important; }
-  .flex-col.sm\:flex-row { flex-direction: column; gap: 0.75rem; }
-  input[type="date"] { width: 100%; font-size: 0.875rem; padding: 0.5rem 0.75rem 0.5rem 2.5rem; }
+  .flex-col.sm\:flex-row { flex-direction: column; gap: 0.5rem; }
   .relative.w-full.sm\:w-64 { width: 100%; }
-  input[type="text"] { font-size: 0.875rem; padding: 0.5rem 2.5rem; }
-  input[type="time"] { font-size: 0.875rem; padding: 0.5rem; width: 5rem; }
-  select { font-size: 0.875rem; padding: 0.5rem; width: 6rem; }
-  button { font-size: 0.875rem; padding: 0.5rem 1rem; }
-  table { font-size: 0.875rem; }
-  th, td { padding: 0.75rem; }
-  img.h-8.w-8 { height: 1.5rem; width: 1.5rem; }
-  .p-4 { padding: 0.75rem; }
-  .text-sm { font-size: 0.75rem; }
-  .max-w-md.p-6 { padding: 1rem; max-width: 95%; }
-  .text-xl { font-size: 1rem; }
-  .h-10.w-10 { height: 2rem; width: 2rem; }
-  .grid-cols-2.gap-4 { gap: 0.75rem; }
-}
-
-@media (min-width: 641px) and (max-width: 1024px) {
-  .min-h-screen { padding: 2rem; }
-  header { padding: 1.5rem; }
-  h1 { font-size: 1.5rem; }
-  input[type="date"] { width: 10rem; font-size: 0.875rem; }
-  input[type="text"] { font-size: 0.875rem; }
-  input[type="time"] { font-size: 0.875rem; width: 6rem; }
-  select { font-size: 0.875rem; width: 7rem; }
-  button { font-size: 0.875rem; }
-  table { font-size: 0.875rem; }
-  th, td { padding: 1rem; }
-  .text-sm { font-size: 0.875rem; }
+  input[type="date"], input[type="time"], input[type="text"], select { font-size: 0.75rem; }
+  img.h-6.w-6 { height: 1.25rem; width: 1.25rem; }
 }
 </style>
