@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Payslip = require('../models/Payslip');
 const nodemailer = require('nodemailer');
-const Employee = require('../models/Employee'); // Added for validation
+const Employee = require('../models/Employee');
 
 // Middleware to check admin role
 const isAdmin = (req, res, next) => {
@@ -30,6 +30,7 @@ transporter.verify((error, success) => {
   }
 });
 
+// Fetch all payslips (optionally filtered by month)
 router.get('/', isAdmin, async (req, res) => {
   try {
     const { month } = req.query;
@@ -43,30 +44,54 @@ router.get('/', isAdmin, async (req, res) => {
   }
 });
 
+// Fetch payslips by employee ID (one per expected salary date)
+router.get('/:employeeId', isAdmin, async (req, res) => {
+  try {
+    const employeeId = Number(req.params.employeeId);
+    const payslips = await Payslip.find({ employeeId });
+    console.log(`Fetched ${payslips.length} payslips for employee ID: ${employeeId}`);
+    res.status(200).json(payslips); // Returns all payslips, frontend will handle display logic
+  } catch (error) {
+    console.error('Error fetching payslips by employee ID:', error);
+    res.status(500).json({ error: 'Failed to fetch payslips', message: error.message });
+  }
+});
+
+// Generate a new payslip (ensure one per expected salary date)
 router.post('/generate', isAdmin, async (req, res) => {
   try {
-    const { employeeId, empNo, payslipData, salaryMonth } = req.body;
-    if (!employeeId || !empNo || !payslipData || !salaryMonth) {
+    const { employeeId, empNo, payslipData, salaryMonth, paydayType } = req.body;
+    if (!employeeId || !empNo || !payslipData || !salaryMonth || !paydayType) {
       console.error('Missing required fields for generate:', req.body);
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Validate employee existence
+    if (!['mid-month', 'end-of-month'].includes(paydayType)) {
+      console.error('Invalid paydayType:', paydayType);
+      return res.status(400).json({ error: 'Invalid paydayType, must be "mid-month" or "end-of-month"' });
+    }
+
     const employee = await Employee.findOne({ id: employeeId, empNo });
     if (!employee) {
       console.error('Employee not found:', { employeeId, empNo });
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    // Validate payslipData format
     if (!payslipData.startsWith('data:application/pdf;base64,')) {
       console.error('Invalid payslipData format:', payslipData.slice(0, 50));
       return res.status(400).json({ error: 'Invalid payslipData format' });
     }
 
-    const payslip = new Payslip({ employeeId, empNo, payslipData, salaryMonth });
+    // Check if a payslip already exists for this salaryMonth and paydayType
+    const existingPayslip = await Payslip.findOne({ employeeId, salaryMonth, paydayType });
+    if (existingPayslip) {
+      console.log(`Payslip already exists for employee ${employeeId}, month ${salaryMonth}, type ${paydayType}`);
+      return res.status(409).json({ error: 'Payslip already exists for this salary date' });
+    }
+
+    const payslip = new Payslip({ employeeId, empNo, payslipData, salaryMonth, paydayType });
     await payslip.save();
-    console.log(`Payslip generated for employee ${employeeId}, month ${salaryMonth}`);
+    console.log(`Payslip generated for employee ${employeeId}, month ${salaryMonth}, type ${paydayType}`);
     res.status(200).json({ success: true, message: 'Payslip generated successfully' });
   } catch (error) {
     console.error('Error generating payslip:', error);
@@ -74,6 +99,7 @@ router.post('/generate', isAdmin, async (req, res) => {
   }
 });
 
+// Send payslip via email
 router.post('/send-email', isAdmin, async (req, res) => {
   try {
     const { employeeId, employeeEmail, payslipData, salaryMonth } = req.body;
@@ -82,14 +108,12 @@ router.post('/send-email', isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Validate employee email
     const employee = await Employee.findOne({ id: employeeId, email: employeeEmail });
     if (!employee) {
       console.error('Employee not found or email mismatch:', { employeeId, employeeEmail });
       return res.status(404).json({ error: 'Employee not found or email does not match' });
     }
 
-    // Validate payslipData format
     if (!payslipData.startsWith('data:application/pdf;base64,')) {
       console.error('Invalid payslipData format:', payslipData.slice(0, 50));
       return res.status(400).json({ error: 'Invalid payslipData format' });
