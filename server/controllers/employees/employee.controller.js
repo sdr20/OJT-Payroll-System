@@ -118,7 +118,7 @@ export const updateEmployeeDetails = asyncHandler(async (req, res) => {
             ...(req.body.deductions && { deductions: req.body.deductions }),
             ...(req.body.earnings && { earnings: req.body.earnings }),
             ...(req.body.payheads && { payheads: req.body.payheads }),
-            ...(hireDate && { hireDate: new Date(hireDate) }), // Convert to Date if needed
+            ...(hireDate && { hireDate: new Date(hireDate) }),
         };
 
         if (req.file) {
@@ -184,7 +184,7 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
         const hourlyRate = baseSalary / (8 * 22);
 
         const salarySlip = {
-            id: employee._id, // Use MongoDB _id for consistency with frontend
+            id: employee._id,
             employeeIdNumber: employee.employeeIdNumber,
             name: `${employee.firstName} ${employee.middleName} ${employee.lastName}`.trim(),
             hourlyRate,
@@ -193,10 +193,10 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
             hireDate: employee.hireDate ? employee.hireDate.toISOString().split('T')[0] : 'N/A',
             civilStatus: employee.civilStatus || 'SINGLE',
             dependents: employee.dependents || 0,
-            sss: employee.sss || 'N/A', // Match model field
+            sss: employee.sss || 'N/A',
             tin: employee.tin || 'N/A',
-            philHeath: employee.philHealth || 'N/A', // Match model field
-            pagIbig: employee.pagIbig || 'N/A', // Match model field
+            philHeath: employee.philHealth || 'N/A',
+            pagIbig: employee.pagIbig || 'N/A',
             position: employee.position || 'N/A',
             earnings: earnings.map(p => ({ name: p.name, amount: p.amount })),
             deductions: {
@@ -221,9 +221,59 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
 
 export const deleteEmployee = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const employee = await Employee.findByIdAndDelete(id);
-    if (!employee) {
-        return res.status(404).json({ message: 'Employee not found' });
+
+    const session = await Employee.startSession();
+    session.startTransaction();
+
+    try {
+        const employee = await Employee.findByIdAndDelete(id).session(session);
+        if (!employee) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+
+        await LeaveRequest.deleteMany({ employeeId: id }).session(session);
+        await PayHead.deleteMany({ employeeId: id }).session(session);
+        await Payslip.deleteMany({ employeeId: id }).session(session);
+        await Attendance.deleteMany({ employeeId: id }).session(session);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json({ message: 'Employee and all related data deleted successfully' });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        res.status(500).json({ 
+            message: 'Error deleting employee and related data', 
+            error: error.message 
+        });
     }
-    res.status(200).json({ message: 'Employee deleted successfully' });
 });
+
+// Alternative Without Transactions (For Standalone MongoDB)
+
+// export const deleteEmployee = asyncHandler(async (req, res) => {
+//     const { id } = req.params;
+
+//     try {
+//         Find and delete the employee
+//         const employee = await Employee.findByIdAndDelete(id);
+//         if (!employee) {
+//             return res.status(404).json({ message: 'Employee not found' });
+//         }
+//         Delete related data from other collections
+//         await LeaveRequest.deleteMany({ employeeId: id });
+//         await PayHead.deleteMany({ employeeId: id });
+//         await Payslip.deleteMany({ employeeId: id });
+//         await Attendance.deleteMany({ employeeId: id });
+
+//         res.status(200).json({ message: 'Employee and all related data deleted successfully' });
+//     } catch (error) {
+//         res.status(500).json({ 
+//             message: 'Error deleting employee and related data', 
+//             error: error.message 
+//         });
+//     }
+// });
