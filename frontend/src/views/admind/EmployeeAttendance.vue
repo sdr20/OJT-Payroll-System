@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50 p-2">
     <div class="max-w-7xl mx-auto">
-      <!-- Header - Streamlined -->
+      <!-- Header -->
       <header class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
         <h1 class="text-xl font-semibold text-gray-800 flex items-center gap-1">
           <span class="material-icons text-indigo-500 text-xl">schedule</span>
@@ -32,12 +32,12 @@
           <button @click="generateReport" 
             class="px-3 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600 flex items-center gap-1">
             <span class="material-icons text-xs">download</span>
-            Export
+            Export CSV
           </button>
         </div>
       </header>
 
-      <!-- Table - Compact design -->
+      <!-- Table -->
       <div class="bg-white rounded-lg shadow mt-3 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full divide-y divide-gray-100">
@@ -58,7 +58,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100 bg-white">
               <tr v-if="isLoading" class="animate-pulse">
-                <td colspan="6" class="px-3 py-2">
+                <td colspan="8" class="px-3 py-2">
                   <div class="h-4 bg-gray-200 rounded w-full"></div>
                 </td>
               </tr>
@@ -75,16 +75,32 @@
                 <td class="px-3 py-2 text-gray-700">
                   <input
                     type="time"
-                    v-model="employee.timeIn"
-                    @change="updateAttendance(employee, 'timeIn')"
+                    v-model="employee.morningTimeIn"
+                    @change="updateAttendance(employee, 'morningTimeIn')"
                     class="w-20 py-1 px-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                   />
                 </td>
                 <td class="px-3 py-2 text-gray-700">
                   <input
                     type="time"
-                    v-model="employee.timeOut"
-                    @change="updateAttendance(employee, 'timeOut')"
+                    v-model="employee.morningTimeOut"
+                    @change="updateAttendance(employee, 'morningTimeOut')"
+                    class="w-20 py-1 px-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
+                  />
+                </td>
+                <td class="px-3 py-2 text-gray-700">
+                  <input
+                    type="time"
+                    v-model="employee.afternoonTimeIn"
+                    @change="updateAttendance(employee, 'afternoonTimeIn')"
+                    class="w-20 py-1 px-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
+                  />
+                </td>
+                <td class="px-3 py-2 text-gray-700">
+                  <input
+                    type="time"
+                    v-model="employee.afternoonTimeOut"
+                    @change="updateAttendance(employee, 'afternoonTimeOut')"
                     class="w-20 py-1 px-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                   />
                 </td>
@@ -111,7 +127,7 @@
                 </td>
               </tr>
               <tr v-if="!isLoading && paginatedEmployees.length === 0">
-                <td colspan="6" class="px-3 py-4 text-center text-gray-500 text-xs">
+                <td colspan="8" class="px-3 py-4 text-center text-gray-500 text-xs">
                   No employees found
                 </td>
               </tr>
@@ -119,7 +135,7 @@
           </table>
         </div>
         
-        <!-- Pagination - Simplified -->
+        <!-- Pagination -->
         <div v-if="filteredEmployees.length > itemsPerPage" 
           class="p-2 flex justify-between items-center bg-gray-50 border-t border-gray-100">
           <span class="text-xs text-gray-500">
@@ -138,7 +154,7 @@
         </div>
       </div>
 
-      <!-- Modal - Compact -->
+      <!-- Modal -->
       <transition name="modal">
         <div v-if="showDetailsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div class="bg-white rounded-lg shadow w-full max-w-sm p-4">
@@ -159,23 +175,43 @@
               </div>
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label for="timeIn" class="block text-xs font-medium text-gray-700">Time In</label>
+                  <label for="morningTimeIn" class="block text-xs font-medium text-gray-700">Morning In</label>
                   <input
-                    id="timeIn"
-                    v-model="selectedEmployee.timeIn"
+                    id="morningTimeIn"
+                    v-model="selectedEmployee.morningTimeIn"
                     type="time"
                     class="mt-1 p-1 w-full text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
-                    @change="updateAttendance(selectedEmployee, 'timeIn')"
+                    @change="updateAttendance(selectedEmployee, 'morningTimeIn')"
                   />
                 </div>
                 <div>
-                  <label for="timeOut" class="block text-xs font-medium text-gray-700">Time Out</label>
+                  <label for="morningTimeOut" class="block text-xs font-medium text-gray-700">Morning Out</label>
                   <input
-                    id="timeOut"
-                    v-model="selectedEmployee.timeOut"
+                    id="morningTimeOut"
+                    v-model="selectedEmployee.morningTimeOut"
                     type="time"
                     class="mt-1 p-1 w-full text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
-                    @change="updateAttendance(selectedEmployee, 'timeOut')"
+                    @change="updateAttendance(selectedEmployee, 'morningTimeOut')"
+                  />
+                </div>
+                <div>
+                  <label for="afternoonTimeIn" class="block text-xs font-medium text-gray-700">Afternoon In</label>
+                  <input
+                    id="afternoonTimeIn"
+                    v-model="selectedEmployee.afternoonTimeIn"
+                    type="time"
+                    class="mt-1 p-1 w-full text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
+                    @change="updateAttendance(selectedEmployee, 'afternoonTimeIn')"
+                  />
+                </div>
+                <div>
+                  <label for="afternoonTimeOut" class="block text-xs font-medium text-gray-700">Afternoon Out</label>
+                  <input
+                    id="afternoonTimeOut"
+                    v-model="selectedEmployee.afternoonTimeOut"
+                    type="time"
+                    class="mt-1 p-1 w-full text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
+                    @change="updateAttendance(selectedEmployee, 'afternoonTimeOut')"
                   />
                 </div>
                 <div class="col-span-2">
@@ -193,13 +229,21 @@
                 </div>
               </div>
               <div class="flex gap-2 mt-4">
-                <button @click="markTime('in')" 
+                <button @click="markTime('morningIn')" 
                   class="flex-1 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600">
-                  Time In Now
+                  Morning In Now
                 </button>
-                <button @click="markTime('out')" 
+                <button @click="markTime('morningOut')" 
                   class="flex-1 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600">
-                  Time Out Now
+                  Morning Out Now
+                </button>
+                <button @click="markTime('afternoonIn')" 
+                  class="flex-1 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600">
+                  Afternoon In Now
+                </button>
+                <button @click="markTime('afternoonOut')" 
+                  class="flex-1 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600">
+                  Afternoon Out Now
                 </button>
               </div>
             </div>
@@ -207,7 +251,7 @@
         </div>
       </transition>
 
-      <!-- Status Message - More compact -->
+      <!-- Status Message -->
       <div
         v-if="statusMessage"
         :class="statusMessage.includes('successfully') ? 'bg-green-500' : 'bg-red-500'"
@@ -225,7 +269,6 @@
 <script>
 import axios from 'axios';
 import moment from 'moment';
-import * as XLSX from 'xlsx';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:7777';
 
@@ -247,8 +290,10 @@ export default {
       headers: [
         { key: 'id', label: 'ID', icon: 'badge' },
         { key: 'firstName', label: 'Name', icon: 'person' },
-        { key: 'timeIn', label: 'In', icon: 'wb_sunny' },
-        { key: 'timeOut', label: 'Out', icon: 'nights_stay' },
+        { key: 'morningTimeIn', label: 'Morning In', icon: 'wb_sunny' },
+        { key: 'morningTimeOut', label: 'Morning Out', icon: 'wb_sunny' },
+        { key: 'afternoonTimeIn', label: 'Afternoon In', icon: 'nights_stay' },
+        { key: 'afternoonTimeOut', label: 'Afternoon Out', icon: 'nights_stay' },
         { key: 'status', label: 'Status', icon: 'check_circle' },
         { key: 'actions', label: 'Actions', icon: 'settings' },
       ],
@@ -302,8 +347,10 @@ export default {
           id: emp.id,
           firstName: emp.firstName || 'Unknown',
           lastName: emp.lastName || '',
-          timeIn: null,
-          timeOut: null,
+          morningTimeIn: null,
+          morningTimeOut: null,
+          afternoonTimeIn: null,
+          afternoonTimeOut: null,
           status: 'Absent',
         }));
 
@@ -318,9 +365,11 @@ export default {
         const attendanceRecords = (attResponse.data || []).map(record => ({
           id: record.id,
           employeeId: record.employeeId,
-          timeIn: record.timeIn || null,
-          timeOut: record.timeOut || null,
-          status: record.status || (record.timeIn || record.timeOut ? 'Present' : 'Absent'),
+          morningTimeIn: record.morningTimeIn || null,
+          morningTimeOut: record.morningTimeOut || null,
+          afternoonTimeIn: record.afternoonTimeIn || null,
+          afternoonTimeOut: record.afternoonTimeOut || null,
+          status: record.status || (record.morningTimeIn || record.morningTimeOut || record.afternoonTimeIn || record.afternoonTimeOut ? 'Present' : 'Absent'),
         }));
 
         const attendanceMap = attendanceRecords.reduce((map, record) => {
@@ -332,8 +381,10 @@ export default {
           const attendance = attendanceMap[employee.id];
           return {
             ...employee,
-            timeIn: attendance ? attendance.timeIn : null,
-            timeOut: attendance ? attendance.timeOut : null,
+            morningTimeIn: attendance ? attendance.morningTimeIn : null,
+            morningTimeOut: attendance ? attendance.morningTimeOut : null,
+            afternoonTimeIn: attendance ? attendance.afternoonTimeIn : null,
+            afternoonTimeOut: attendance ? attendance.afternoonTimeOut : null,
             status: attendance ? attendance.status : 'Absent',
           };
         });
@@ -374,7 +425,12 @@ export default {
     },
     async markTime(period) {
       try {
-        const timeField = period === 'in' ? 'timeIn' : 'timeOut';
+        const timeField = {
+          'morningIn': 'morningTimeIn',
+          'morningOut': 'morningTimeOut',
+          'afternoonIn': 'afternoonTimeIn',
+          'afternoonOut': 'afternoonTimeOut'
+        }[period];
         const timeValue = moment().format('HH:mm');
         if (this.selectedEmployee && timeValue) {
           this.selectedEmployee[timeField] = timeValue;
@@ -393,8 +449,10 @@ export default {
         const payload = {
           date: this.date,
           employeeId: employee.id,
-          timeIn: employee.timeIn,
-          timeOut: employee.timeOut,
+          morningTimeIn: employee.morningTimeIn,
+          morningTimeOut: employee.morningTimeOut,
+          afternoonTimeIn: employee.afternoonTimeIn,
+          afternoonTimeOut: employee.afternoonTimeOut,
           status: employee.status,
         };
 
@@ -424,26 +482,41 @@ export default {
     async generateReport() {
       try {
         const formattedDate = moment(this.date).format('MM/DD/YYYY');
-        const reportData = [
-          ['Date', formattedDate],
-          ['Employee ID', 'First Name', 'Last Name', 'Time In', 'Time Out', 'Status'],
-          ...this.filteredEmployees.map(employee => [
-            employee.id,
-            employee.firstName,
-            employee.lastName,
-            employee.timeIn ? this.formatTime(employee.timeIn) : '--',
-            employee.timeOut ? this.formatTime(employee.timeOut) : '--',
-            employee.status,
-          ]),
-        ];
+        const csvHeader = [
+          'Date',
+          'Employee ID',
+          'First Name',
+          'Last Name',
+          'Morning Time In',
+          'Morning Time Out',
+          'Afternoon Time In',
+          'Afternoon Time Out',
+          'Status'
+        ].join(',');
 
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(reportData);
-        XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
-        XLSX.writeFile(wb, `Attendance_${this.date}.xlsx`);
-        this.showSuccessMessage('Report exported');
+        const csvRows = this.filteredEmployees.map(employee => [
+          formattedDate,
+          employee.id,
+          employee.firstName,
+          employee.lastName,
+          employee.morningTimeIn ? `"${this.formatTime(employee.morningTimeIn)}"` : '""',
+          employee.morningTimeOut ? `"${this.formatTime(employee.morningTimeOut)}"` : '""',
+          employee.afternoonTimeIn ? `"${this.formatTime(employee.afternoonTimeIn)}"` : '""',
+          employee.afternoonTimeOut ? `"${this.formatTime(employee.afternoonTimeOut)}"` : '""',
+          employee.status
+        ].join(',')).join('\n');
+
+        const csvContent = `${csvHeader}\n${csvRows}`;
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Attendance_${this.date}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+        this.showSuccessMessage('Report exported successfully');
       } catch (error) {
-        console.error('Error generating report:', error);
+        console.error('Error generating CSV report:', error);
         this.showErrorMessage('Export failed');
       }
     },
