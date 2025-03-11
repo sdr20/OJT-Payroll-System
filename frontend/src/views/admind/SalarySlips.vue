@@ -551,8 +551,6 @@ export default {
         unit: 'mm',
         format: [216, 279] // Letter size: 8.5" x 11"
       });
-
-      // Use Helvetica as the default font (supports basic Unicode, fallback for ₱)
       doc.setFont('Helvetica');
 
       const margin = 10;
