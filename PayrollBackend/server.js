@@ -14,6 +14,7 @@ const payslipRoutes = require('./routes/payslips');
 const attendanceRoutes = require('./routes/attendance');
 const payheadRoutes = require('./routes/payheads');
 const authRoutes = require('./routes/auth');
+const positionRoutes = require('./routes/positions'); // Added position routes
 
 const app = express();
 
@@ -105,6 +106,7 @@ app.use('/api/payslips', payslipRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/payheads', payheadRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/positions', positionRoutes); // Added position routes
 
 // Health Check Route
 app.get('/health', (req, res) => {

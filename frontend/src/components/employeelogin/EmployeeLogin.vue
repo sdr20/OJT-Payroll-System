@@ -93,12 +93,12 @@
 
     <!-- Register Modal with Slide-In Animation -->
     <div v-if="showRegisterModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-500 ease-out animate-slideIn">
-        <h2 class="text-2xl font-bold mb-6 text-gray-900">Request Account Creation</h2>
-        <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-6">
+      <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto transform transition-all duration-500 ease-out animate-slideIn">
+        <h2 class="text-xl font-bold mb-4 text-gray-900">Request Account Creation</h2>
+        <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-4">
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
-            <div class="grid grid-cols-2 gap-4">
+            <h3 class="text-base font-semibold text-gray-800 mb-3">Basic Information</h3>
+            <div class="grid grid-cols-2 gap-3">
               <div class="space-y-1">
                 <label for="empNo" class="text-sm font-medium text-gray-700">Employee Number</label>
                 <input
@@ -177,9 +177,12 @@
                   id="position"
                   class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
                   required
+                  @change="updateSalaryFromPosition"
                 >
-                  <option v-for="position in positions" :key="position" :value="position">{{ position }}</option>
+                  <option value="" disabled>Select a position</option>
+                  <option v-for="position in adminPositions" :key="position._id" :value="position.name">{{ position.name }}</option>
                 </select>
+                <p v-if="adminPositions.length === 0" class="text-red-500 text-xs mt-1">No positions available. Contact your admin.</p>
               </div>
               <div class="space-y-1">
                 <label for="civilStatus" class="text-sm font-medium text-gray-700">Civil Status</label>
@@ -257,18 +260,16 @@
           </div>
 
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Information</h3>
-            <div class="grid grid-cols-2 gap-4">
+            <h3 class="text-base font-semibold text-gray-800 mb-3">Financial Information</h3>
+            <div class="grid grid-cols-2 gap-3">
               <div class="space-y-1">
-                <label for="salary" class="text-sm font-medium text-gray-700">Proposed Monthly Salary</label>
+                <label for="salary" class="text-sm font-medium text-gray-700">Monthly Salary (Based on Position)</label>
                 <input
-                  v-model.number="newRequest.salary"
-                  type="number"
+                  :value="newRequest.salary.toLocaleString()"
+                  type="text"
                   id="salary"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
-                  placeholder="Enter proposed salary"
-                  required
-                  min="0"
+                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
+                  disabled
                 />
               </div>
               <div class="space-y-1">
@@ -321,8 +322,8 @@
           </div>
 
           <div class="col-span-2">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Login Credentials</h3>
-            <div class="grid grid-cols-2 gap-4">
+            <h3 class="text-base font-semibold text-gray-800 mb-3">Login Credentials</h3>
+            <div class="grid grid-cols-2 gap-3">
               <div class="space-y-1">
                 <label for="newUsername" class="text-sm font-medium text-gray-700">Username</label>
                 <input
@@ -424,7 +425,7 @@
             </div>
           </div>
 
-          <div class="col-span-2 flex justify-end space-x-2 mt-6">
+          <div class="col-span-2 flex justify-end space-x-2 mt-4">
             <button
               type="button"
               @click="showRegisterModal = false"
@@ -468,6 +469,7 @@ export default {
       isSubmitting: false,
       isLoggingIn: false,
       statusMessage: '',
+      adminPositions: [], // Positions from backend
       newRequest: {
         empNo: '',
         username: '',
@@ -490,15 +492,13 @@ export default {
         role: 'employee',
         earnings: { travelExpenses: 0, otherEarnings: 0 }
       },
-      positions: ['Manager', 'Assistant', 'Developer'],
       showLoginPassword: false,
       showPassword: false,
       showConfirmPassword: false,
       confirmPassword: '',
       emailError: '',
       phoneError: '',
-      passwordError: '',
-      minimumWage: 610
+      passwordError: ''
     };
   },
   watch: {
@@ -531,19 +531,34 @@ export default {
       return this.newRequest.password === this.confirmPassword;
     },
     isSubmitDisabled() {
-      const disabled = this.isSubmitting || !this.passwordsMatch || !!this.emailError || !!this.phoneError || !!this.passwordError;
-      console.log('isSubmitDisabled:', {
-        isSubmitting: this.isSubmitting,
-        passwordsMatch: this.passwordsMatch,
-        emailError: this.emailError,
-        phoneError: this.phoneError,
-        passwordError: this.passwordError,
-        result: disabled
-      });
-      return disabled;
+      return this.isSubmitting || !this.passwordsMatch || !!this.emailError || !!this.phoneError || !!this.passwordError || !this.newRequest.position || this.adminPositions.length === 0;
     }
   },
+  mounted() {
+    this.fetchPositions();
+  },
   methods: {
+    async fetchPositions() {
+      try {
+        const response = await axios.get('http://localhost:7777/api/positions');
+        this.adminPositions = response.data.map(pos => ({
+          _id: pos._id,
+          name: pos.name,
+          salary: pos.salary
+        }));
+        if (this.adminPositions.length === 0) {
+          this.showErrorMessage('No positions available. Please contact your admin to create positions.');
+        }
+      } catch (error) {
+        console.error('Error fetching positions:', error.response?.data || error.message);
+        if (error.response?.status === 403) {
+          this.showErrorMessage('Access denied. Please ensure positions are available or contact your admin.');
+        } else {
+          this.showErrorMessage('Failed to load positions. Please check your connection or contact your admin.');
+        }
+        this.adminPositions = [];
+      }
+    },
     async login() {
       this.isLoggingIn = true;
       this.loginError = '';
@@ -552,8 +567,6 @@ export default {
           username: this.username.trim(),
           password: this.password
         });
-
-        console.log('Login response:', response.data);
 
         if (!response.data || typeof response.data.id === 'undefined') {
           throw new Error('Invalid response from server');
@@ -573,7 +586,6 @@ export default {
           this.$store.dispatch('login', userData);
         }
 
-        console.log('Storing user data in localStorage:', userData);
         localStorage.setItem('userId', userData.id);
         localStorage.setItem('userEmpNo', userData.empNo);
         localStorage.setItem('userRole', userData.role);
@@ -619,8 +631,17 @@ export default {
         this.passwordError = '';
       }
     },
+    updateSalaryFromPosition() {
+      const selectedPosition = this.adminPositions.find(pos => pos.name === this.newRequest.position);
+      if (selectedPosition) {
+        this.newRequest.salary = selectedPosition.salary;
+        this.newRequest.hourlyRate = selectedPosition.salary / (8 * 22);
+      } else {
+        this.newRequest.salary = 0;
+        this.newRequest.hourlyRate = 0;
+      }
+    },
     async submitRequest() {
-      console.log('Form submitted, calling submitRequest');
       if (!this.passwordsMatch) {
         this.showErrorMessage('Passwords do not match.');
         return;
@@ -629,13 +650,15 @@ export default {
         this.showErrorMessage('Please fix all validation errors before submitting.');
         return;
       }
+      if (!this.newRequest.position || this.adminPositions.length === 0) {
+        this.showErrorMessage('Please select a valid position or contact your admin if none are available.');
+        return;
+      }
 
       this.isSubmitting = true;
       this.statusMessage = '';
       try {
-        console.log('Step 1: Fetching max ID');
         const maxIdResponse = await axios.get('http://localhost:7777/api/pending-requests/max-id');
-        console.log('Step 2: Max ID fetched:', maxIdResponse.data);
         const newId = (maxIdResponse.data.maxId || 0) + 1;
 
         const requestData = {
@@ -643,13 +666,10 @@ export default {
           id: newId,
           earnings: { travelExpenses: 0, otherEarnings: 0 }
         };
-        console.log('Step 3: Submitting request with data:', requestData);
 
         const response = await axios.post('http://localhost:7777/api/pending-requests', requestData);
-        console.log('Step 4: Submission response:', response.data);
 
         if (response.status === 201) {
-          console.log('Step 5: Success, closing modal');
           this.showRegisterModal = false;
           this.resetNewRequest();
           this.showSuccessMessage('Account request submitted successfully! Please wait for admin approval.');
@@ -659,7 +679,6 @@ export default {
         this.showErrorMessage(error.response?.data?.error || 'Failed to submit request. Please check your connection or try again.');
       } finally {
         this.isSubmitting = false;
-        console.log('Step 6: Submission complete, isSubmitting set to false');
       }
     },
     resetNewRequest() {
@@ -702,54 +721,22 @@ export default {
       setTimeout(() => { this.statusMessage = ''; }, 5000);
     },
     calculateSSSContribution(salary) {
-  const monthlySalary = Math.max(salary || 0, 0);
-  if (monthlySalary < 5000) {
-    return 250; // Fixed contribution for salaries below 5,000
-  }
-  
-  // Calculate salary credit (capped between 5,000 and 35,000)
-  const salaryCredit = Math.min(Math.max(monthlySalary, 5000), 35000);
-  
-  // Calculate regular SSS contribution (5% of salary credit, matching the table)
-  const regularSSContribution = Math.round(salaryCredit * 0.05);
-  
-  // Calculate MPF contribution (2.5% of amount above 20,000, up to 35,000)
-  let mpfContribution = 0;
-  if (salaryCredit > 20000) {
-    const mpfBase = Math.min(salaryCredit, 35000) - 20000;
-    mpfContribution = Math.round(mpfBase * 0.025);
-  }
-  
-  // Calculate total employee contribution
-  let totalEmployeeContribution = regularSSContribution + mpfContribution;
-  
-  // Cap total contribution at 1,750 for salary credits above 34,750
-  if (salaryCredit > 34750) {
-    totalEmployeeContribution = 1750;
-  }
-  
-  return totalEmployeeContribution;
-},
-
-calculatePhilHealthContribution(salary) {
-  const monthlySalary = Math.max(salary || 0, 0);
-  const minSalary = 10000; // PhilHealth minimum salary base for employed individuals
-  const maxSalary = 100000; // PhilHealth maximum salary base for employed individuals
-  const cappedSalary = Math.min(Math.max(monthlySalary, minSalary), maxSalary);
-  return Math.round(cappedSalary * 0.025); // Employee’s 2.5% share
-},
-  calculatePagIBIGContribution(salary) {
-  const monthlySalary = Math.max(salary || 0, 0);
-  const maxSalary = 5000; // Pag-IBIG maximum monthly compensation
-  const cappedSalary = Math.min(monthlySalary, maxSalary);
-  
-  let rate = 0.02; // Default to 2% for salaries over ₱1,500
-  if (cappedSalary <= 1500) {
-    rate = 0.01; // 1% for salaries of ₱1,500 and below
-  }
-  
-  return Math.round(cappedSalary * rate); // Employee’s contribution
-},
+      const monthlySalary = Math.max(salary || 0, 0);
+      if (monthlySalary < 5000) return 250;
+      const salaryCredit = Math.min(Math.max(monthlySalary, 5000), 35000);
+      const regularSSContribution = Math.round(salaryCredit * 0.05);
+      let mpfContribution = salaryCredit > 20000 ? Math.round((Math.min(salaryCredit, 35000) - 20000) * 0.025) : 0;
+      return salaryCredit > 34750 ? 1750 : regularSSContribution + mpfContribution;
+    },
+    calculatePhilHealthContribution(salary) {
+      const monthlySalary = Math.max(salary || 0, 0);
+      return Math.round(Math.min(Math.max(monthlySalary, 10000), 100000) * 0.025);
+    },
+    calculatePagIBIGContribution(salary) {
+      const monthlySalary = Math.max(salary || 0, 0);
+      const cappedSalary = Math.min(monthlySalary, 5000);
+      return Math.round(cappedSalary * (cappedSalary <= 1500 ? 0.01 : 0.02));
+    },
     calculateWithholdingTax(salary) {
       const taxableIncome = salary || 0;
       if (taxableIncome <= 20833) return 0;
@@ -769,102 +756,50 @@ calculatePhilHealthContribution(salary) {
 <style scoped>
 /* Animation Keyframes */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes bounceIn {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 @keyframes pulseSlow {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 @keyframes pulseFast {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 /* Animation Classes */
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-out;
-}
-
-.animate-slideIn {
-  animation: slideIn 0.5s ease-out;
-}
-
-.animate-bounce-in {
-  animation: bounceIn 0.5s ease-out;
-}
-
-.animate-pulse-slow {
-  animation: pulseSlow 2s infinite ease-in-out;
-}
-
-.animate-pulse-fast {
-  animation: pulseFast 1s infinite ease-in-out;
-}
+.animate-fadeIn { animation: fadeIn 0.5s ease-out; }
+.animate-slideIn { animation: slideIn 0.5s ease-out; }
+.animate-bounce-in { animation: bounceIn 0.5s ease-out; }
+.animate-pulse-slow { animation: pulseSlow 2s infinite ease-in-out; }
+.animate-pulse-fast { animation: pulseFast 1s infinite ease-in-out; }
 
 /* Custom Styles for Better UX */
 input:focus, select:focus, button:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); /* Blue focus ring */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
 }
 
-.disabled:bg-gray-400:disabled {
-  opacity: 0.7;
-}
-
-.bg-gray-100:disabled {
-  background-color: #f3f4f6;
-  cursor: not-allowed;
-}
+.disabled:bg-gray-400:disabled { opacity: 0.7; }
+.bg-gray-100:disabled { background-color: #f3f4f6; cursor: not-allowed; }
 
 /* Responsive Adjustments */
 @media (max-width: 640px) {
-  .grid-cols-2 {
-    grid-template-columns: 1fr;
-  }
-  
-  .w-full.max-w-4xl {
-    max-width: 90%;
-  }
-  
-  .p-8 {
-    padding: 4;
-  }
+  .grid-cols-2 { grid-template-columns: 1fr; }
+  .w-full.max-w-3xl { max-width: 90%; }
+  .p-6 { padding: 4; }
 }
 </style>
