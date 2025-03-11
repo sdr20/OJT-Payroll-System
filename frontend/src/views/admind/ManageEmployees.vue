@@ -132,6 +132,48 @@
       </div>
     </main>
 
+    <!-- Employee Details Modal -->
+    <div v-if="showDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
+        <div class="p-4 border-b">
+          <h2 class="text-lg font-semibold text-gray-800">Employee Details</h2>
+        </div>
+        <div class="p-4 space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
+              <div class="space-y-2">
+                <p><span class="font-medium text-gray-700">Name:</span> {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}</p>
+                <p><span class="font-medium text-gray-700">Position:</span> {{ selectedEmployee.position }}</p>
+                <p><span class="font-medium text-gray-700">Email:</span> {{ selectedEmployee.email }}</p>
+                <p><span class="font-medium text-gray-700">Contact:</span> {{ selectedEmployee.contactInfo }}</p>
+              </div>
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-gray-800 mb-2">Financial Information</h3>
+              <div class="space-y-2">
+                <p><span class="font-medium text-gray-700">Monthly Salary:</span> ₱{{ selectedEmployee.salary?.toLocaleString() }}</p>
+                <p><span class="font-medium text-gray-700">Hourly Rate:</span> ₱{{ selectedEmployee.hourlyRate?.toLocaleString() }}</p>
+                <p><span class="font-medium text-gray-700">Net Salary:</span> ₱{{ calculateNetSalary(selectedEmployee).toLocaleString() }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 p-3 bg-gray-50 rounded-md">
+            <h3 class="text-base font-semibold text-gray-800 mb-2">Deductions</h3>
+            <div class="space-y-2">
+              <p><span class="font-medium text-gray-700">SSS:</span> ₱{{ calculateSSSContribution(selectedEmployee.salary).toLocaleString() }}</p>
+              <p><span class="font-medium text-gray-700">PhilHealth:</span> ₱{{ calculatePhilHealthContribution(selectedEmployee.salary).toLocaleString() }}</p>
+              <p><span class="font-medium text-gray-700">Pag-IBIG:</span> ₱{{ calculatePagIBIGContribution(selectedEmployee.salary).toLocaleString() }}</p>
+              <p><span class="font-medium text-gray-700">Withholding Tax:</span> ₱{{ calculateWithholdingTax(selectedEmployee.salary).toLocaleString() }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t bg-gray-50 flex justify-end">
+          <button @click="showDetailsModal = false" class="px-3 py-1.5 border text-sm rounded-md text-gray-700 hover:bg-gray-100">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Employee Modal -->
     <div v-if="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
@@ -353,20 +395,7 @@
     </div>
 
     <!-- Placeholder Modals -->
-    <div v-if="showRequestModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
-        <div class="p-4 border-b"><h2 class="text-lg font-semibold text-gray-800">Request Details</h2></div>
-        <div class="p-4"><p class="text-sm">Details for {{ selectedRequest.firstName }} {{ selectedRequest.lastName }}</p></div>
-        <div class="p-4 border-t bg-gray-50 flex justify-end"><button @click="showRequestModal = false" class="px-3 py-1.5 border text-sm rounded-md text-gray-700 hover:bg-gray-100">Close</button></div>
-      </div>
-    </div>
-    <div v-if="showDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
-        <div class="p-4 border-b"><h2 class="text-lg font-semibold text-gray-800">Employee Details</h2></div>
-        <div class="p-4"><p class="text-sm">Details for {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}</p></div>
-        <div class="p-4 border-t bg-gray-50 flex justify-end"><button @click="showDetailsModal = false" class="px-3 py-1.5 border text-sm rounded-md text-gray-700 hover:bg-gray-100">Close</button></div>
-      </div>
-    </div>
+
     <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
         <div class="p-4 border-b"><h2 class="text-lg font-semibold text-gray-800">Edit Employee</h2></div>
@@ -831,4 +860,8 @@ export default {
 button:disabled { opacity: 0.6; cursor: not-allowed; }
 .material-icons-outlined { font-size: 18px; }
 input:focus:invalid, select:focus:invalid { border-color: #ef4444; outline: 1px solid #ef4444; }
+
+/* Additional Styles */
+.hover\:bg-gray-50:hover { background-color: #f9fafb; }
+.transition { transition: all 0.2s ease-in-out; }
 </style>

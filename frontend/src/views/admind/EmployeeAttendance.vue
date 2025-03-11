@@ -116,6 +116,7 @@
                     class="w-20 py-1 px-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                   >
                     <option value="Present">Present</option>
+                    <option value="Half Day">Half Day</option>
                     <option value="Absent">Absent</option>
                     <option value="Late">Late</option>
                   </select>
@@ -223,6 +224,7 @@
                     @change="updateAttendance(selectedEmployee, 'status')"
                   >
                     <option value="Present">Present</option>
+                    <option value="Half Day">Half Day</option>
                     <option value="Absent">Absent</option>
                     <option value="Late">Late</option>
                   </select>
@@ -344,7 +346,7 @@ export default {
         });
 
         const baseEmployees = (empResponse.data || []).map(emp => ({
-          id: emp.id,
+          id: parseInt(emp.id),
           firstName: emp.firstName || 'Unknown',
           lastName: emp.lastName || '',
           morningTimeIn: null,
@@ -362,14 +364,18 @@ export default {
           throw new Error(`Attendance API failed: ${error.message}`);
         });
 
+        console.log('Fetched attendance data:', JSON.stringify(attResponse.data, null, 2));
+
         const attendanceRecords = (attResponse.data || []).map(record => ({
-          id: record.id,
-          employeeId: record.employeeId,
+          employeeId: parseInt(record.employeeId),
           morningTimeIn: record.morningTimeIn || null,
           morningTimeOut: record.morningTimeOut || null,
           afternoonTimeIn: record.afternoonTimeIn || null,
           afternoonTimeOut: record.afternoonTimeOut || null,
-          status: record.status || (record.morningTimeIn || record.morningTimeOut || record.afternoonTimeIn || record.afternoonTimeOut ? 'Present' : 'Absent'),
+          status: record.status || this.calculateStatus({
+            morningTimeIn: record.morningTimeIn,
+            afternoonTimeIn: record.afternoonTimeIn,
+          }),
         }));
 
         const attendanceMap = attendanceRecords.reduce((map, record) => {
@@ -378,17 +384,22 @@ export default {
         }, {});
 
         this.employees = baseEmployees.map(employee => {
-          const attendance = attendanceMap[employee.id];
+          const attendance = attendanceMap[employee.id] || {};
           return {
-            ...employee,
-            morningTimeIn: attendance ? attendance.morningTimeIn : null,
-            morningTimeOut: attendance ? attendance.morningTimeOut : null,
-            afternoonTimeIn: attendance ? attendance.afternoonTimeIn : null,
-            afternoonTimeOut: attendance ? attendance.afternoonTimeOut : null,
-            status: attendance ? attendance.status : 'Absent',
+            id: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            morningTimeIn: attendance.morningTimeIn !== undefined ? attendance.morningTimeIn : employee.morningTimeIn,
+            morningTimeOut: attendance.morningTimeOut !== undefined ? attendance.morningTimeOut : employee.morningTimeOut,
+            afternoonTimeIn: attendance.afternoonTimeIn !== undefined ? attendance.afternoonTimeIn : employee.afternoonTimeIn,
+            afternoonTimeOut: attendance.afternoonTimeOut !== undefined ? attendance.afternoonTimeOut : employee.afternoonTimeOut,
+            status: attendance.status || employee.status,
           };
         });
 
+        this.employees = [...this.employees]; // Force re-render
+
+        console.log('Mapped employees after fetch:', JSON.stringify(this.employees, null, 2));
         this.showSuccessMessage('Data loaded');
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -409,6 +420,7 @@ export default {
     getStatusClass(status) {
       return {
         Present: 'text-green-600 bg-green-100',
+        'Half Day': 'text-blue-600 bg-blue-100',
         Absent: 'text-red-600 bg-red-100',
         Late: 'text-yellow-600 bg-yellow-100',
       }[status] || 'text-gray-600';
@@ -423,6 +435,11 @@ export default {
       this.selectedEmployee = { ...employee };
       this.showDetailsModal = true;
     },
+    calculateStatus({ morningTimeIn, afternoonTimeIn }) {
+      if (morningTimeIn && afternoonTimeIn) return 'Present';
+      if (morningTimeIn && !afternoonTimeIn) return 'Half Day';
+      return 'Absent';
+    },
     async markTime(period) {
       try {
         const timeField = {
@@ -434,9 +451,10 @@ export default {
         const timeValue = moment().format('HH:mm');
         if (this.selectedEmployee && timeValue) {
           this.selectedEmployee[timeField] = timeValue;
-          if (this.selectedEmployee.status === 'Absent') {
-            this.selectedEmployee.status = 'Present';
-          }
+          this.selectedEmployee.status = this.calculateStatus({
+            morningTimeIn: this.selectedEmployee.morningTimeIn,
+            afternoonTimeIn: this.selectedEmployee.afternoonTimeIn,
+          });
           await this.updateAttendance(this.selectedEmployee, timeField);
         }
       } catch (error) {
@@ -444,17 +462,41 @@ export default {
         this.showErrorMessage('Failed to mark time');
       }
     },
-    async updateAttendance(employee) {
+    async updateAttendance(employee, changedField) {
       try {
+        console.log('Employee state before update:', JSON.stringify(employee, null, 2));
+        if (!employee || typeof employee.id !== 'number' || isNaN(employee.id)) {
+          throw new Error('Invalid employee ID');
+        }
+        if (!this.date || !/^\d{4}-\d{2}-\d{2}$/.test(this.date)) {
+          throw new Error('Invalid date format');
+        }
+
+        const newStatus = this.calculateStatus({
+          morningTimeIn: employee.morningTimeIn,
+          afternoonTimeIn: employee.afternoonTimeIn,
+        });
+
+        employee.status = changedField === 'status' ? employee.status : newStatus;
+
         const payload = {
           date: this.date,
-          employeeId: employee.id,
-          morningTimeIn: employee.morningTimeIn,
-          morningTimeOut: employee.morningTimeOut,
-          afternoonTimeIn: employee.afternoonTimeIn,
-          afternoonTimeOut: employee.afternoonTimeOut,
+          employeeId: parseInt(employee.id),
+          morningTimeIn: employee.morningTimeIn || null,
+          morningTimeOut: employee.morningTimeOut || null,
+          afternoonTimeIn: employee.afternoonTimeIn || null,
+          afternoonTimeOut: employee.afternoonTimeOut || null,
           status: employee.status,
         };
+
+        // Ensure no 'id' field is accidentally included
+        delete payload.id;
+        console.log('Final payload sent:', JSON.stringify(payload, null, 2));
+
+        console.log('Updating attendance for:', {
+          url: `${API_BASE_URL}/api/attendance/${employee.id}`,
+          payload,
+        });
 
         const response = await axios.put(
           `${API_BASE_URL}/api/attendance/${employee.id}`,
@@ -463,6 +505,7 @@ export default {
         );
 
         if (response.status === 200) {
+          console.log('PUT response:', JSON.stringify(response.data, null, 2));
           this.employees = this.employees.map(emp =>
             emp.id === employee.id ? { ...emp, ...response.data } : emp
           );
@@ -473,7 +516,8 @@ export default {
         }
       } catch (error) {
         console.error('Error updating attendance:', error);
-        this.showErrorMessage('Update failed');
+        console.error('Response data:', error.response?.data);
+        this.showErrorMessage(`Update failed: ${error.response?.data?.error || error.message}`);
       }
     },
     formatTime(time) {
@@ -481,7 +525,7 @@ export default {
     },
     async generateReport() {
       try {
-        const formattedDate = moment(this.date).format('MM/DD/YYYY');
+        const formattedDate = this.date;
         const csvHeader = [
           'Date',
           'Employee ID',

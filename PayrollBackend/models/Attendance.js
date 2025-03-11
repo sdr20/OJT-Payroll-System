@@ -1,15 +1,19 @@
 const mongoose = require('mongoose');
 
 const attendanceSchema = new mongoose.Schema({
-  employeeId: { type: Number, ref: 'Employee', required: true }, // References Employee.id
-  date: { type: String, required: true }, // Format: YYYY-MM-DD
-  morningTimeIn: { type: String }, // Format: HH:mm (e.g., "08:00")
-  morningTimeOut: { type: String }, // Format: HH:mm (e.g., "12:00")
-  afternoonTimeIn: { type: String }, // Format: HH:mm (e.g., "13:00")
-  afternoonTimeOut: { type: String }, // Format: HH:mm (e.g., "17:00")
-  status: { type: String, enum: ['Present', 'Absent', 'Late'], default: 'Absent' } // Updated to match frontend
+  employeeId: { type: Number, required: true },
+  date: { type: String, required: true },
+  morningTimeIn: { type: String, default: null },
+  morningTimeOut: { type: String, default: null },
+  afternoonTimeIn: { type: String, default: null },
+  afternoonTimeOut: { type: String, default: null },
+  status: { type: String, enum: ['Present', 'Half Day', 'Absent', 'Late'], default: 'Absent' }
 }, {
-  indexes: [{ key: { employeeId: 1, date: 1 }, unique: true }] // Ensure one record per employee per date
+  indexes: [{ key: { employeeId: 1, date: 1 }, unique: true }]
 });
 
-module.exports = mongoose.model('Attendance', attendanceSchema);
+attendanceSchema.post('index', function() {
+  console.log('Indexes defined after model load:', this.indexes());
+});
+
+module.exports = mongoose.models.Attendance || mongoose.model('Attendance', attendanceSchema);

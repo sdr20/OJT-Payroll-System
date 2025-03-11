@@ -1,92 +1,113 @@
 const express = require('express');
 const router = express.Router();
-const Employee = require('../models/Employee');
+const Attendance = require('../models/Attendance');
 
 const isAdmin = (req, res, next) => {
   const userRole = req.headers['user-role'];
+  console.log('Attendance Route - Received user-role:', userRole);
   if (!userRole || userRole.toLowerCase() !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
 };
 
-// GET all employees
 router.get('/', isAdmin, async (req, res) => {
   try {
-    const employees = await Employee.find().sort({ empNo: 1 });
-    res.status(200).json(employees);
+    const { date } = req.query;
+    console.log('GET /api/attendance - Query date:', date);
+    if (!date) {
+      return res.status(400).json({ error: 'Date parameter is required' });
+    }
+    const attendanceRecords = await Attendance.find({ date }).sort({ employeeId: 1 });
+    console.log('Fetched attendance records:', JSON.stringify(attendanceRecords, null, 2));
+    res.status(200).json(attendanceRecords);
   } catch (error) {
-    console.error('Error in GET /api/employees:', error);
-    res.status(500).json({ error: 'Failed to fetch employees', message: error.message });
+    console.error('Error in GET /api/attendance:', error);
+    res.status(500).json({ error: 'Failed to fetch attendance', message: error.message });
   }
 });
 
-// GET count of employees
-router.get('/count', isAdmin, async (req, res) => {
-  try {
-    const count = await Employee.countDocuments();
-    res.status(200).json({ count });
-  } catch (error) {
-    console.error('Error counting employees:', error);
-    res.status(500).json({ error: 'Failed to count employees', message: error.message });
-  }
-});
-
-// GET employees eligible for salary
-router.get('/eligible-for-salary', isAdmin, async (req, res) => {
-  try {
-    const employees = await Employee.find({ /* Add your eligibility criteria here */ });
-    res.status(200).json(employees);
-  } catch (error) {
-    console.error('Error fetching eligible employees:', error);
-    res.status(500).json({ error: 'Failed to fetch eligible employees', message: error.message });
-  }
-});
-
-// POST a new employee
-router.post('/', isAdmin, async (req, res) => {
-  try {
-    const maxIdEmployee = await Employee.findOne().sort({ id: -1 });
-    const newId = maxIdEmployee ? maxIdEmployee.id + 1 : 1;
-    const employeeData = { ...req.body, id: newId };
-    const employee = new Employee(employeeData);
-    await employee.save();
-    res.status(201).json(employee);
-  } catch (error) {
-    console.error('Error creating employee:', error);
-    res.status(500).json({ error: 'Failed to add employee', message: error.message });
-  }
-});
-
-// PUT (update) an existing employee by ID
 router.put('/:id', isAdmin, async (req, res) => {
   try {
-    const employee = await Employee.findOneAndUpdate(
-      { id: parseInt(req.params.id) },
-      req.body,
-      { new: true }
-    );
-    if (!employee) {
-      return res.status(404).json({ error: 'Employee not found' });
-    }
-    res.json(employee);
-  } catch (error) {
-    console.error('Error updating employee:', error);
-    res.status(500).json({ error: 'Failed to update employee', message: error.message });
-  }
-});
+    const { date, employeeId, morningTimeIn, morningTimeOut, afternoonTimeIn, afternoonTimeOut, status } = req.body;
+    const employeeIdParam = parseInt(req.params.id);
 
-// DELETE an employee by ID
-router.delete('/:id', isAdmin, async (req, res) => {
-  try {
-    const result = await Employee.deleteOne({ id: parseInt(req.params.id) });
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Employee not found' });
+    console.log('PUT /api/attendance/:id - Params:', { id: employeeIdParam });
+    console.log('PUT /api/attendance/:id - Body:', JSON.stringify(req.body, null, 2));
+
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required' });
     }
-    res.status(204).send();
+    if (!employeeId) {
+      return res.status(400).json({ error: 'Employee ID is required in body' });
+    }
+
+    const parsedEmployeeId = parseInt(employeeId);
+    if (isNaN(parsedEmployeeId) || employeeIdParam !== parsedEmployeeId) {
+      return res.status(400).json({ 
+        error: 'Employee ID in URL must match body', 
+        paramId: employeeIdParam, 
+        bodyId: employeeId 
+      });
+    }
+
+    const updateData = {
+      employeeId: parsedEmployeeId,
+      date,
+      morningTimeIn: morningTimeIn !== undefined ? morningTimeIn : null,
+      morningTimeOut: morningTimeOut !== undefined ? morningTimeOut : null,
+      afternoonTimeIn: afternoonTimeIn !== undefined ? afternoonTimeIn : null,
+      afternoonTimeOut: afternoonTimeOut !== undefined ? afternoonTimeOut : null,
+      status: status || 'Absent',
+    };
+
+    const attendance = await Attendance.findOneAndUpdate(
+      { employeeId: parsedEmployeeId, date },
+      { $set: updateData },
+      { new: true, upsert: true, runValidators: true }
+    ).catch(err => {
+      console.error('MongoDB save error:', err);
+      throw new Error(`MongoDB save failed: ${err.message}`);
+    });
+
+    console.log('Updated/Created attendance:', JSON.stringify(attendance, null, 2));
+    const dbCheck = await Attendance.findOne({ employeeId: parsedEmployeeId, date }).catch(err => {
+      console.error('MongoDB check error:', err);
+      throw new Error(`MongoDB check failed: ${err.message}`);
+    });
+    console.log('DB Check after update:', JSON.stringify(dbCheck, null, 2));
+    
+    res.status(200).json(attendance);
   } catch (error) {
-    console.error('Error deleting employee:', error);
-    res.status(500).json({ error: 'Failed to delete employee', message: error.message });
+    console.error('Error in PUT /api/attendance/:id:', error);
+    if (error.code === 11000) {
+      try {
+        const { date, employeeId, morningTimeIn, morningTimeOut, afternoonTimeIn, afternoonTimeOut, status } = req.body;
+        const updateData = {
+          morningTimeIn: morningTimeIn !== undefined ? morningTimeIn : null,
+          morningTimeOut: morningTimeOut !== undefined ? morningTimeOut : null,
+          afternoonTimeIn: afternoonTimeIn !== undefined ? afternoonTimeIn : null,
+          afternoonTimeOut: afternoonTimeOut !== undefined ? afternoonTimeOut : null,
+          status: status || 'Absent',
+        };
+
+        const attendance = await Attendance.findOneAndUpdate(
+          { employeeId: parseInt(employeeId), date },
+          { $set: updateData },
+          { new: true, runValidators: true }
+        ).catch(err => {
+          console.error('MongoDB update error:', err);
+          throw new Error(`MongoDB update failed: ${err.message}`);
+        });
+        console.log('Updated existing attendance:', JSON.stringify(attendance, null, 2));
+        res.status(200).json(attendance);
+      } catch (updateError) {
+        console.error('Error updating existing record:', updateError);
+        res.status(500).json({ error: 'Failed to update attendance', message: updateError.message });
+      }
+    } else {
+      res.status(500).json({ error: 'Failed to update attendance', message: error.message });
+    }
   }
 });
 

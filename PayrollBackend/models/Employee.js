@@ -51,9 +51,7 @@ const employeeSchema = new mongoose.Schema({
 // Hash password before saving
 employeeSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
-    console.log('Original password:', this.password); // Debugging log
     this.password = await bcrypt.hash(this.password, 10);
-    console.log('Hashed password:', this.password); // Debugging log
   }
   if (this.salary && !this.hourlyRate) {
     this.hourlyRate = this.salary / (8 * 22);
@@ -63,8 +61,6 @@ employeeSchema.pre('save', async function (next) {
 
 // Compare password method
 employeeSchema.methods.comparePassword = async function (candidatePassword) {
-  console.log('Candidate password:', candidatePassword); // Debugging log
-  console.log('Stored hashed password:', this.password); // Debugging log
   return bcrypt.compare(candidatePassword, this.password);
 };
 
