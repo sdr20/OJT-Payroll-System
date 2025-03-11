@@ -170,7 +170,6 @@
                     </td>
                     <td class="px-4 py-2">
                       <button
-                        v-if="!payslip.payslipDataUrl"
                         @click.stop="generatePayslip(payslip)"
                         class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
                         :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating"
@@ -178,7 +177,6 @@
                         <span class="material-icons text-sm">description</span>
                         {{ payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating ? 'Generating...' : 'Generate' }}
                       </button>
-                      <span v-else class="text-sm text-gray-500">Generated</span>
                     </td>
                   </tr>
                   <tr v-if="sortedPayslipHistory.length === 0">
@@ -356,15 +354,20 @@ export default {
         });
         const backendPayslips = response.data;
 
-        // Generate payslip entries from hire date to 3 months beyond today
+        // Determine the next expected salary date from hireDate
         const hireDate = moment(employee.hireDate);
         const today = moment();
-        const endDate = today.clone().add(3, 'months').endOf('month');
         const payslipHistory = [];
 
+        // Start from the hire date and find the first future pay date
         let currentMonth = hireDate.clone().startOf('month');
-        while (currentMonth.isSameOrBefore(endDate)) {
-          const salaryMonth = currentMonth.format('YYYY-MM');
+        while (currentMonth.isBefore(today)) {
+          currentMonth.add(1, 'month');
+        }
+
+        // Generate payslip entries for the next 3 months from the first future date
+        for (let i = 0; i < 3; i++) {
+          const salaryMonth = currentMonth.clone().add(i, 'months').format('YYYY-MM');
           const expectedPaydays = this.getExpectedPayday(employee.hireDate, `${salaryMonth}-01`);
 
           // Mid-month payslip
@@ -388,22 +391,25 @@ export default {
             employee: { ...employee, salaryMonth: `${salaryMonth}-28` },
             expectedPaydays,
           });
-
-          currentMonth.add(1, 'month');
         }
 
-        this.payslipHistory = payslipHistory;
+        this.payslipHistory = payslipHistory.filter(payslip => {
+          const payDate = moment(payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
+          return payDate.isSameOrAfter(today, 'day'); // Only future dates
+        });
       } catch (error) {
         if (error.response && error.response.status === 404) {
-          // If no payslips exist, generate placeholders from hire date to 3 months beyond today
+          // If no payslips exist, generate entries starting from the next expected date
           const hireDate = moment(employee.hireDate);
           const today = moment();
-          const endDate = today.clone().add(3, 'months').endOf('month');
           const payslipHistory = [];
-
           let currentMonth = hireDate.clone().startOf('month');
-          while (currentMonth.isSameOrBefore(endDate)) {
-            const salaryMonth = currentMonth.format('YYYY-MM');
+          while (currentMonth.isBefore(today)) {
+            currentMonth.add(1, 'month');
+          }
+
+          for (let i = 0; i < 3; i++) {
+            const salaryMonth = currentMonth.clone().add(i, 'months').format('YYYY-MM');
             const expectedPaydays = this.getExpectedPayday(employee.hireDate, `${salaryMonth}-01`);
             payslipHistory.push(
               {
@@ -423,16 +429,18 @@ export default {
                 expectedPaydays,
               }
             );
-            currentMonth.add(1, 'month');
           }
 
-          this.payslipHistory = payslipHistory;
+          this.payslipHistory = payslipHistory.filter(payslip => {
+            const payDate = moment(payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
+            return payDate.isSameOrAfter(today, 'day');
+          });
         } else {
           console.error('Error fetching payslip history:', error);
           this.showErrorMessage(`Failed to load payslip history for ${employee.name}: ${error.message}`);
         }
       } finally {
-        this.selectedPayslip = this.sortedPayslipHistory.find(p => p.payslipDataUrl) || this.sortedPayslipHistory[0] || null;
+        this.selectedPayslip = this.sortedPayslipHistory[0] || null;
         this.showHistoryModal = true;
         this.isLoading = false;
       }
@@ -618,7 +626,7 @@ export default {
 
       const isWeekend = (date) => date.getDay() === 0 || date.getDay() === 6;
       while (isWeekend(payday1)) payday1.setDate(payday1.getDate() + 1);
-      while (isWeekend(payday2)) payday2.setDate(payday2.getDate() - 1); // Adjust backward to stay in month
+      while (isWeekend(payday2)) payday2.setDate(payday2.getDate() - 1); // Adjust backward to avoid next month
 
       return {
         midMonthPayday: payday1.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
