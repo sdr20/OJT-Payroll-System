@@ -3,9 +3,71 @@ import { Attendance } from '../../models/attendance.model.js';
 import { Employee } from '../../models/employee.model.js';
 
 /**
- * @desc Create a new attendance record
- * @route POST /api/attendance/time-in
+ * @desc Update attendance record
+ * @route PUT /api/attendance/:id
  */
+export const updateAttendance = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { morningTimeIn, morningTimeOut, afternoonTimeIn, afternoonTimeOut, status } = req.body;
+
+    console.log('Received payload:', req.body);
+
+    const attendance = await Attendance.findById(id);
+    if (!attendance) {
+        return res.status(404).json({ message: 'Attendance record not found' });
+    }
+
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+
+    if (morningTimeIn !== undefined) {
+        if (morningTimeIn !== null && !timeRegex.test(morningTimeIn)) {
+            console.log('Validation failed for morningTimeIn:', morningTimeIn);
+            return res.status(400).json({ message: 'Invalid morningTimeIn format (HH:mm:ss)' });
+        }
+        attendance.morningTimeIn = morningTimeIn;
+        if (morningTimeIn) {
+            const OFFICE_START = "08:00:00";
+            attendance.status = morningTimeIn <= OFFICE_START ? 'Present' : 'Late';
+        }
+    }
+
+    if (morningTimeOut !== undefined) {
+        if (morningTimeOut !== null && !timeRegex.test(morningTimeOut)) {
+            console.log('Validation failed for morningTimeOut:', morningTimeOut);
+            return res.status(400).json({ message: 'Invalid morningTimeOut format (HH:mm:ss)' });
+        }
+        attendance.morningTimeOut = morningTimeOut;
+    }
+
+    if (afternoonTimeIn !== undefined) {
+        if (afternoonTimeIn !== null && !timeRegex.test(afternoonTimeIn)) {
+            console.log('Validation failed for afternoonTimeIn:', afternoonTimeIn);
+            return res.status(400).json({ message: 'Invalid afternoonTimeIn format (HH:mm:ss)' });
+        }
+        attendance.afternoonTimeIn = afternoonTimeIn;
+    }
+
+    if (afternoonTimeOut !== undefined) {
+        if (afternoonTimeOut !== null && !timeRegex.test(afternoonTimeOut)) {
+            console.log('Validation failed for afternoonTimeOut:', afternoonTimeOut);
+            return res.status(400).json({ message: 'Invalid afternoonTimeOut format (HH:mm:ss)' });
+        }
+        attendance.afternoonTimeOut = afternoonTimeOut;
+    }
+
+    if (status) {
+        attendance.status = status;
+    }
+
+    await attendance.save();
+    const updatedAttendance = await Attendance.findById(id).populate(
+        'employeeId',
+        'firstName lastName employeeIdNumber position'
+    );
+    res.status(200).json(updatedAttendance);
+});
+
+// Other functions remain unchanged...
 export const timeIn = asyncHandler(async (req, res) => {
     const { employeeId } = req.body;
     const currentDate = new Date().toISOString().split('T')[0];
@@ -43,10 +105,6 @@ export const timeIn = asyncHandler(async (req, res) => {
     res.status(200).json(attendance);
 });
 
-/**
- * @desc Update attendance record with time out
- * @route POST /api/attendance/time-out
- */
 export const timeOut = asyncHandler(async (req, res) => {
     const { employeeId } = req.body;
     const currentDate = new Date().toISOString().split('T')[0];
@@ -70,10 +128,6 @@ export const timeOut = asyncHandler(async (req, res) => {
     res.status(200).json(attendance);
 });
 
-/**
- * @desc Check and mark absent employees
- * @route GET /api/attendance/check-absent
- */
 export const checkAbsent = asyncHandler(async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -113,10 +167,6 @@ export const checkAbsent = asyncHandler(async (req, res) => {
     });
 });
 
-/**
- * @desc Create a new attendance record (manual)
- * @route POST /api/attendance
- */
 export const createAttendance = asyncHandler(async (req, res) => {
     const { employeeId, date, status } = req.body;
 
@@ -133,20 +183,11 @@ export const createAttendance = asyncHandler(async (req, res) => {
     res.status(201).json(populatedAttendance);
 });
 
-/**
- * @desc Get all attendance records
- * @route GET /api/attendance
- */
 export const getAllAttendance = asyncHandler(async (req, res) => {
-    const attendanceRecords = await Attendance.find()
-        .populate('employeeId', 'firstName lastName position email employeeIdNumber');
-    res.status(200).json(attendanceRecords);
+    const attendance = await Attendance.find().populate('employeeId', 'firstName lastName employeeIdNumber position');
+    res.status(200).json(attendance);
 });
 
-/**
- * @desc Get attendance by employee ID with pagination
- * @route GET /api/attendance/:employeeId?page=<page>&limit=<limit>
- */
 export const getAttendanceByEmployeeId = asyncHandler(async (req, res) => {
     const { employeeId } = req.params;
     const page = parseInt(req.query.page) || 1;
@@ -172,44 +213,6 @@ export const getAttendanceByEmployeeId = asyncHandler(async (req, res) => {
     });
 });
 
-/**
- * @desc Update attendance record
- * @route PUT /api/attendance/:id
- */
-export const updateAttendance = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { morningTimeIn, afternoonTimeOut } = req.body;
-
-    const attendance = await Attendance.findById(id);
-    if (!attendance) {
-        return res.status(404).json({ message: 'Attendance record not found' });
-    }
-
-    if (morningTimeIn) {
-        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
-        if (!timeRegex.test(morningTimeIn)) {
-            return res.status(400).json({ message: 'Invalid morningTimeIn format (HH:mm:ss)' });
-        }
-        attendance.morningTimeIn = morningTimeIn;
-        const OFFICE_START = "08:00:00";
-        attendance.status = morningTimeIn <= OFFICE_START ? 'Present' : 'Late';
-    }
-    if (afternoonTimeOut) {
-        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
-        if (!timeRegex.test(afternoonTimeOut)) {
-            return res.status(400).json({ message: 'Invalid afternoonTimeOut format (HH:mm:ss)' });
-        }
-        attendance.afternoonTimeOut = afternoonTimeOut;
-    }
-
-    await attendance.save();
-    res.status(200).json(attendance);
-});
-
-/**
- * @desc Delete an attendance record
- * @route DELETE /api/attendance/:id
- */
 export const deleteAttendance = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const attendance = await Attendance.findByIdAndDelete(id);

@@ -30,7 +30,7 @@ const attendanceSchema = new Schema({
     },
     status: { 
         type: String, 
-        enum: ['Present', 'Absent', 'Late'],
+        enum: ['Present', 'Half Day', ,'Absent', 'Late', 'Early Departure'],
         required: true,
         default: 'Absent'
     }
