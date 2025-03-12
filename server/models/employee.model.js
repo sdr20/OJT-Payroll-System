@@ -96,6 +96,9 @@ const employeeSchema = new Schema({
         enum: ['pending', 'approved', 'rejected'], 
         default: 'pending' 
     },
+    trashedAt: {
+        type: Date
+    }
 }, { timestamps: true });
 
 employeeSchema.pre('save', async function (next) {

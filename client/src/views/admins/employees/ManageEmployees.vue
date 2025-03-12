@@ -4,7 +4,7 @@ import { BASE_API_URL } from '@/utils/constants.js';
 import ViewEmployeeDetails from './Partials/ViewEmployeeDetails.vue';
 import EditEmployee from './Partials/EditEmployee.vue';
 import DeleteEmployee from './Partials/DeleteEmployee.vue';
-import RequestInfo from './Partials/RequestInfo.vue';
+import Trash from '@/views/admins/employees/Trash.vue';
 
 // State
 const employees = ref([]);
@@ -318,11 +318,18 @@ onMounted(() => {
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden">
                     <div class="p-6 flex justify-between items-center">
                         <h2 class="text-xl font-bold text-gray-800">Employee List</h2>
-                        <button @click="refreshEmployees"
-                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-200"
-                            :disabled="isLoading">
-                            {{ isLoading ? 'Loading...' : 'Refresh' }}
-                        </button>
+                        <div class="space-x-2">
+                            <button @click="refreshEmployees"
+                                class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-200 cursor-pointer"
+                                :disabled="isLoading">
+                                {{ isLoading ? 'Loading...' : 'Refresh' }}
+                            </button>
+
+                            <router-link :to="{ name: 'employee-trash' }"
+                                class="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition duration-200 cursor-pointer">
+                                Trash
+                            </router-link>
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full">
