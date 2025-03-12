@@ -3,7 +3,7 @@
     <div class="max-w-8xl mx-auto">
       <!-- Header Section -->
       <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div class="relative">
             <span class="material-icons absolute left-2 top-2 text-gray-400 text-sm">search</span>
             <input
@@ -22,6 +22,14 @@
             {{ isLoading ? 'Refreshing...' : 'Refresh Data' }}
           </button>
           <button
+            @click="generateAllPayslips"
+            class="flex items-center justify-center gap-1 bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-4 rounded-md"
+            :disabled="isLoading || isGeneratingAll"
+          >
+            <span class="material-icons text-sm">{{ isGeneratingAll ? 'sync' : 'description' }}</span>
+            {{ isGeneratingAll ? 'Generating...' : 'Generate All' }}
+          </button>
+          <button
             @click="showPrintModal"
             class="flex items-center justify-center gap-1 bg-purple-500 hover:bg-purple-600 text-white text-sm py-2 px-4 rounded-md"
             :disabled="isLoading"
@@ -32,7 +40,7 @@
         </div>
       </div>
 
-      <!-- Employee List (unchanged) -->
+      <!-- Employee List -->
       <div class="bg-white rounded-lg shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
@@ -127,7 +135,7 @@
         </div>
       </div>
 
-      <!-- Payslip History Modal (unchanged) -->
+      <!-- Payslip History Modal -->
       <div
         v-if="showHistoryModal"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
@@ -258,7 +266,7 @@
               </div>
             </div>
             <div v-else class="text-sm text-gray-500 text-center py-4">
-              No employees with generated payslips found.
+              No employees with generated payslips found in history.
             </div>
           </div>
           <div class="p-4 border-t flex justify-end gap-2">
@@ -280,7 +288,7 @@
         </div>
       </div>
 
-      <!-- Toast Messages (unchanged) -->
+      <!-- Toast Messages -->
       <div
         v-if="statusMessage"
         :class="[
@@ -315,11 +323,13 @@ export default {
       itemsPerPage: 10,
       payslipGenerationStatus: {},
       isLoading: false,
+      isGeneratingAll: false,
       statusMessage: '',
       showHistoryModal: false,
       selectedEmployee: null,
       selectedPayslip: null,
       payslipHistory: [],
+      allPayslipHistories: {},
       iframeError: false,
       minimumWage: 610,
       deMinimisLimit: 10000,
@@ -332,7 +342,7 @@ export default {
       employeesWithPayslips: [],
       selectedEmployeesForPrint: [],
       isPrinting: false,
-      selectAll: false, // New state for "Select All" checkbox
+      selectAll: false,
     };
   },
   computed: {
@@ -424,17 +434,12 @@ export default {
         return;
       }
 
-      console.log('Employee:', this.selectedEmployee);
-      console.log('Today:', today.format('YYYY-MM-DD'));
-      console.log('Hire Date:', hireDate.format('YYYY-MM-DD'));
-
       let backendPayslips = [];
       try {
         const response = await axios.get(`http://localhost:7777/api/payslips/${employee.id}`, {
           headers: { 'user-role': 'admin' },
         });
         backendPayslips = response.data || [];
-        console.log('Backend Payslips:', backendPayslips);
       } catch (error) {
         if (error.response && error.response.status === 404) {
           console.log('No payslips found in backend, proceeding with potential entries');
@@ -454,9 +459,6 @@ export default {
         const endMonthPayDate = moment(`${salaryMonth}-${lastDayOfMonth}`, 'YYYY-MM-DD');
 
         const expectedPaydays = this.getExpectedPayday(hireDate.toDate(), `${salaryMonth}-01`);
-
-        console.log(`Month: ${salaryMonth}`);
-        console.log(`Expected Paydays:`, expectedPaydays);
 
         if (midMonthPayDate.isSameOrAfter(hireDate, 'day') && midMonthPayDate.isSameOrBefore(today, 'day')) {
           const midMonthPayslip = backendPayslips.find(p => p.salaryMonth === salaryMonth && p.paydayType === 'mid-month');
@@ -485,12 +487,11 @@ export default {
         currentMonth.add(1, 'month');
       }
 
-      console.log('Generated Payslip History:', payslipHistory);
+      this.allPayslipHistories[employee.id] = payslipHistory;
       this.payslipHistory = payslipHistory;
       this.selectedPayslip = this.sortedPayslipHistory[0] || null;
       this.showHistoryModal = true;
       this.isLoading = false;
-      console.log('Sorted Payslip History:', this.sortedPayslipHistory);
     },
     canGeneratePayslip(payslip) {
       const today = moment();
@@ -521,6 +522,13 @@ export default {
         payslip.payslipDataUrl = url;
         payslip.totalSalary = this.calculateNetSalary(employee);
         this.selectedPayslip = payslip;
+
+        const employeeHistory = this.allPayslipHistories[employee.id] || [];
+        const updatedHistory = employeeHistory.map(p =>
+          p.salaryMonth === payslip.salaryMonth && p.paydayType === payslip.paydayType ? payslip : p
+        );
+        this.allPayslipHistories[employee.id] = updatedHistory;
+
         this.showSuccessMessage(`Payslip generated for ${employee.name} - ${payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday}!`);
       } catch (error) {
         console.error('Error generating payslip:', error);
@@ -529,44 +537,73 @@ export default {
         this.payslipGenerationStatus[key] = { generating: false };
       }
     },
-    async showPrintModal() {
-      this.isLoading = true;
+    async generateAllPayslips() {
+      this.isGeneratingAll = true;
+      this.statusMessage = '';
+      try {
+        for (const employee of this.employees) {
+          if (!this.allPayslipHistories[employee.id]) {
+            await this.showPayslipHistory(employee);
+            this.showHistoryModal = false;
+          }
+        }
+
+        const payslipsToGenerate = [];
+        for (const employee of this.employees) {
+          const history = this.allPayslipHistories[employee.id] || [];
+          const duePayslips = history.filter(payslip => this.canGeneratePayslip(payslip));
+          payslipsToGenerate.push(...duePayslips);
+        }
+
+        if (payslipsToGenerate.length === 0) {
+          this.showErrorMessage('No payslips are due for generation.');
+          return;
+        }
+
+        for (const payslip of payslipsToGenerate) {
+          await this.generatePayslip(payslip);
+        }
+
+        this.showSuccessMessage(`Generated ${payslipsToGenerate.length} payslips successfully!`);
+      } catch (error) {
+        console.error('Error generating all payslips:', error);
+        this.showErrorMessage(`Failed to generate all payslips: ${error.message}`);
+      } finally {
+        this.isGeneratingAll = false;
+      }
+    },
+    showPrintModal() {
       this.employeesWithPayslips = [];
       this.selectedEmployeesForPrint = [];
       this.selectAll = false;
 
-      try {
-        for (const employee of this.employees) {
-          const response = await axios.get(`http://localhost:7777/api/payslips/${employee.id}`, {
-            headers: { 'user-role': 'admin' },
+      for (const employee of this.employees) {
+        const history = this.allPayslipHistories[employee.id] || [];
+        const generatedPayslips = history.filter(p => p.payslipDataUrl);
+
+        if (generatedPayslips.length > 0) {
+          const latestPayslip = generatedPayslips.reduce((latest, current) => {
+            const latestDate = moment(`${latest.salaryMonth}-${latest.paydayType === 'mid-month' ? '15' : moment(`${latest.salaryMonth}-01`).endOf('month').date()}`, 'YYYY-MM-DD');
+            const currentDate = moment(`${current.salaryMonth}-${current.paydayType === 'mid-month' ? '15' : moment(`${current.salaryMonth}-01`).endOf('month').date()}`, 'YYYY-MM-DD');
+            return currentDate.isAfter(latestDate) ? current : latest;
           });
-          const payslips = response.data || [];
-          const generatedPayslips = payslips.filter(p => p.payslipData);
+          const latestDateStr = latestPayslip.paydayType === 'mid-month'
+            ? latestPayslip.expectedPaydays.midMonthPayday
+            : latestPayslip.expectedPaydays.endMonthPayday;
 
-          if (generatedPayslips.length > 0) {
-            const latestPayslip = generatedPayslips.reduce((latest, current) => {
-              const latestDate = moment(`${latest.salaryMonth}-${latest.paydayType === 'mid-month' ? '15' : moment(`${latest.salaryMonth}-01`).endOf('month').date()}`, 'YYYY-MM-DD');
-              const currentDate = moment(`${current.salaryMonth}-${current.paydayType === 'mid-month' ? '15' : moment(`${current.salaryMonth}-01`).endOf('month').date()}`, 'YYYY-MM-DD');
-              return currentDate.isAfter(latestDate) ? current : latest;
-            });
-            const latestDateStr = latestPayslip.paydayType === 'mid-month'
-              ? this.getExpectedPayday(employee.hireDate, latestPayslip.salaryMonth).midMonthPayday
-              : this.getExpectedPayday(employee.hireDate, latestPayslip.salaryMonth).endMonthPayday;
-
-            this.employeesWithPayslips.push({
-              id: employee.id,
-              name: employee.name,
-              latestPayslipDate: latestDateStr,
-              latestPayslip,
-            });
-          }
+          this.employeesWithPayslips.push({
+            id: employee.id,
+            name: employee.name,
+            latestPayslipDate: latestDateStr,
+            latestPayslip,
+          });
         }
+      }
+
+      if (this.employeesWithPayslips.length === 0) {
+        this.showErrorMessage('No employees with generated payslips in history. Please generate payslips first.');
+      } else {
         this.showPrintAllModal = true;
-      } catch (error) {
-        console.error('Error fetching payslips for print:', error);
-        this.showErrorMessage(`Failed to load employees with payslips: ${error.message}`);
-      } finally {
-        this.isLoading = false;
       }
     },
     toggleSelectAll() {

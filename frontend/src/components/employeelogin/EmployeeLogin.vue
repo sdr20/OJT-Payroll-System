@@ -93,12 +93,13 @@
 
     <!-- Register Modal with Slide-In Animation -->
     <div v-if="showRegisterModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto transform transition-all duration-500 ease-out animate-slideIn">
+      <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto transform transition-all duration-500 ease-out animate-slideIn">
         <h2 class="text-xl font-bold mb-4 text-gray-900">Request Account Creation</h2>
-        <form @submit.prevent="submitRequest" class="grid grid-cols-2 gap-4">
-          <div class="col-span-2">
+        <form @submit.prevent="submitRequest" class="space-y-6">
+          <!-- Row 1: Basic Information (3 Columns) -->
+          <div>
             <h3 class="text-base font-semibold text-gray-800 mb-3">Basic Information</h3>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-3 gap-4">
               <div class="space-y-1">
                 <label for="empNo" class="text-sm font-medium text-gray-700">Employee Number</label>
                 <input
@@ -259,71 +260,10 @@
             </div>
           </div>
 
-          <div class="col-span-2">
-            <h3 class="text-base font-semibold text-gray-800 mb-3">Financial Information</h3>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="space-y-1">
-                <label for="salary" class="text-sm font-medium text-gray-700">Monthly Salary (Based on Position)</label>
-                <input
-                  :value="newRequest.salary.toLocaleString()"
-                  type="text"
-                  id="salary"
-                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label for="hourlyRate" class="text-sm font-medium text-gray-700">Hourly Rate (Auto-Calculated)</label>
-                <input
-                  :value="newRequest.hourlyRate.toLocaleString()"
-                  type="text"
-                  id="hourlyRate"
-                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">SSS Contribution (Employee Share)</label>
-                <input
-                  :value="calculateSSSContribution(newRequest.salary).toLocaleString()"
-                  type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">PhilHealth Contribution (Employee Share)</label>
-                <input
-                  :value="calculatePhilHealthContribution(newRequest.salary).toLocaleString()"
-                  type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">HDMF Contribution (Employee Share)</label>
-                <input
-                  :value="calculatePagIBIGContribution(newRequest.salary).toLocaleString()"
-                  type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
-                  disabled
-                />
-              </div>
-              <div class="space-y-1">
-                <label class="text-sm font-medium text-gray-700">Withholding Tax</label>
-                <input
-                  :value="calculateWithholdingTax(newRequest.salary).toLocaleString()"
-                  type="text"
-                  class="block w-full p-2 border rounded-lg bg-gray-100 transition-all duration-300 ease-in-out"
-                  disabled
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="col-span-2">
+          <!-- Row 2: Login Credentials (3 Columns) -->
+          <div>
             <h3 class="text-base font-semibold text-gray-800 mb-3">Login Credentials</h3>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-3 gap-4">
               <div class="space-y-1">
                 <label for="newUsername" class="text-sm font-medium text-gray-700">Username</label>
                 <input
@@ -425,7 +365,8 @@
             </div>
           </div>
 
-          <div class="col-span-2 flex justify-end space-x-2 mt-4">
+          <!-- Buttons and Status Message (Outside Rows) -->
+          <div class="flex justify-end space-x-2 mt-4">
             <button
               type="button"
               @click="showRegisterModal = false"
@@ -442,14 +383,14 @@
               {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
             </button>
           </div>
+          <div
+            v-if="statusMessage"
+            :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
+            class="mt-4 p-3 rounded-lg text-center animate-bounce-in"
+          >
+            {{ statusMessage }}
+          </div>
         </form>
-        <div
-          v-if="statusMessage"
-          :class="statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
-          class="mt-4 p-3 rounded-lg text-center animate-bounce-in"
-        >
-          {{ statusMessage }}
-        </div>
       </div>
     </div>
   </div>
