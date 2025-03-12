@@ -1,11 +1,19 @@
 import { defineStore } from 'pinia';
 import { BASE_API_URL } from '../utils/constants.ts';
 
+interface AttendanceRecord {
+    _id: string;
+    employeeId: string;
+    date: string;
+    timeIn?: string;
+    timeOut?: string;
+}
+
 export const useAttendanceStore = defineStore("attendance", {
     state: () => ({
-        attendanceRecords: [],
+        attendanceRecords: [] as AttendanceRecord[],
         loading: false,
-        error: null
+        error: null as string | null
     }),
 
     actions: {
@@ -21,12 +29,12 @@ export const useAttendanceStore = defineStore("attendance", {
                     throw new Error(await response.text());
                 }
 
-                const data = await response.json();
+                const data: AttendanceRecord = await response.json();
                 this.attendanceRecords.push(data);
                 return data;
             } catch (err: any) {
                 this.error = err.message || "Failed to time in";
-                throw new Error(this.error);
+                throw new Error(this.error ?? "Unknown error"); // Fixed line
             }
         },
 
@@ -42,7 +50,7 @@ export const useAttendanceStore = defineStore("attendance", {
                     throw new Error(await response.text());
                 }
 
-                const data = await response.json();
+                const data: AttendanceRecord = await response.json();
                 this.attendanceRecords = this.attendanceRecords.map(record =>
                     record._id === data._id ? data : record
                 );
@@ -64,8 +72,7 @@ export const useAttendanceStore = defineStore("attendance", {
                     throw new Error(await response.text());
                 }
 
-                const data = await response.json();
-                // Filter for today's records (assuming date is a Date string or timestamp)
+                const data: AttendanceRecord[] = await response.json();
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 this.attendanceRecords = data.filter(record => {

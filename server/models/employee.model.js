@@ -56,8 +56,7 @@ const employeeSchema = new Schema({
         default: 'Single',
     },
     position: { 
-        type: Schema.Types.ObjectId,
-        ref: 'Position',
+        type: String,
         required: true,
     },
     salary: { type: Number, required: true, min: 0 },
