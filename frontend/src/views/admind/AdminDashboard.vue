@@ -69,21 +69,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Eligible for Salary -->
-        <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-          <div class="p-4">
-            <div class="flex items-center">
-              <div class="rounded-full bg-blue-100 p-2">
-                <span class="material-icons text-blue-600">attach_money</span>
-              </div>
-              <div class="ml-3">
-                <p class="text-xs font-medium text-gray-600">Eligible for Salary</p>
-                <h3 class="text-xl font-bold text-gray-900">{{ totalEligibleForSalaryToday }}</h3>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Action Buttons -->

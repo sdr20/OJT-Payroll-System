@@ -1,82 +1,15 @@
 <template>
   <div>
-    <!-- Main Content - Improved layout and spacing -->
-    <main class="flex-1 max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-1">
-      <!-- Stats Cards - New component for key metrics -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0 rounded-lg bg-blue-100 p-3">
-                <span class="material-icons text-blue-600">payments</span>
-              </div>
-              <div class="ml-5">
-                <p class="text-sm font-medium text-gray-500">Total Pay Heads</p>
-                <h3 class="mt-1 text-xl font-semibold text-gray-900">{{ payHeads.length }}</h3>
-              </div>
-            </div>
-          </div>
-          <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-2">
-            <div class="text-sm text-blue-700">
-              <span class="font-medium">{{ calculatePayHeadsByType('Earnings') }}</span> earnings, 
-              <span class="font-medium">{{ calculatePayHeadsByType('Deductions') }}</span> deductions
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0 rounded-lg bg-green-100 p-3">
-                <span class="material-icons text-green-600">trending_up</span>
-              </div>
-              <div class="ml-5">
-                <p class="text-sm font-medium text-gray-500">Average Earnings</p>
-                <h3 class="mt-1 text-xl font-semibold text-gray-900">${{ calculateAverageAmount('Earnings').toFixed(2) }}</h3>
-              </div>
-            </div>
-          </div>
-          <div class="bg-gradient-to-r from-green-50 to-emerald-50 px-5 py-2">
-            <div class="text-sm text-green-700">
-              <span class="flex items-center">
-                <span class="material-icons text-sm mr-1">info</span>
-                Per employee average
-              </span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0 rounded-lg bg-purple-100 p-3">
-                <span class="material-icons text-purple-600">people</span>
-              </div>
-              <div class="ml-5">
-                <p class="text-sm font-medium text-gray-500">Total Employees</p>
-                <h3 class="mt-1 text-xl font-semibold text-gray-900">{{ employees.length }}</h3>
-              </div>
-            </div>
-          </div>
-          <div class="bg-gradient-to-r from-purple-50 to-fuchsia-50 px-5 py-2">
-            <div class="text-sm text-purple-700">
-              <span class="flex items-center">
-                <span class="material-icons text-sm mr-1">verified</span>
-                All records up to date
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Controls Section - Improved with card design and better spacing -->
-      <div class="bg-white rounded-xl shadow-sm p-5 mb-6 border border-gray-100">
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
-          <!-- Search Input - Enhanced with better visual feedback -->
+    <!-- Main Content -->
+    <main class="flex-1 max-w-9xl mx-auto px-2 sm:px-4 lg:px-6 py-1">
+      <!-- Controls Section -->
+      <div class="bg-white rounded-lg shadow-sm p-3 mb-4 border border-gray-100">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+          <!-- Search Input -->
           <div class="md:col-span-5 relative">
-            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <label for="search" class="block text-xs font-medium text-gray-700 mb-0.5">Search</label>
             <div class="relative">
-              <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-base">
                 search
               </span>
               <input
@@ -84,55 +17,55 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Search by name or description..."
-                class="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 
-                      focus:border-blue-500 outline-none transition-all"
+                class="w-full pl-8 pr-3 py-1.5 border rounded-md focus:ring-1 focus:ring-blue-500 
+                      focus:border-blue-500 outline-none transition-all text-sm"
               />
               <button 
                 v-if="searchQuery" 
                 @click="searchQuery = ''"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
               >
-                <span class="material-icons">clear</span>
+                <span class="material-icons text-base">clear</span>
               </button>
             </div>
           </div>
 
-          <!-- Filter Dropdown - Enhanced with label and better styling -->
+          <!-- Filter Dropdown -->
           <div class="md:col-span-3">
-            <label for="filter" class="block text-sm font-medium text-gray-700 mb-1">Filter Type</label>
+            <label for="filter" class="block text-xs font-medium text-gray-700 mb-0.5">Filter Type</label>
             <div class="relative">
-              <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-base">
                 filter_list
               </span>
               <select
                 id="filter"
                 v-model="filterType"
-                class="w-full pl-10 pr-9 py-2.5 border rounded-lg appearance-none focus:ring-2 
-                      focus:ring-blue-500 focus:border-blue-500 outline-none"
+                class="w-full pl-8 pr-7 py-1.5 border rounded-md appearance-none focus:ring-1 
+                      focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
               >
                 <option value="">All Types</option>
                 <option value="Earnings">Earnings</option>
                 <option value="Deductions">Deductions</option>
               </select>
-              <span class="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+              <span class="material-icons absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-base">
                 arrow_drop_down
               </span>
             </div>
           </div>
 
-          <!-- View Toggle - Enhanced visual design -->
+          <!-- View Toggle -->
           <div class="md:col-span-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">View</label>
-            <div class="flex rounded-lg bg-gray-100 p-1 shadow-inner">
+            <label class="block text-xs font-medium text-gray-700 mb-0.5">View</label>
+            <div class="flex rounded-md bg-gray-100 p-0.5 shadow-inner">
               <button
                 v-for="tab in ['payheads', 'employees']"
                 :key="tab"
                 @click="activeTab = tab"
-                class="flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all"
+                class="flex-1 px-3 py-1.5 rounded-sm text-xs font-medium transition-all"
                 :class="activeTab === tab ? 'bg-white text-blue-600 shadow' : 'text-gray-600 hover:text-gray-900'"
               >
-                <div class="flex items-center justify-center gap-2">
-                  <span class="material-icons text-sm">
+                <div class="flex items-center justify-center gap-1">
+                  <span class="material-icons text-xs">
                     {{ tab === 'payheads' ? 'payments' : 'people' }}
                   </span>
                   {{ tab.charAt(0).toUpperCase() + tab.slice(1) }}
@@ -143,57 +76,56 @@
         </div>
       </div>
 
-      <!-- Loading State - New component -->
-      <div v-if="isLoading" class="bg-white rounded-xl shadow-sm flex justify-center items-center p-20">
+      <!-- Loading State -->
+      <div v-if="isLoading" class="bg-white rounded-lg shadow-sm flex justify-center items-center p-10">
         <div class="flex flex-col items-center">
-          <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
-          <h2 class="text-center text-gray-600 text-xl font-semibold">Loading...</h2>
-          <p class="w-full text-center text-gray-500">Please wait while we fetch the data</p>
+          <div class="loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-8 w-8 mb-2"></div>
+          <h2 class="text-center text-gray-600 text-base font-semibold">Loading...</h2>
+          <p class="w-full text-center text-gray-500 text-xs">Please wait while we fetch the data</p>
         </div>
       </div>
 
-      <!-- Empty State - New component -->
+      <!-- Empty State -->
       <div v-else-if="(activeTab === 'payheads' && filteredPayHeads.length === 0) || 
                       (activeTab === 'employees' && filteredEmployees.length === 0)" 
-           class="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div class="flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-          <div class="rounded-full bg-blue-100 p-3 mb-4">
-            <span class="material-icons text-blue-600 text-2xl">search_off</span>
+           class="bg-white rounded-lg shadow-sm border border-gray-100">
+        <div class="flex flex-col items-center justify-center py-8 px-3 sm:px-4 lg:px-6">
+          <div class="rounded-full bg-blue-100 p-2 mb-2">
+            <span class="material-icons text-blue-600 text-lg">search_off</span>
           </div>
-          <h3 class="text-lg font-medium text-gray-900">No results found</h3>
-          <p class="mt-1 text-gray-500 text-center max-w-sm">
+          <h3 class="text-base font-medium text-gray-900">No results found</h3>
+          <p class="mt-1 text-gray-500 text-center max-w-sm text-xs">
             We couldn't find any {{ activeTab }} that match your search criteria. Try adjusting your filters or search terms.
           </p>
           <button 
             @click="resetFilters" 
-            class="mt-4 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="mt-2 inline-flex items-center px-3 py-1 border border-gray-300 rounded-sm shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500"
           >
-            <span class="material-icons text-sm mr-2">refresh</span>
+            <span class="material-icons text-xs mr-1">refresh</span>
             Reset Filters
           </button>
         </div>
       </div>
 
-      <!-- Data Table Section - Enhanced with better spacing and borders -->
-      <div v-else class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <!-- Table Header - New component for better visual hierarchy with "New Pay Head" button -->
-        <div class="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-          <h2 class="text-lg font-medium text-gray-900">
+      <!-- Data Table Section -->
+      <div v-else class="-1 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
+        <!-- Table Header -->
+        <div class="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
+          <h2 class="text-base font-medium text-gray-900">
             {{ activeTab === 'payheads' ? 'Pay Heads' : 'Employees' }}
           </h2>
-          <div class="flex items-center space-x-4">
-            <div v-if="filteredPayHeads.length > 0 && activeTab === 'payheads'" class="text-sm text-gray-500">
+          <div class="flex items-center space-x-2">
+            <div v-if="filteredPayHeads.length > 0 && activeTab === 'payheads'" class="text-xs text-gray-500">
               Showing {{ filteredPayHeads.length }} {{ filteredPayHeads.length === 1 ? 'item' : 'items' }}
             </div>
-            <!-- Smaller "New Pay Head" button -->
             <button
               v-if="activeTab === 'payheads'"
               @click="showAddModal = true"
-              class="inline-flex items-center px-2.5 py-1 bg-blue-600 text-white rounded-md 
-                     text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 
-                     focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-sm transform hover:scale-105"
+              class="inline-flex items-center px-2 py-0.5 bg-blue-600 text-white rounded-sm 
+                     text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-1 
+                     focus:ring-offset-1 focus:ring-blue-500 transition-all shadow-sm transform hover:scale-105"
             >
-              <span class="material-icons text-sm mr-1">add</span>
+              <span class="material-icons text-xs mr-1">add</span>
               New Pay Head
             </button>
           </div>
@@ -211,54 +143,53 @@
           />
         </div>
 
-        <!-- Pagination - Enhanced with better visual design -->
+        <!-- Pagination -->
         <div v-if="activeTab === 'employees' && totalPages > 1" 
-             class="flex items-center justify-between px-6 py-4 bg-gray-50 border-t">
-          <div class="text-sm text-gray-700">
+             class="flex items-center justify-between px-4 py-2 bg-gray-50 border-t">
+          <div class="text-xs text-gray-700">
             Showing <span class="font-medium">{{ ((currentPage - 1) * itemsPerPage) + 1 }}</span> to 
             <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, filteredEmployees.length) }}</span> of 
             <span class="font-medium">{{ filteredEmployees.length }}</span> entries
           </div>
 
-          <!-- Pagination Controls - Enhanced with better spacing and hover states -->
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-1">
             <button
               @click="prevPage"
               :disabled="currentPage === 1"
-              class="p-2 rounded-lg hover:bg-blue-100 transition-all disabled:opacity-50 disabled:hover:bg-transparent"
+              class="p-1 rounded-md hover:bg-blue-100 transition-all disabled:opacity-50 disabled:hover:bg-transparent"
               :class="currentPage === 1 ? 'text-gray-400' : 'text-gray-700'"
             >
-              <span class="material-icons">chevron_left</span>
+              <span class="material-icons text-base">chevron_left</span>
             </button>
 
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-0.5">
               <template v-for="page in displayedPages" :key="page">
                 <button
-                  v-if="page !== '...'"
+                  v-if="typeof page === 'number'"
                   @click="currentPage = page"
-                  class="min-w-[32px] h-8 rounded-lg text-sm font-medium transition-all"
+                  class="min-w-[24px] h-6 rounded-md text-xs font-medium transition-all"
                   :class="currentPage === page ? 'bg-blue-600 text-white' : 'hover:bg-blue-100 text-gray-700'"
                 >
                   {{ page }}
                 </button>
-                <span v-else class="px-2 text-gray-500">...</span>
+                <span v-else-if="page === '...' " class="px-1 text-gray-500 text-xs">...</span>
               </template>
             </div>
 
             <button
               @click="nextPage"
               :disabled="currentPage === totalPages"
-              class="p-2 rounded-lg hover:bg-blue-100 transition-all disabled:opacity-50 disabled:hover:bg-transparent"
+              class="p-1 rounded-md hover:bg-blue-100 transition-all disabled:opacity-50 disabled:hover:bg-transparent"
               :class="currentPage === totalPages ? 'text-gray-400' : 'text-gray-700'"
             >
-              <span class="material-icons">chevron_right</span>
+              <span class="material-icons text-base">chevron_right</span>
             </button>
           </div>
         </div>
       </div>
     </main>
 
-    <!-- Modals - Enhanced with animations and better UI -->
+    <!-- Modals -->
     <transition name="modal-fade">
       <PayHeadModal 
         v-if="showAddModal"
@@ -295,8 +226,8 @@
       />
     </transition>
 
-    <!-- Toast Notifications - Enhanced with better styling and animations -->
-    <div class="fixed bottom-4 right-4 z-50 space-y-4">
+    <!-- Toast Notifications -->
+    <div class="fixed bottom-2 right-2 z-50 space-y-2">
       <TransitionGroup
         enter-active-class="transform ease-out duration-300 transition"
         enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
@@ -309,30 +240,30 @@
         <div
           v-if="statusMessage"
           :key="statusMessage"
-          class="max-w-sm w-full bg-white rounded-lg shadow-lg pointer-events-auto
+          class="max-w-xs w-full bg-white rounded-md shadow-lg pointer-events-auto
                 ring-1 ring-black ring-opacity-5 overflow-hidden"
         >
-          <div class="p-4">
+          <div class="p-2">
             <div class="flex items-center">
               <div class="flex-shrink-0">
                 <span 
-                  class="material-icons"
+                  class="material-icons text-base"
                   :class="statusMessage.includes('success') ? 'text-green-500' : 'text-red-500'"
                 >
                   {{ statusMessage.includes('success') ? 'check_circle' : 'error' }}
                 </span>
               </div>
-              <div class="ml-3 flex-1">
-                <p class="text-sm font-medium text-gray-900">
+              <div class="ml-2 flex-1">
+                <p class="text-xs font-medium text-gray-900">
                   {{ statusMessage }}
                 </p>
               </div>
               <button
                 @click="statusMessage = ''"
-                class="ml-4 flex-shrink-0 rounded-md text-gray-400 hover:text-gray-500 
-                      focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="ml-2 flex-shrink-0 rounded-sm text-gray-400 hover:text-gray-500 
+                      focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <span class="material-icons">close</span>
+                <span class="material-icons text-base">close</span>
               </button>
             </div>
           </div>
@@ -343,7 +274,6 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed, onBeforeUnmount } from 'vue';
 import axios from 'axios';
 import PayHeadModal from '@/components/payhead/PayHeadModal.vue';
 import PayHeadTable from '@/components/payhead/PayHeadTable.vue';
@@ -356,48 +286,7 @@ export default {
     PayHeadModal,
     PayHeadTable,
     EmployeePayrollTable,
-    AddPayheadModal
-  },
-
-  setup() {
-    const currentTime = ref('2025-03-03 05:41:55');
-    const username = ref('sdr20');
-    const userInitials = computed(() => username.value.charAt(0).toUpperCase());
-    const showUserMenu = ref(false);
-    const userMenuContainer = ref(null);
-
-    let timeInterval;
-
-    const handleClickOutside = (event) => {
-      if (userMenuContainer.value && !userMenuContainer.value.contains(event.target)) {
-        showUserMenu.value = false;
-      }
-    };
-
-    onMounted(() => {
-      timeInterval = setInterval(() => {
-        const now = new Date();
-        currentTime.value = now.toISOString().slice(0, 19).replace('T', ' ');
-      }, 1000);
-      
-      document.addEventListener('click', handleClickOutside);
-    });
-
-    onBeforeUnmount(() => {
-      document.removeEventListener('click', handleClickOutside);
-    });
-
-    onUnmounted(() => {
-      if (timeInterval) clearInterval(timeInterval);
-    });
-
-    return {
-      currentTime,
-      username,
-      userInitials,
-      showUserMenu,
-      userMenuContainer
-    };
+    AddPayheadModal,
   },
 
   data() {
@@ -406,16 +295,16 @@ export default {
       employees: [],
       newPayHead: {
         name: '',
-        amount: '',
+        amount: 0,
         type: 'Earnings',
-        description: ''
+        description: '',
       },
       selectedPayHead: {
         id: '',
         name: '',
-        amount: '',
+        amount: 0,
         type: 'Earnings',
-        description: ''
+        description: '',
       },
       showAddModal: false,
       showUpdateModal: false,
@@ -429,7 +318,7 @@ export default {
       activeTab: 'payheads',
       currentPage: 1,
       itemsPerPage: 10,
-      isLoading: false
+      isLoading: false,
     };
   },
 
@@ -506,7 +395,7 @@ export default {
       const earnings = this.calculateEarnings(this.selectedEmployeePayheads || []);
       const deductions = this.calculateDeductions(this.selectedEmployeePayheads || []);
       return (this.selectedEmployee.salary || 0) + earnings - deductions;
-    }
+    },
   },
 
   methods: {
@@ -514,24 +403,16 @@ export default {
       this.isLoading = true;
       this.statusMessage = '';
       try {
-        const userRole = localStorage.getItem('userRole') || 'admin'; // Default to 'admin' for testing
-        console.log('Fetching pay heads with role:', userRole, 'Headers being sent:', {
-          'user-role': 'admin'
-        });
         const response = await axios.get('http://localhost:7777/api/payheads', {
-          headers: {
-            'user-role': 'admin' // Explicitly force admin role
-          }
+          headers: { 'user-role': 'admin' },
         });
-        console.log('Fetched pay heads:', JSON.stringify(response.data, null, 2));
-        this.payHeads = response.data || []; // Store pay heads data
+        this.payHeads = response.data.map(item => ({
+          ...item,
+          amount: Number(item.amount),
+        })) || [];
         this.showSuccessMessage('Pay heads loaded successfully!');
       } catch (error) {
-        console.error('Error fetching pay heads:', {
-          message: error.message,
-          response: error.response ? error.response.data : null,
-          config: error.config ? error.config.headers : null
-        });
+        console.error('Error fetching pay heads:', error);
         this.showErrorMessage('Failed to load pay heads. Please try again.');
       } finally {
         this.isLoading = false;
@@ -542,32 +423,24 @@ export default {
       this.isLoading = true;
       this.statusMessage = '';
       try {
-        const userRole = localStorage.getItem('userRole') || 'admin'; // Default to 'admin' for testing
-        console.log('Fetching employees with role:', userRole, 'Headers being sent:', {
-          'user-role': 'admin'
-        });
         const response = await axios.get('http://localhost:7777/api/employees', {
-          headers: {
-            'user-role': 'admin' // Explicitly force admin role
-          }
+          headers: { 'user-role': 'admin' },
         });
-        console.log('Fetched employees response:', JSON.stringify(response.data, null, 2));
         this.employees = response.data.map(emp => ({
           ...emp,
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
           position: emp.position || 'N/A',
+          payheads: emp.payheads ? emp.payheads.map(ph => ({
+            ...ph,
+            amount: Number(ph.amount),
+          })) : [],
           totalEarnings: this.calculateEarnings(emp.payheads || []),
           totalDeduction: this.calculateDeductions(emp.payheads || []),
           totalSalary: (emp.salary || 0) + this.calculateEarnings(emp.payheads || []) - this.calculateDeductions(emp.payheads || []),
-          payheads: emp.payheads || []
         }));
         this.showSuccessMessage('Employees loaded successfully!');
       } catch (error) {
-        console.error('Error fetching employees:', {
-          message: error.message,
-          response: error.response ? error.response.data : null,
-          config: error.config ? error.config.headers : null
-        });
+        console.error('Error fetching employees:', error);
         this.showErrorMessage('Failed to load employees. Please try again.');
       } finally {
         this.isLoading = false;
@@ -577,12 +450,11 @@ export default {
     async addPayHead(payHead) {
       try {
         this.isLoading = true;
-        const response = await axios.post('http://localhost:7777/api/payheads', payHead, {
-          headers: {
-            'user-role': 'admin' // Explicitly force admin role
-          }
+        const payload = { ...payHead, amount: Number(payHead.amount) };
+        const response = await axios.post('http://localhost:7777/api/payheads', payload, {
+          headers: { 'user-role': 'admin' },
         });
-        this.payHeads.push(response.data);
+        this.payHeads.push({ ...response.data, amount: Number(response.data.amount) });
         this.showAddModal = false;
         this.showSuccessMessage('Pay head added successfully!');
         await this.fetchEmployees();
@@ -595,24 +467,22 @@ export default {
     },
 
     showUpdatePayHeadModal(payHead) {
-      this.selectedPayHead = { ...payHead };
+      this.selectedPayHead = { ...payHead, amount: Number(payHead.amount) };
       this.showUpdateModal = true;
     },
 
     async updatePayHead(updatedPayHead) {
       try {
         this.isLoading = true;
+        const payload = { ...updatedPayHead, amount: Number(updatedPayHead.amount) };
         const response = await axios.put(
           `http://localhost:7777/api/payheads/${updatedPayHead.id}`, 
-          updatedPayHead, {
-            headers: {
-              'user-role': 'admin' // Explicitly force admin role
-            }
-          }
+          payload,
+          { headers: { 'user-role': 'admin' } }
         );
         const index = this.payHeads.findIndex(ph => ph.id === updatedPayHead.id);
         if (index !== -1) {
-          this.payHeads.splice(index, 1, response.data);
+          this.payHeads.splice(index, 1, { ...response.data, amount: Number(response.data.amount) });
           this.showUpdateModal = false;
           this.showSuccessMessage('Pay head updated successfully!');
           await this.fetchEmployees();
@@ -635,9 +505,7 @@ export default {
       try {
         this.isLoading = true;
         await axios.delete(`http://localhost:7777/api/payheads/${id}`, {
-          headers: {
-            'user-role': 'admin' // Explicitly force admin role
-          }
+          headers: { 'user-role': 'admin' },
         });
         this.payHeads = this.payHeads.filter(payHead => payHead.id !== id);
         this.showSuccessMessage('Pay head deleted successfully!');
@@ -660,7 +528,8 @@ export default {
     addPayheadToEmployee(payhead) {
       const newPayhead = { 
         ...payhead, 
-        uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}` 
+        amount: Number(payhead.amount),
+        uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       };
       this.selectedEmployeePayheads.push(newPayhead);
     },
@@ -676,7 +545,7 @@ export default {
         p => p.uniqueId === updatedPayhead.uniqueId
       );
       if (index !== -1) {
-        this.selectedEmployeePayheads.splice(index, 1, { ...updatedPayhead });
+        this.selectedEmployeePayheads.splice(index, 1, { ...updatedPayhead, amount: Number(updatedPayhead.amount) });
       }
     },
 
@@ -686,8 +555,8 @@ export default {
         const payheadsToSave = this.selectedEmployeePayheads.map(ph => ({
           id: ph.id,
           name: ph.name,
-          amount: ph.amount,
-          type: ph.type
+          amount: Number(ph.amount),
+          type: ph.type,
         }));
 
         const updatedEmployee = {
@@ -697,16 +566,13 @@ export default {
           totalDeduction: this.calculateDeductions(payheadsToSave),
           totalSalary: (this.selectedEmployee.salary || 0) + 
                       this.calculateEarnings(payheadsToSave) - 
-                      this.calculateDeductions(payheadsToSave)
+                      this.calculateDeductions(payheadsToSave),
         };
 
         await axios.put(
           `http://localhost:7777/api/employees/${this.selectedEmployee.id}`,
-          updatedEmployee, {
-            headers: {
-              'user-role': 'admin' // Explicitly force admin role
-            }
-          }
+          updatedEmployee,
+          { headers: { 'user-role': 'admin' } }
         );
 
         const employeeIndex = this.employees.findIndex(
@@ -738,17 +604,6 @@ export default {
         .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
     },
 
-    calculatePayHeadsByType(type) {
-      return this.payHeads.filter(p => p.type === type).length;
-    },
-
-    calculateAverageAmount(type) {
-      const filtered = this.payHeads.filter(p => p.type === type && p.amount > 0);
-      if (filtered.length === 0) return 0;
-      const total = filtered.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-      return total / filtered.length;
-    },
-
     prevPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
@@ -774,13 +629,13 @@ export default {
     showErrorMessage(message) {
       this.statusMessage = message;
       setTimeout(() => { this.statusMessage = ''; }, 3000);
-    }
+    },
   },
 
   created() {
     this.fetchPayHeads();
     this.fetchEmployees();
-  }
+  },
 };
 </script>
 
@@ -794,25 +649,9 @@ export default {
   opacity: 0;
 }
 
-/* Dropdown animation */
-.animate-dropdown {
-  animation: slideDown 0.2s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Loader animation */
 .loader {
-  border-top-color: #3b82f6; /* Blue-600 */
+  border-top-color: #3b82f6;
   animation: spin 1s ease-in-out infinite;
 }
 
@@ -822,18 +661,18 @@ export default {
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #888;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -847,18 +686,18 @@ export default {
 }
 
 .scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 .scrollbar::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .scrollbar::-webkit-scrollbar-thumb {
   background: #888;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .scrollbar::-webkit-scrollbar-thumb:hover {
