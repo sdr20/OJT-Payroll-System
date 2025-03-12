@@ -59,7 +59,7 @@
             <table class="w-full text-left text-sm">
               <thead class="bg-gray-50">
                 <tr>
-                  <th class="px-4 py-2 font-semibold text-gray-600">ID</th>
+                  <th class="px-4 py-2 font-semibold text-gray-600">Emp No</th>
                   <th class="px-4 py-2 font-semibold text-gray-600">Name</th>
                   <th class="px-4 py-2 font-semibold text-gray-600">Position</th>
                   <th class="px-4 py-2 font-semibold text-gray-600">Hourly Rate</th>
@@ -69,7 +69,7 @@
               </thead>
               <tbody class="divide-y divide-gray-100">
                 <tr v-for="employee in paginatedEmployees" :key="employee.id" class="hover:bg-gray-50 transition">
-                  <td class="px-4 py-2">{{ employee.id || 'N/A' }}</td>
+                  <td class="px-4 py-2">{{ employee.empNo || 'N/A' }}</td>
                   <td class="px-4 py-2">{{ employee.firstName }} {{ employee.lastName }}</td>
                   <td class="px-4 py-2">{{ employee.position || 'N/A' }}</td>
                   <td class="px-4 py-2">₱{{ employee.hourlyRate.toLocaleString() }}</td>
@@ -143,6 +143,7 @@
             <div>
               <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
               <div class="space-y-2">
+                <p><span class="font-medium text-gray-700">Employee No:</span> {{ selectedEmployee.empNo || 'N/A' }}</p>
                 <p><span class="font-medium text-gray-700">Name:</span> {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}</p>
                 <p><span class="font-medium text-gray-700">Position:</span> {{ selectedEmployee.position }}</p>
                 <p><span class="font-medium text-gray-700">Email:</span> {{ selectedEmployee.email }}</p>
@@ -568,7 +569,6 @@ export default {
       positionFilter: '',
       currentPage: 1,
       itemsPerPage: 10,
-      nextEmployeeId: 1,
       statusMessage: '',
       newEmployee: {
         empNo: '',
@@ -675,8 +675,11 @@ export default {
       this.isLoading = true;
       try {
         const response = await axios.get('http://localhost:7777/api/employees', { headers: { 'user-role': 'admin' } });
-        this.employees = response.data.map(emp => ({ ...emp, hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)) })) || [];
-        this.nextEmployeeId = Math.max(...this.employees.map(e => e.id || 0), 0) + 1;
+        this.employees = response.data.map(emp => ({
+          ...emp,
+          hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
+          empNo: emp.empNo || `EMP-${String(emp.id).padStart(4, '0')}`
+        })) || [];
       } catch (error) {
         console.error('Error fetching employees:', error);
         this.showErrorMessage('Failed to load employees');
@@ -833,7 +836,6 @@ export default {
           this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
           this.showRequestModal = false;
           this.showSuccessMessage('Employee approved and added successfully');
-          this.nextEmployeeId = Math.max(...this.employees.map(e => e.id || 0), 0) + 1;
         }
       } catch (error) {
         console.error('Error approving request:', error);
@@ -865,11 +867,10 @@ export default {
         const employeeData = { ...this.newEmployee, hourlyRate: this.newEmployee.hourlyRate, role: 'employee' };
         const response = await axios.post('http://localhost:7777/api/employees', employeeData, { headers: { 'user-role': 'admin' } });
         if (response.status === 201) {
-          this.employees.push(response.data);
+          this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
           this.showAddModal = false;
           this.resetNewEmployee();
           this.showSuccessMessage('Employee added successfully');
-          this.nextEmployeeId = Math.max(...this.employees.map(e => e.id || 0), 0) + 1;
         }
       } catch (error) {
         console.error('Error adding employee:', error);
