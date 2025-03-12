@@ -301,6 +301,128 @@
       </div>
     </div>
 
+    <!-- Edit Employee Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
+        <div class="p-4 border-b">
+          <h2 class="text-lg font-semibold text-gray-800">Edit Employee - {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}</h2>
+        </div>
+        <div class="p-4">
+          <div class="space-y-4">
+            <div>
+              <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Employee Number *</label>
+                  <input v-model="selectedEmployee.empNo" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">First Name *</label>
+                  <input v-model="selectedEmployee.firstName" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Middle Name</label>
+                  <input v-model="selectedEmployee.middleName" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Last Name *</label>
+                  <input v-model="selectedEmployee.lastName" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Email *</label>
+                  <input v-model="selectedEmployee.email" type="email" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Contact Number *</label>
+                  <input v-model="selectedEmployee.contactInfo" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required pattern="\d{11}" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-gray-800 mb-2">Employment Information</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Position *</label>
+                  <select v-model="selectedEmployee.position" @change="updateSalaryFromPositionEdit" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required>
+                    <option v-for="position in adminPositions" :key="position.name" :value="position.name">{{ position.name }}</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Hire Date *</label>
+                  <input v-model="selectedEmployee.hireDate" type="date" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">SSS ID</label>
+                  <input v-model="selectedEmployee.sss" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" pattern="\d{10}" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">PhilHealth ID</label>
+                  <input v-model="selectedEmployee.philhealth" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" pattern="\d{12}" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Pag-IBIG ID</label>
+                  <input v-model="selectedEmployee.pagibig" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" pattern="\d{12}" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">TIN</label>
+                  <input v-model="selectedEmployee.tin" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" pattern="\d{9,12}" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-gray-800 mb-2">Financial Information</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Monthly Salary *</label>
+                  <input v-model.number="selectedEmployee.salary" type="number" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required min="0" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Hourly Rate</label>
+                  <input :value="selectedEmployee.hourlyRate.toLocaleString()" type="text" class="w-full p-1.5 text-sm border rounded-md bg-gray-100" disabled />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Travel Expenses</label>
+                  <input v-model.number="selectedEmployee.earnings.travelExpenses" type="number" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" min="0" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Other Earnings</label>
+                  <input v-model.number="selectedEmployee.earnings.otherEarnings" type="number" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" min="0" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">SSS Contribution</label>
+                  <input :value="calculateSSSContribution(selectedEmployee.salary).toLocaleString()" class="w-full p-1.5 text-sm border rounded-md bg-gray-100" disabled />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">PhilHealth Contribution</label>
+                  <input :value="calculatePhilHealthContribution(selectedEmployee.salary).toLocaleString()" class="w-full p-1.5 text-sm border rounded-md bg-gray-100" disabled />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Pag-IBIG Contribution</label>
+                  <input :value="calculatePagIBIGContribution(selectedEmployee.salary).toLocaleString()" class="w-full p-1.5 text-sm border rounded-md bg-gray-100" disabled />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Withholding Tax</label>
+                  <input :value="calculateWithholdingTax(selectedEmployee.salary).toLocaleString()" class="w-full p-1.5 text-sm border rounded-md bg-gray-100" disabled />
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 p-3 bg-gray-50 rounded-md">
+              <div class="flex justify-between items-center text-sm">
+                <span class="font-medium text-gray-700">Net Salary Preview:</span>
+                <span class="font-semibold text-gray-900">₱{{ calculateNetSalary(selectedEmployee).toLocaleString() }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t bg-gray-50 flex justify-end gap-2">
+          <button @click="updateEmployee" class="px-3 py-1.5 bg-yellow-600 text-white text-sm rounded-md hover:bg-yellow-700" :disabled="isUpdating">
+            {{ isUpdating ? 'Updating...' : 'Update' }}
+          </button>
+          <button @click="showEditModal = false" class="px-3 py-1.5 border text-sm rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Manage Positions Modal -->
     <div v-if="showPositionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -394,15 +516,7 @@
       </div>
     </div>
 
-    <!-- Placeholder Modals -->
-
-    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
-        <div class="p-4 border-b"><h2 class="text-lg font-semibold text-gray-800">Edit Employee</h2></div>
-        <div class="p-4"><p class="text-sm">Editing {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}</p></div>
-        <div class="p-4 border-t bg-gray-50 flex justify-end"><button @click="showEditModal = false" class="px-3 py-1.5 border text-sm rounded-md text-gray-700 hover:bg-gray-100">Close</button></div>
-      </div>
-    </div>
+    <!-- Delete Employee Confirmation Modal -->
     <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
         <div class="p-4 border-b"><h2 class="text-lg font-semibold text-gray-800">Confirm Delete</h2></div>
@@ -609,19 +723,30 @@ export default {
     },
 
     editEmployee(employee) {
-      this.selectedEmployee = { ...employee, earnings: { travelExpenses: employee.earnings?.travelExpenses || 0, otherEarnings: employee.earnings?.otherEarnings || 0 } };
+      this.selectedEmployee = { 
+        ...employee, 
+        earnings: { 
+          travelExpenses: employee.earnings?.travelExpenses || 0, 
+          otherEarnings: employee.earnings?.otherEarnings || 0 
+        } 
+      };
       this.showDetailsModal = false;
       this.showEditModal = true;
     },
 
     async updateEmployee() {
-      if (!this.selectedEmployee.firstName || !this.selectedEmployee.lastName || !this.selectedEmployee.email || !this.selectedEmployee.contactInfo || this.selectedEmployee.salary < 0) {
+      if (!this.selectedEmployee.firstName || !this.selectedEmployee.lastName || !this.selectedEmployee.email || 
+          !this.selectedEmployee.contactInfo || this.selectedEmployee.salary < 0) {
         this.showErrorMessage('Required fields missing or invalid salary');
         return;
       }
       this.isUpdating = true;
       try {
-        const response = await axios.put(`http://localhost:7777/api/employees/${this.selectedEmployee.id}`, this.selectedEmployee, { headers: { 'user-role': 'admin' } });
+        const response = await axios.put(
+          `http://localhost:7777/api/employees/${this.selectedEmployee.id}`, 
+          this.selectedEmployee, 
+          { headers: { 'user-role': 'admin' } }
+        );
         if (response.status === 200) {
           const index = this.employees.findIndex(emp => emp.id === this.selectedEmployee.id);
           if (index !== -1) this.employees[index] = { ...this.selectedEmployee };
@@ -831,6 +956,14 @@ export default {
       }
     },
 
+    updateSalaryFromPositionEdit() {
+      const selectedPosition = this.adminPositions.find(pos => pos.name === this.selectedEmployee.position);
+      if (selectedPosition) {
+        this.selectedEmployee.salary = selectedPosition.salary;
+        this.selectedEmployee.hourlyRate = selectedPosition.salary / (8 * 22);
+      }
+    },
+
     resetNewEmployee() {
       this.newEmployee = { empNo: '', firstName: '', middleName: '', lastName: '', position: '', salary: 0, hourlyRate: 0, email: '', contactInfo: '', sss: '', philhealth: '', pagibig: '', tin: '', hireDate: new Date().toISOString().slice(0, 10), earnings: { travelExpenses: 0, otherEarnings: 0 }, username: '', password: '' };
     },
@@ -860,8 +993,6 @@ export default {
 button:disabled { opacity: 0.6; cursor: not-allowed; }
 .material-icons-outlined { font-size: 18px; }
 input:focus:invalid, select:focus:invalid { border-color: #ef4444; outline: 1px solid #ef4444; }
-
-/* Additional Styles */
 .hover\:bg-gray-50:hover { background-color: #f9fafb; }
 .transition { transition: all 0.2s ease-in-out; }
 </style>
