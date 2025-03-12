@@ -147,6 +147,7 @@
                 <p><span class="font-medium text-gray-700">Position:</span> {{ selectedEmployee.position }}</p>
                 <p><span class="font-medium text-gray-700">Email:</span> {{ selectedEmployee.email }}</p>
                 <p><span class="font-medium text-gray-700">Contact:</span> {{ selectedEmployee.contactInfo }}</p>
+                <p><span class="font-medium text-gray-700">Hire Date:</span> {{ new Date(selectedEmployee.hireDate).toLocaleDateString() }}</p>
               </div>
             </div>
             <div>
