@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col">
+  <div class="min-h-screen bg-gray-50 flex flex-col ">
     <!-- Header -->
-    <header class="bg-white shadow-sm p-3 flex justify-between items-center sticky top-0 z-40">
+    <header class="bg-white shadow-sm p-3 flex justify-between items-center sticky top-0 z-40 rounded-lg">
       <h1 class="text-lg font-bold text-gray-800">Employee Management</h1>
       <div class="flex items-center gap-3">
         <input
@@ -21,7 +21,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 p-4">
+    <main class="flex-1 p-2">
       <div class="max-w-screen-xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Employee List -->
         <section class="lg:col-span-2 bg-white rounded-lg shadow-sm overflow-hidden">
