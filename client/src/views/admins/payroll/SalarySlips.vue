@@ -67,7 +67,7 @@
                                 class="hover:bg-blue-50 transition-colors cursor-pointer"
                                 @click="showPayslipHistory(employee)">
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ employee.name }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-500">{{ employee.empNo }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-500">{{ employee.employeeIdNumber }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ employee.position }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-900">₱{{ employee.hourlyRate.toLocaleString() }}
                                 </td>
@@ -115,7 +115,7 @@
             <div v-if="showHistoryModal"
                 class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                 <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl h-[80vh] flex flex-col">
-                    <div class="flex items-center justify-between p-4 border-b">
+                    <div class="flex items-center justify-between p-4 border-b border-gray-300">
                         <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
                             <span class="material-icons text-sm">history</span>
                             Payslip History - {{ selectedEmployee?.name }}
@@ -125,7 +125,7 @@
                         </button>
                     </div>
                     <div class="flex flex-1 overflow-hidden">
-                        <div class="w-1/2 p-4 overflow-y-auto border-r">
+                        <div class="w-1/2 p-4 overflow-y-auto border-r border-gray-300">
                             <h3 class="text-sm font-medium text-gray-700 mb-2">Payslip List</h3>
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50 sticky top-0">
@@ -142,7 +142,7 @@
                                         @click="selectPayslip(payslip)">
                                         <td class="px-4 py-2 text-sm text-gray-900">
                                             {{ payslip.paydayType === 'mid-month' ?
-                                                payslip.expectedPaydays.midMonthPayday :
+                                            payslip.expectedPaydays.midMonthPayday :
                                             payslip.expectedPaydays.endMonthPayday }}
                                         </td>
                                         <td class="px-4 py-2">
@@ -151,7 +151,7 @@
                                                 :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating">
                                                 <span class="material-icons text-sm">description</span>
                                                 {{
-                                                    payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating
+                                                payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating
                                                 ? 'Generating...' : 'Generate' }}
                                             </button>
                                         </td>
@@ -167,7 +167,7 @@
                             <h3 class="text-sm font-medium text-gray-700 mb-2">Payslip Preview</h3>
                             <div v-if="selectedPayslip && selectedPayslip.payslipDataUrl" class="flex flex-col h-full">
                                 <iframe :src="selectedPayslip.payslipDataUrl"
-                                    class="w-full h-[60vh] rounded border mb-4" @load="onIframeLoad"
+                                    class="w-full h-[60vh] rounded border border-gray-300 mb-4" @load="onIframeLoad"
                                     @error="onIframeError"></iframe>
                                 <button @click="downloadPayslip"
                                     class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-md">
@@ -192,7 +192,7 @@
             <div v-if="showPrintAllModal"
                 class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                 <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-                    <div class="flex items-center justify-between p-4 border-b">
+                    <div class="flex items-center justify-between p-4 border-b border-gray-300">
                         <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
                             <span class="material-icons text-sm">print</span>
                             Print Payslips
@@ -212,7 +212,7 @@
                         </div>
                         <div v-if="employeesWithPayslips.length > 0">
                             <div v-for="emp in employeesWithPayslips" :key="emp.id"
-                                class="flex items-center py-2 border-b">
+                                class="flex items-center py-2 border-b border-gray-300">
                                 <input type="checkbox" v-model="selectedEmployeesForPrint" :value="emp.id"
                                     class="large-checkbox mr-2" />
                                 <span class="text-sm text-gray-900">{{ emp.name }} - Most Recent: {{
@@ -223,7 +223,7 @@
                             No employees with generated payslips found.
                         </div>
                     </div>
-                    <div class="p-4 border-t flex justify-end gap-2">
+                    <div class="p-4 border-t border-gray-300 flex justify-end gap-2">
                         <button @click="showPrintAllModal = false"
                             class="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
                             Cancel
@@ -324,8 +324,8 @@ export default {
                     headers: { "Content-Type": "application/json" },
                 });
                 this.employees = response.data.map((employee) => ({
-                    id: employee.id,
-                    empNo: employee.empNo || 'N/A',
+                    id: employee._id,
+                    employeeIdNumber: employee.employeeIdNumber || 'N/A',
                     name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim(),
                     lastName: employee.lastName || 'N/A',
                     middleName: employee.middleName || 'N/A',
@@ -367,10 +367,18 @@ export default {
             await this.fetchEmployees();
         },
         async showPayslipHistory(employee) {
+            console.log('Received employee:', employee);
+            if (!employee.id) {
+                console.error('Employee ID is undefined:', employee);
+                this.showErrorMessage('Employee ID is missing');
+                return;
+            }
             this.selectedEmployee = { ...employee };
             this.isLoading = true;
             const today = moment();
-            const hireDate = moment(employee.hireDate);
+            const hireDate = moment(employee.hireDate || new Date());
+            console.log('hireDate raw:', employee.hireDate); // Debug hireDate
+            console.log('hireDate parsed:', hireDate.format('YYYY-MM-DD'), hireDate.isValid());
 
             if (!hireDate.isValid()) {
                 console.error('Invalid hireDate:', employee.hireDate);
@@ -463,14 +471,14 @@ export default {
                 const url = URL.createObjectURL(pdfBlob);
                 const base64Data = await this.blobToBase64(pdfBlob);
 
-                await axios.post('http://localhost:5000/api/payslips/generate', {
+                const response = await axios.post('http://localhost:5000/api/payslips/generate', {
                     employeeId: employee.id,
-                    empNo: employee.empNo,
+                    employeeIdNumber: employee.employeeIdNumber,
                     payslipData: base64Data,
                     salaryMonth: payslip.salaryMonth,
                     paydayType: payslip.paydayType,
                 }, {
-                    headers: { 'user-role': 'admin' },
+                    headers: { 'Content-Type': 'application/json', 'user-role': 'admin' },
                 });
 
                 payslip.payslipDataUrl = url;
@@ -478,7 +486,7 @@ export default {
                 this.selectedPayslip = payslip;
                 this.showSuccessMessage(`Payslip generated for ${employee.name} - ${payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday}!`);
             } catch (error) {
-                console.error('Error generating payslip:', error);
+                console.error('Error generating payslip:', error, error.response ? error.response.data : 'No response from server');
                 this.showErrorMessage(`Failed to generate payslip: ${error.message}`);
             } finally {
                 this.payslipGenerationStatus[key] = { generating: false };
@@ -721,7 +729,17 @@ export default {
             };
         },
         createPayslipData(employee) {
-            const salaryDate = moment(employee.salaryMonth, 'YYYY-MM-DD').format('MM/DD/YYYY');
+            const salaryDate = employee.salaryMonth
+                ? moment(employee.salaryMonth, 'YYYY-MM-DD', true).isValid()
+                    ? moment(employee.salaryMonth, 'YYYY-MM-DD').format('MM/DD/YYYY')
+                    : moment().format('MM/DD/YYYY')
+                : moment().format('MM/DD/YYYY');
+            const birthDate = employee.birthDate && typeof employee.birthDate === 'string' && moment(employee.birthDate, 'YYYY-MM-DD', true).isValid()
+                ? moment(employee.birthDate, 'YYYY-MM-DD').format('MM/DD/YYYY')
+                : 'N/A';
+            const hireDate = employee.hireDate && typeof employee.hireDate === 'string' && moment(employee.hireDate, 'YYYY-MM-DD', true).isValid()
+                ? moment(employee.hireDate, 'YYYY-MM-DD').format('MM/DD/YYYY')
+                : 'N/A';
             const basicSalary = employee.salary || 0;
             const sss = this.calculateSSSContribution(employee.salary) || 0;
             const philhealth = this.calculatePhilHealthContribution(employee.salary) || 0;
@@ -736,12 +754,12 @@ export default {
 
             return {
                 salaryDate,
-                empNo: employee.empNo || 'N/A',
+                employeeIdNumber: employee.employeeIdNumber || 'N/A',
                 lastName: employee.lastName || 'N/A',
                 middleName: employee.middleName || 'N/A',
                 firstName: employee.firstName || 'N/A',
-                birthDate: moment(employee.birthDate).isValid() ? moment(employee.birthDate).format('MM/DD/YYYY') : 'N/A',
-                hireDate: moment(employee.hireDate).isValid() ? moment(employee.hireDate).format('MM/DD/YYYY') : 'N/A',
+                birthDate,
+                hireDate,
                 civilStatus: employee.civilStatus || 'SINGLE',
                 dependents: employee.dependents || 0,
                 sss: employee.sss || 'N/A',
@@ -812,7 +830,7 @@ export default {
             addText(pdfDoc, 'Personal Information', margin, y, { fontSize: 11, fontStyle: 'bold' });
             y += lineHeight;
             const leftPersonalInfo = [
-                ['Emp No.', payslipData.empNo],
+                ['Emp No.', payslipData.employeeIdNumber],
                 ['Last Name', payslipData.lastName],
                 ['Middle Name', payslipData.middleName],
                 ['First Name', payslipData.firstName],
