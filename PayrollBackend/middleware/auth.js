@@ -1,6 +1,6 @@
 const isAdmin = (req, res, next) => {
   const userRole = req.headers['user-role'];
-  console.log('Middleware - Received user-role:', userRole);
+  console.log('Received user-role:', userRole);
   if (!userRole || userRole.toLowerCase() !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
