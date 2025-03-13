@@ -128,6 +128,11 @@ const approvePendingRequest = async (req, res) => {
       earnings: request.earnings || { travelExpenses: 0, otherEarnings: 0 }
     });
 
+    employee.markModified('password');
+    employee.isModified = function(field) { 
+      return field !== 'password' && mongoose.Document.prototype.isModified.call(this, field); 
+    };
+
     await employee.save();
     await PendingRequest.updateOne({ id: request.id }, { status: 'approved', approvedAt: new Date() });
     res.status(200).json(employee);
