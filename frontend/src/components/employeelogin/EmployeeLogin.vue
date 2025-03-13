@@ -482,6 +482,7 @@ export default {
     async fetchPositions() {
       try {
         const response = await axios.get('http://localhost:7777/api/positions');
+        console.log('Positions response:', response.data);
         this.adminPositions = response.data.map(pos => ({
           _id: pos._id,
           name: pos.name,

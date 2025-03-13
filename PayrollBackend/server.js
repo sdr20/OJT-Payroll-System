@@ -7,6 +7,7 @@ const corsMiddleware = require('./middleware/cors');
 
 // Import seeder
 const seedAdminIfNeeded = require('./seeders/adminSeeder');
+const seedPositions = require('./seeders/positionSeeder');
 
 // Import routes
 const employeeRoutes = require('./routes/employees');
@@ -39,6 +40,7 @@ console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
 // Connect to DB and seed admin
 connectDB().then(() => {
   seedAdminIfNeeded();
+  seedPositions();
 });
 
 // Routes
