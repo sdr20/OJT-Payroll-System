@@ -1,77 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Employee = require('../models/Employee');
+const { login } = require('../controllers/authController');
 
-router.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    // Debugging logs
-    console.log('Login request received:', { username, password: '[hidden]' });
-
-    // Trim and validate input
-    const trimmedUsername = username?.trim();
-    const trimmedPassword = password?.trim();
-
-    if (!trimmedUsername || !trimmedPassword) {
-      console.log('Missing username or password');
-      return res.status(400).json({ error: 'Username and password are required' });
-    }
-
-    // Find user by username
-    const user = await Employee.findOne({ username: trimmedUsername });
-    if (!user) {
-      console.log('User not found:', trimmedUsername);
-      return res.status(401).json({ error: 'Invalid username or password' });
-    }
-
-    // Debugging logs
-    console.log('User found:', { id: user.id, username: user.username, role: user.role });
-    console.log('Stored hashed password:', user.password);
-
-    // Compare password
-    const isMatch = await user.comparePassword(trimmedPassword);
-    console.log('Password match result:', isMatch);
-
-    if (!isMatch) {
-      console.log('Password mismatch for user:', trimmedUsername);
-      return res.status(401).json({ error: 'Invalid username or password' });
-    }
-
-    // Debugging logs
-    console.log('Login successful:', { id: user.id, username: user.username, role: user.role });
-
-    // Return user details
-    res.status(200).json({
-      id: user.id,
-      empNo: user.empNo,
-      username: user.username,
-      firstName: user.firstName,
-      middleName: user.middleName || '',
-      lastName: user.lastName,
-      name: `${user.firstName} ${user.middleName || ''} ${user.lastName}`.trim(),
-      email: user.email,
-      role: user.role,
-      hireDate: user.hireDate,
-      position: user.position,
-      salary: user.salary,
-      hourlyRate: user.hourlyRate,
-      contactInfo: user.contactInfo,
-      sss: user.sss || '',
-      philhealth: user.philhealth || '',
-      hdmf: user.hdmf || '',
-      tin: user.tin || '',
-      civilStatus: user.civilStatus || 'Single',
-      earnings: user.earnings || { travelExpenses: 0, otherEarnings: 0 },
-    });
-  } catch (error) {
-    console.error('Login error:', {
-      message: error.message,
-      stack: error.stack,
-      requestBody: { username: req.body.username, password: '[hidden]' },
-    });
-    res.status(500).json({ error: 'Login failed', message: error.message });
-  }
-});
+router.post('/login', login);
 
 module.exports = router;
