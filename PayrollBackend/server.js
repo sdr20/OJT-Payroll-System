@@ -5,6 +5,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const connectDB = require('./config/database');
+const Employee = require('./models/Employee');
 
 // Import routes
 const employeeRoutes = require('./routes/employees');
@@ -38,35 +39,11 @@ app.use((req, res, next) => {
 // Log environment variables
 console.log('Environment Variables:');
 console.log('PORT:', process.env.PORT || 7777);
-console.log('EMAIL_USER:', process.env.EMAIL_USER);
-console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'Not set');
 console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
 
 // Connect to MongoDB and seed admin
 async function seedAdminIfNeeded() {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-
-    const EmployeeSchema = new mongoose.Schema({
-      id: Number,
-      empNo: String,
-      firstName: String,
-      middleName: String,
-      lastName: String,
-      position: String,
-      salary: Number,
-      hourlyRate: Number,
-      email: String,
-      contactInfo: String,
-      username: String,
-      password: String,
-      role: String
-    });
-    const Employee = mongoose.model('Employee', EmployeeSchema, 'employees');
-
     const existingAdmin = await Employee.findOne({ username: 'admin' });
     if (!existingAdmin) {
       const hashedPassword = bcrypt.hashSync('admin123', 10);

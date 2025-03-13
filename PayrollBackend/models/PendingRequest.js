@@ -1,4 +1,3 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\models\PendingRequest.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -15,20 +14,20 @@ const pendingRequestSchema = new mongoose.Schema({
   hourlyRate: { type: Number, default: 0 },
   sss: { type: String, default: '' },
   philhealth: { type: String, default: '' },
-  hdmf: { type: String, default: '' }, // Changed from pagibig to match EmployeeLogin.vue
+  hdmf: { type: String, default: '' },
   tin: { type: String, default: '' },
   civilStatus: { type: String, enum: ['Single', 'Married', 'Divorced', 'Widowed'], default: 'Single' },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  hireDate: { type: Date, required: true }, // Added for SalarySlips filtering
+  hireDate: { type: Date, required: true },
   status: { type: String, default: 'pending', enum: ['pending', 'approved', 'rejected'] },
-  role: { type: String, enum: ['employee'], default: 'employee' }, // Match Employee model
-  earnings: { // Added for SalarySlips compatibility
+  role: { type: String, enum: ['employee'], default: 'employee' },
+  earnings: {
     travelExpenses: { type: Number, default: 0 },
     otherEarnings: { type: Number, default: 0 }
   },
-  approvedAt: { type: Date }, // Track approval time
-  rejectedAt: { type: Date } // Track rejection time
+  approvedAt: { type: Date },
+  rejectedAt: { type: Date }
 }, { timestamps: true });
 
 // Hash password before saving
@@ -39,7 +38,7 @@ pendingRequestSchema.pre('save', async function(next) {
       console.log(`Password hashed for pending request ID ${this.id}`);
     }
     if (this.salary && !this.hourlyRate) {
-      this.hourlyRate = this.salary / (8 * 22); // DOLE: 8-hour workday, 22 days/month
+      this.hourlyRate = this.salary / (8 * 22);
       console.log(`Hourly rate calculated for ID ${this.id}: ${this.hourlyRate}`);
     }
     next();
@@ -49,11 +48,7 @@ pendingRequestSchema.pre('save', async function(next) {
   }
 });
 
-// Indexes for efficient querying
-pendingRequestSchema.index({ id: 1 });
-pendingRequestSchema.index({ empNo: 1 });
-pendingRequestSchema.index({ username: 1 });
-pendingRequestSchema.index({ email: 1 }); // Added for uniqueness check
-pendingRequestSchema.index({ status: 1 }); // Added for filtering pending requests
+pendingRequestSchema.index({ email: 1 });
+pendingRequestSchema.index({ status: 1 });
 
-module.exports = mongoose.model('PendingRequest', pendingRequestSchema);
+module.exports = mongoose.models.PendingRequest || mongoose.model('PendingRequest', pendingRequestSchema);

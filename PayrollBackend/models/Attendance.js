@@ -12,8 +12,6 @@ const attendanceSchema = new mongoose.Schema({
   indexes: [{ key: { employeeId: 1, date: 1 }, unique: true }]
 });
 
-attendanceSchema.post('index', function() {
-  console.log('Indexes defined after model load:', this.indexes());
-});
+attendanceSchema.index({ employeeId: 1 });
 
 module.exports = mongoose.models.Attendance || mongoose.model('Attendance', attendanceSchema);

@@ -64,8 +64,5 @@ employeeSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-employeeSchema.index({ id: 1 });
-employeeSchema.index({ empNo: 1 });
-employeeSchema.index({ username: 1 });
-
-module.exports = mongoose.model('Employee', employeeSchema);
+// Use mongoose.models to prevent recompilation
+module.exports = mongoose.models.Employee || mongoose.model('Employee', employeeSchema);
