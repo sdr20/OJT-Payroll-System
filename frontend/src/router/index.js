@@ -3,8 +3,8 @@ import { useAuthStore } from '@/store/auth';
 
 const routes = [
   { path: '/', component: () => import('../views/LoginSelection.vue') },
-  { path: '/admin-login', component: () => import('../components/adminlogin/AdminLogin.vue') },
-  { path: '/employee-login', component: () => import('../components/employeelogin/EmployeeLogin.vue') },
+  { path: '/admin-login', component: () => import('../views/admins/auth/AdminLogin.vue') },
+  { path: '/employee-login', component: () => import('../views/employee/auth/EmployeeLogin.vue') },
   { path: '/register', component: () => import('../components/employeelogin/EmployeeRegister.vue') },
   {
     path: '/admin',

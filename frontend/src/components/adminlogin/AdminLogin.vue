@@ -122,8 +122,10 @@ export default {
 
       try {
         const response = await axios.post('http://localhost:7777/api/auth/login', {
-          username: this.username,
-          password: this.password,
+          username: this.username.trim(),
+          password: this.password.trim(),
+        }, {
+          headers: { 'Content-Type': 'application/json' }
         });
 
         if (!response.data.token || !response.data.user) {

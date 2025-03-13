@@ -51,9 +51,7 @@ const employeeSchema = new mongoose.Schema({
 // Hash password before saving
 employeeSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
-    if (!this.password.match(/^\$2[ayb]\$.{56}$/)) {
-      this.password = await bcrypt.hash(this.password, 10);
-    }
+    this.password = await bcrypt.hash(this.password, 10);
   }
   if (this.salary && !this.hourlyRate) {
     this.hourlyRate = this.salary / (8 * 22);
