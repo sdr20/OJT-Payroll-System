@@ -1,4 +1,5 @@
 const Employee = require('../models/Employee');
+const { verifyToken } = require('./authController');
 
 const loginEmployee = async (req, res) => {
   try {
@@ -107,4 +108,10 @@ const handleError = (res, error, defaultMessage) => {
   }
 };
 
-module.exports = { loginEmployee, getEmployees, createEmployee, updateEmployee, deleteEmployee };
+module.exports = {
+  loginEmployee, 
+  getEmployees: [verifyToken, getEmployees],
+  createEmployee: [verifyToken, createEmployee],
+  updateEmployee: [verifyToken, updateEmployee],
+  deleteEmployee: [verifyToken, deleteEmployee],
+};

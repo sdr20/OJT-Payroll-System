@@ -1,3 +1,293 @@
+<script>
+import axios from 'axios';
+import { useAuthStore } from '@/store/auth';
+
+export default {
+  name: 'EmployeeLogin',
+  data() {
+    return {
+      username: '',
+      password: '',
+      loginError: '',
+      showRegisterModal: false,
+      isSubmitting: false,
+      isLoggingIn: false,
+      statusMessage: '',
+      adminPositions: [],
+      newRequest: {
+        empNo: '',
+        username: '',
+        password: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        position: '',
+        civilStatus: 'Single',
+        contactNumber: '',
+        email: '',
+        salary: 0,
+        hourlyRate: 0,
+        sss: '',
+        philhealth: '',
+        hdmf: '',
+        tin: '',
+        hireDate: new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        role: 'employee',
+        earnings: { travelExpenses: 0, otherEarnings: 0 },
+      },
+      showLoginPassword: false,
+      showPassword: false,
+      showConfirmPassword: false,
+      confirmPassword: '',
+      emailError: '',
+      phoneError: '',
+      passwordError: '',
+    };
+  },
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
+  },
+  watch: {
+    'newRequest.salary'(newSalary) {
+      this.newRequest.hourlyRate = newSalary ? newSalary / (8 * 22) : 0;
+    }
+  },
+  computed: {
+    passwordStrength() {
+      const password = this.newRequest.password;
+      if (!password) return 'Weak';
+      if (password.length < 8) return 'Weak';
+      const hasUpper = /[A-Z]/.test(password);
+      const hasLower = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[^A-Za-z0-9]/.test(password);
+      const strengthScore = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+      if (password.length >= 12 && strengthScore >= 3) return 'Strong';
+      if (password.length >= 8 && strengthScore >= 2) return 'Medium';
+      return 'Weak';
+    },
+    passwordStrengthClass() {
+      return {
+        'text-red-500': this.passwordStrength === 'Weak',
+        'text-yellow-500': this.passwordStrength === 'Medium',
+        'text-green-500': this.passwordStrength === 'Strong'
+      };
+    },
+    passwordsMatch() {
+      return this.newRequest.password === this.confirmPassword;
+    },
+    isSubmitDisabled() {
+      return this.isSubmitting || !this.passwordsMatch || !!this.emailError || !!this.phoneError || !!this.passwordError || !this.newRequest.position || this.adminPositions.length === 0;
+    }
+  },
+  mounted() {
+    this.fetchPositions();
+    this.authStore.restoreSession();
+    if (this.authStore.isAuthenticated) {
+      this.$router.push(this.authStore.userRole === 'admin' ? '/admin' : '/employee');
+    }
+  },
+  methods: {
+    async fetchPositions() {
+      try {
+        const response = await axios.get('http://localhost:7777/api/positions');
+        console.log('Positions response:', response.data);
+        this.adminPositions = response.data.map(pos => ({
+          _id: pos._id,
+          name: pos.name,
+          salary: pos.salary
+        }));
+        if (this.adminPositions.length === 0) {
+          this.showErrorMessage('No positions available. Please contact your admin to create positions.');
+        }
+      } catch (error) {
+        console.error('Error fetching positions:', error.response?.data || error.message);
+        if (error.response?.status === 403) {
+          this.showErrorMessage('Access denied. Please ensure positions are available or contact your admin.');
+        } else {
+          this.showErrorMessage('Failed to load positions. Please check your connection or contact your admin.');
+        }
+        this.adminPositions = [];
+      }
+    },
+    async login() {
+      this.isLoggingIn = true;
+      this.loginError = '';
+      try {
+        const response = await axios.post('http://localhost:7777/api/auth/login', {
+          username: this.username.trim(),
+          password: this.password,
+        });
+
+        if (!response.data.token || !response.data.user) {
+          throw new Error('Invalid response from server');
+        }
+
+        const { token, user } = response.data;
+        this.authStore.login(user, token);
+
+        this.$router.push(user.role === 'admin' ? '/admin' : '/employee');
+      } catch (error) {
+        console.error('Login error:', error.response || error);
+        this.loginError = error.response?.data?.error || 'Unable to connect to the server. Please try again later.';
+        this.password = '';
+      } finally {
+        this.isLoggingIn = false;
+      }
+    },
+    toggleLoginPasswordVisibility() {
+      this.showLoginPassword = !this.showLoginPassword;
+    },
+    togglePasswordVisibility() {
+      this.showPassword = !this.showPassword;
+    },
+    toggleConfirmPasswordVisibility() {
+      this.showConfirmPassword = !this.showConfirmPassword;
+    },
+    validateEmail() {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      this.emailError = emailRegex.test(this.newRequest.email) ? '' : 'Please enter a valid email address.';
+    },
+    validatePhoneNumber() {
+      const phoneRegex = /^\d{11}$/;
+      this.phoneError = phoneRegex.test(this.newRequest.contactNumber) ? '' : 'Please enter a valid 11-digit phone number.';
+    },
+    validatePassword() {
+      const password = this.newRequest.password;
+      if (!password) {
+        this.passwordError = 'Password is required.';
+      } else if (password.length < 8) {
+        this.passwordError = 'Password must be at least 8 characters long.';
+      } else if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+        this.passwordError = 'Password must contain letters and numbers.';
+      } else {
+        this.passwordError = '';
+      }
+    },
+    updateSalaryFromPosition() {
+      const selectedPosition = this.adminPositions.find(pos => pos.name === this.newRequest.position);
+      if (selectedPosition) {
+        this.newRequest.salary = selectedPosition.salary;
+        this.newRequest.hourlyRate = selectedPosition.salary / (8 * 22);
+      } else {
+        this.newRequest.salary = 0;
+        this.newRequest.hourlyRate = 0;
+      }
+    },
+    async submitRequest() {
+      if (!this.passwordsMatch) {
+        this.showErrorMessage('Passwords do not match.');
+        return;
+      }
+      if (this.emailError || this.phoneError || this.passwordError) {
+        this.showErrorMessage('Please fix all validation errors before submitting.');
+        return;
+      }
+      if (!this.newRequest.position || this.adminPositions.length === 0) {
+        this.showErrorMessage('Please select a valid position or contact your admin if none are available.');
+        return;
+      }
+
+      this.isSubmitting = true;
+      this.statusMessage = '';
+      try {
+        const maxIdResponse = await axios.get('http://localhost:7777/api/pending-requests/max-id');
+        const newId = (maxIdResponse.data.maxId || 0) + 1;
+
+        const requestData = {
+          ...this.newRequest,
+          id: newId,
+          earnings: { travelExpenses: 0, otherEarnings: 0 }
+        };
+
+        const response = await axios.post('http://localhost:7777/api/pending-requests', requestData);
+
+        if (response.status === 201) {
+          this.showRegisterModal = false;
+          this.resetNewRequest();
+          this.showSuccessMessage('Account request submitted successfully! Please wait for admin approval.');
+        }
+      } catch (error) {
+        console.error('Submission error:', error.response || error);
+        this.showErrorMessage(error.response?.data?.error || 'Failed to submit request. Please check your connection or try again.');
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+    resetNewRequest() {
+      this.newRequest = {
+        empNo: '',
+        username: '',
+        password: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        position: '',
+        civilStatus: 'Single',
+        contactNumber: '',
+        email: '',
+        salary: 0,
+        hourlyRate: 0,
+        sss: '',
+        philhealth: '',
+        hdmf: '',
+        tin: '',
+        hireDate: new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        role: 'employee',
+        earnings: { travelExpenses: 0, otherEarnings: 0 }
+      };
+      this.confirmPassword = '';
+      this.showPassword = false;
+      this.showConfirmPassword = false;
+      this.emailError = '';
+      this.phoneError = '';
+      this.passwordError = '';
+    },
+    showSuccessMessage(message) {
+      this.statusMessage = message;
+      setTimeout(() => { this.statusMessage = ''; }, 5000);
+    },
+    showErrorMessage(message) {
+      this.statusMessage = message;
+      console.error(message);
+      setTimeout(() => { this.statusMessage = ''; }, 5000);
+    },
+    calculateSSSContribution(salary) {
+      const monthlySalary = Math.max(salary || 0, 0);
+      if (monthlySalary < 5000) return 250;
+      const salaryCredit = Math.min(Math.max(monthlySalary, 5000), 35000);
+      const regularSSContribution = Math.round(salaryCredit * 0.05);
+      let mpfContribution = salaryCredit > 20000 ? Math.round((Math.min(salaryCredit, 35000) - 20000) * 0.025) : 0;
+      return salaryCredit > 34750 ? 1750 : regularSSContribution + mpfContribution;
+    },
+    calculatePhilHealthContribution(salary) {
+      const monthlySalary = Math.max(salary || 0, 0);
+      return Math.round(Math.min(Math.max(monthlySalary, 10000), 100000) * 0.025);
+    },
+    calculatePagIBIGContribution(salary) {
+      const monthlySalary = Math.max(salary || 0, 0);
+      const cappedSalary = Math.min(monthlySalary, 5000);
+      return Math.round(cappedSalary * (cappedSalary <= 1500 ? 0.01 : 0.02));
+    },
+    calculateWithholdingTax(salary) {
+      const taxableIncome = salary || 0;
+      if (taxableIncome <= 20833) return 0;
+      if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15);
+      if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20);
+      if (taxableIncome <= 166667) return Math.round(13541.80 + (taxableIncome - 66667) * 0.25);
+      if (taxableIncome <= 666667) return Math.round(90841.80 + (taxableIncome - 166667) * 0.30);
+      return Math.round(408841.80 + (taxableIncome - 666667) * 0.35);
+    },
+    forgotPassword() {
+      this.loginError = 'Forgot Password feature not implemented yet. Contact your admin.';
+    }
+  }
+};
+</script>
+
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center p-4">
     <div class="w-full max-w-md">
@@ -395,305 +685,6 @@
     </div>
   </div>
 </template>
-
-<script>
-import axios from 'axios';
-
-export default {
-  name: 'EmployeeLogin',
-  data() {
-    return {
-      username: '',
-      password: '',
-      loginError: '',
-      showRegisterModal: false,
-      isSubmitting: false,
-      isLoggingIn: false,
-      statusMessage: '',
-      adminPositions: [], // Positions from backend
-      newRequest: {
-        empNo: '',
-        username: '',
-        password: '',
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        position: '',
-        civilStatus: 'Single',
-        contactNumber: '',
-        email: '',
-        salary: 0,
-        hourlyRate: 0,
-        sss: '',
-        philhealth: '',
-        hdmf: '',
-        tin: '',
-        hireDate: new Date().toISOString().slice(0, 10),
-        status: 'pending',
-        role: 'employee',
-        earnings: { travelExpenses: 0, otherEarnings: 0 }
-      },
-      showLoginPassword: false,
-      showPassword: false,
-      showConfirmPassword: false,
-      confirmPassword: '',
-      emailError: '',
-      phoneError: '',
-      passwordError: ''
-    };
-  },
-  watch: {
-    'newRequest.salary'(newSalary) {
-      this.newRequest.hourlyRate = newSalary ? newSalary / (8 * 22) : 0;
-    }
-  },
-  computed: {
-    passwordStrength() {
-      const password = this.newRequest.password;
-      if (!password) return 'Weak';
-      if (password.length < 8) return 'Weak';
-      const hasUpper = /[A-Z]/.test(password);
-      const hasLower = /[a-z]/.test(password);
-      const hasNumber = /[0-9]/.test(password);
-      const hasSpecial = /[^A-Za-z0-9]/.test(password);
-      const strengthScore = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
-      if (password.length >= 12 && strengthScore >= 3) return 'Strong';
-      if (password.length >= 8 && strengthScore >= 2) return 'Medium';
-      return 'Weak';
-    },
-    passwordStrengthClass() {
-      return {
-        'text-red-500': this.passwordStrength === 'Weak',
-        'text-yellow-500': this.passwordStrength === 'Medium',
-        'text-green-500': this.passwordStrength === 'Strong'
-      };
-    },
-    passwordsMatch() {
-      return this.newRequest.password === this.confirmPassword;
-    },
-    isSubmitDisabled() {
-      return this.isSubmitting || !this.passwordsMatch || !!this.emailError || !!this.phoneError || !!this.passwordError || !this.newRequest.position || this.adminPositions.length === 0;
-    }
-  },
-  mounted() {
-    this.fetchPositions();
-  },
-  methods: {
-    async fetchPositions() {
-      try {
-        const response = await axios.get('http://localhost:7777/api/positions');
-        console.log('Positions response:', response.data);
-        this.adminPositions = response.data.map(pos => ({
-          _id: pos._id,
-          name: pos.name,
-          salary: pos.salary
-        }));
-        if (this.adminPositions.length === 0) {
-          this.showErrorMessage('No positions available. Please contact your admin to create positions.');
-        }
-      } catch (error) {
-        console.error('Error fetching positions:', error.response?.data || error.message);
-        if (error.response?.status === 403) {
-          this.showErrorMessage('Access denied. Please ensure positions are available or contact your admin.');
-        } else {
-          this.showErrorMessage('Failed to load positions. Please check your connection or contact your admin.');
-        }
-        this.adminPositions = [];
-      }
-    },
-    async login() {
-      this.isLoggingIn = true;
-      this.loginError = '';
-      try {
-        const response = await axios.post('http://localhost:7777/api/auth/login', {
-          username: this.username.trim(),
-          password: this.password
-        });
-
-        if (!response.data || typeof response.data.id === 'undefined') {
-          throw new Error('Invalid response from server');
-        }
-
-        const userData = {
-          id: response.data.id,
-          empNo: response.data.empNo,
-          username: response.data.username,
-          name: response.data.name,
-          email: response.data.email,
-          role: response.data.role,
-          hireDate: response.data.hireDate
-        };
-
-        if (this.$store) {
-          this.$store.dispatch('login', userData);
-        }
-
-        localStorage.setItem('userId', userData.id);
-        localStorage.setItem('userEmpNo', userData.empNo);
-        localStorage.setItem('userRole', userData.role);
-        localStorage.setItem('userName', userData.name);
-        localStorage.setItem('userEmail', userData.email);
-        localStorage.setItem('userHireDate', userData.hireDate);
-
-        this.$router.push(userData.role === 'admin' ? '/admin' : '/employee');
-      } catch (error) {
-        console.error('Login error:', error.response || error);
-        this.loginError = error.response?.data?.error || 'Unable to connect to the server. Please try again later.';
-        this.password = '';
-      } finally {
-        this.isLoggingIn = false;
-      }
-    },
-    toggleLoginPasswordVisibility() {
-      this.showLoginPassword = !this.showLoginPassword;
-    },
-    togglePasswordVisibility() {
-      this.showPassword = !this.showPassword;
-    },
-    toggleConfirmPasswordVisibility() {
-      this.showConfirmPassword = !this.showConfirmPassword;
-    },
-    validateEmail() {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      this.emailError = emailRegex.test(this.newRequest.email) ? '' : 'Please enter a valid email address.';
-    },
-    validatePhoneNumber() {
-      const phoneRegex = /^\d{11}$/;
-      this.phoneError = phoneRegex.test(this.newRequest.contactNumber) ? '' : 'Please enter a valid 11-digit phone number.';
-    },
-    validatePassword() {
-      const password = this.newRequest.password;
-      if (!password) {
-        this.passwordError = 'Password is required.';
-      } else if (password.length < 8) {
-        this.passwordError = 'Password must be at least 8 characters long.';
-      } else if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-        this.passwordError = 'Password must contain letters and numbers.';
-      } else {
-        this.passwordError = '';
-      }
-    },
-    updateSalaryFromPosition() {
-      const selectedPosition = this.adminPositions.find(pos => pos.name === this.newRequest.position);
-      if (selectedPosition) {
-        this.newRequest.salary = selectedPosition.salary;
-        this.newRequest.hourlyRate = selectedPosition.salary / (8 * 22);
-      } else {
-        this.newRequest.salary = 0;
-        this.newRequest.hourlyRate = 0;
-      }
-    },
-    async submitRequest() {
-      if (!this.passwordsMatch) {
-        this.showErrorMessage('Passwords do not match.');
-        return;
-      }
-      if (this.emailError || this.phoneError || this.passwordError) {
-        this.showErrorMessage('Please fix all validation errors before submitting.');
-        return;
-      }
-      if (!this.newRequest.position || this.adminPositions.length === 0) {
-        this.showErrorMessage('Please select a valid position or contact your admin if none are available.');
-        return;
-      }
-
-      this.isSubmitting = true;
-      this.statusMessage = '';
-      try {
-        const maxIdResponse = await axios.get('http://localhost:7777/api/pending-requests/max-id');
-        const newId = (maxIdResponse.data.maxId || 0) + 1;
-
-        const requestData = {
-          ...this.newRequest,
-          id: newId,
-          earnings: { travelExpenses: 0, otherEarnings: 0 }
-        };
-
-        const response = await axios.post('http://localhost:7777/api/pending-requests', requestData);
-
-        if (response.status === 201) {
-          this.showRegisterModal = false;
-          this.resetNewRequest();
-          this.showSuccessMessage('Account request submitted successfully! Please wait for admin approval.');
-        }
-      } catch (error) {
-        console.error('Submission error:', error.response || error);
-        this.showErrorMessage(error.response?.data?.error || 'Failed to submit request. Please check your connection or try again.');
-      } finally {
-        this.isSubmitting = false;
-      }
-    },
-    resetNewRequest() {
-      this.newRequest = {
-        empNo: '',
-        username: '',
-        password: '',
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        position: '',
-        civilStatus: 'Single',
-        contactNumber: '',
-        email: '',
-        salary: 0,
-        hourlyRate: 0,
-        sss: '',
-        philhealth: '',
-        hdmf: '',
-        tin: '',
-        hireDate: new Date().toISOString().slice(0, 10),
-        status: 'pending',
-        role: 'employee',
-        earnings: { travelExpenses: 0, otherEarnings: 0 }
-      };
-      this.confirmPassword = '';
-      this.showPassword = false;
-      this.showConfirmPassword = false;
-      this.emailError = '';
-      this.phoneError = '';
-      this.passwordError = '';
-    },
-    showSuccessMessage(message) {
-      this.statusMessage = message;
-      setTimeout(() => { this.statusMessage = ''; }, 5000);
-    },
-    showErrorMessage(message) {
-      this.statusMessage = message;
-      console.error(message);
-      setTimeout(() => { this.statusMessage = ''; }, 5000);
-    },
-    calculateSSSContribution(salary) {
-      const monthlySalary = Math.max(salary || 0, 0);
-      if (monthlySalary < 5000) return 250;
-      const salaryCredit = Math.min(Math.max(monthlySalary, 5000), 35000);
-      const regularSSContribution = Math.round(salaryCredit * 0.05);
-      let mpfContribution = salaryCredit > 20000 ? Math.round((Math.min(salaryCredit, 35000) - 20000) * 0.025) : 0;
-      return salaryCredit > 34750 ? 1750 : regularSSContribution + mpfContribution;
-    },
-    calculatePhilHealthContribution(salary) {
-      const monthlySalary = Math.max(salary || 0, 0);
-      return Math.round(Math.min(Math.max(monthlySalary, 10000), 100000) * 0.025);
-    },
-    calculatePagIBIGContribution(salary) {
-      const monthlySalary = Math.max(salary || 0, 0);
-      const cappedSalary = Math.min(monthlySalary, 5000);
-      return Math.round(cappedSalary * (cappedSalary <= 1500 ? 0.01 : 0.02));
-    },
-    calculateWithholdingTax(salary) {
-      const taxableIncome = salary || 0;
-      if (taxableIncome <= 20833) return 0;
-      if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15);
-      if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20);
-      if (taxableIncome <= 166667) return Math.round(13541.80 + (taxableIncome - 66667) * 0.25);
-      if (taxableIncome <= 666667) return Math.round(90841.80 + (taxableIncome - 166667) * 0.30);
-      return Math.round(408841.80 + (taxableIncome - 666667) * 0.35);
-    },
-    forgotPassword() {
-      this.loginError = 'Forgot Password feature not implemented yet. Contact your admin.';
-    }
-  }
-};
-</script>
 
 <style scoped>
 /* Animation Keyframes */

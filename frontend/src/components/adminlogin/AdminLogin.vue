@@ -91,6 +91,9 @@
 </template>
 
 <script>
+import axios from 'axios';
+import { useAuthStore } from '@/store/auth';
+
 export default {
   name: 'AdminLogin',
   data() {
@@ -100,41 +103,44 @@ export default {
       loginError: false,
       errorMessage: '',
       isLoading: false,
-      // Test credentials
-      testCredentials: {
-        username: 'admin',
-        password: 'admin123'
-      }
     };
+  },
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
+  },
+  mounted() {
+    this.authStore.restoreSession();
+    if (this.authStore.isAuthenticated && this.authStore.userRole === 'admin') {
+      this.$router.push('/admin');
+    }
   },
   methods: {
     async login() {
       this.isLoading = true;
       this.loginError = false;
-      
+
       try {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Validate against test credentials
-        if (this.username === this.testCredentials.username && 
-            this.password === this.testCredentials.password) {
-          // Success - you would typically:
-          // 1. Call your actual authentication API
-          // 2. Store the token in Vuex/localStorage
-          // 3. Redirect to dashboard
-          await this.$store.dispatch('login', { 
-            username: this.username, 
-            role: 'admin' 
-          });
-          this.$router.push('/admin');
-        } else {
-          throw new Error('Invalid credentials. Please check the test credentials above.');
+        const response = await axios.post('http://localhost:7777/api/auth/login', {
+          username: this.username,
+          password: this.password,
+        });
+
+        if (!response.data.token || !response.data.user) {
+          throw new Error('Invalid response from server');
         }
+
+        const { token, user } = response.data;
+        if (user.role !== 'admin') {
+          throw new Error('You do not have admin privileges');
+        }
+
+        this.authStore.login(user, token);
+        this.$router.push('/admin');
       } catch (error) {
         this.loginError = true;
-        this.errorMessage = error.message || 'An error occurred during login. Please try again.';
-        this.password = ''; // Clear password field on error
+        this.errorMessage = error.response?.data?.error || error.message || 'An error occurred during login.';
+        this.password = '';
       } finally {
         this.isLoading = false;
       }
@@ -142,14 +148,12 @@ export default {
   },
   watch: {
     username() {
-      // Clear error when user starts typing
       this.loginError = false;
     },
     password() {
-      // Clear error when user starts typing
       this.loginError = false;
-    }
-  }
+    },
+  },
 };
 </script>
 
