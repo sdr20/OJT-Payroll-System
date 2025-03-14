@@ -153,12 +153,23 @@
               <span class="material-icons text-sm">history</span>
               Payslip History - {{ selectedEmployee?.name }}
             </h2>
-            <button
-              @click="showHistoryModal = false"
-              class="p-1 hover:bg-gray-100 rounded-full"
-            >
-              <span class="material-icons text-sm">close</span>
-            </button>
+            <!-- NEW: Added Generate Now button to the header -->
+            <div class="flex items-center gap-2">
+              <button
+                @click.stop="generatePayslipNow(selectedEmployee)"
+                class="flex items-center justify-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-2 px-4 rounded-md"
+                :disabled="isLoading || payslipGenerationStatus.generating"
+              >
+                <span class="material-icons text-sm">play_arrow</span>
+                {{ payslipGenerationStatus.generating ? 'Generating...' : 'Generate Now' }}
+              </button>
+              <button
+                @click="showHistoryModal = false"
+                class="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <span class="material-icons text-sm">close</span>
+              </button>
+            </div>
           </div>
           <div class="flex flex-1 overflow-hidden">
             <div class="w-1/2 p-4 overflow-y-auto border-r">
@@ -710,6 +721,106 @@ export default {
         this.isGeneratingAll = false;
       }
     },
+    // Helper method to get the latest position from positionHistory
+    getLatestPosition(employee) {
+      if (!employee.positionHistory || employee.positionHistory.length === 0) {
+        return {
+          position: employee.position || 'N/A',
+          salary: employee.salary || 0
+        };
+      }
+
+      // Sort positionHistory by startDate in descending order
+      const sortedHistory = [...employee.positionHistory].sort((a, b) => {
+        const dateA = new Date(a.startDate);
+        const dateB = new Date(b.startDate);
+        return dateB - dateA; // Latest startDate first
+      });
+
+      // Find the latest position where endDate is null or in the future
+      const today = new Date();
+      const latestPosition = sortedHistory.find(history => 
+        !history.endDate || new Date(history.endDate) >= today
+      );
+
+      return latestPosition || sortedHistory[0] || {
+        position: employee.position || 'N/A',
+        salary: employee.salary || 0
+      };
+    },
+    async generatePayslipNow(employee) {
+      if (!employee) return;
+
+      this.payslipGenerationStatus.generating = true;
+      try {
+        // Get the latest position and salary from positionHistory
+        const latestPositionData = this.getLatestPosition(employee);
+        const positionAtTime = latestPositionData.position;
+        const salaryAtTime = latestPositionData.salary;
+
+        // Generate payslip for the current month and next available payday
+        const today = moment();
+        const salaryMonth = today.format('YYYY-MM');
+        const lastDayOfMonth = today.clone().endOf('month').date();
+        const midMonthPayDate = moment(`${salaryMonth}-15`, 'YYYY-MM-DD');
+        // const endMonthPayDate = moment(`${salaryMonth}-${lastDayOfMonth}`, 'YYYY-MM-DD');
+        const expectedPaydays = this.getExpectedPayday(employee.hireDate, `${salaryMonth}-01`);
+
+        // Determine the paydayType before constructing payslipData
+        const paydayType = today.isBefore(midMonthPayDate.clone().endOf('day')) ? 'mid-month' : 'end-of-month';
+        const employeeSalaryMonth = `${salaryMonth}-${paydayType === 'mid-month' ? '15' : lastDayOfMonth}`;
+
+        let payslipData = {
+          salaryMonth: salaryMonth,
+          paydayType: paydayType,
+          position: positionAtTime,
+          salary: salaryAtTime,
+          employee: { ...employee, position: positionAtTime, salary: salaryAtTime, salaryMonth: employeeSalaryMonth },
+          expectedPaydays,
+        };
+
+        // Create payslip data for PDF generation
+        const pdfPayslipData = this.createPayslipData(payslipData.employee);
+        const pdfBlob = await this.generatePdf(pdfPayslipData);
+        const url = URL.createObjectURL(pdfBlob);
+        const base64Data = await this.blobToBase64(pdfBlob);
+
+        // Save to backend
+        await axios.post('http://localhost:7777/api/payslips/generate', {
+          employeeId: employee.id,
+          empNo: employee.empNo,
+          payslipData: base64Data,
+          salaryMonth: payslipData.salaryMonth,
+          paydayType: payslipData.paydayType,
+          position: payslipData.position,
+          salary: payslipData.salary
+        }, {
+          headers: { 'user-role': 'admin' },
+        });
+
+        // Update payslip history
+        payslipData.payslipDataUrl = url;
+        payslipData.totalSalary = this.calculateNetSalary(payslipData.employee);
+        let employeeHistory = this.allPayslipHistories[employee.id] || [];
+        if (!employeeHistory.find(p => p.salaryMonth === payslipData.salaryMonth && p.paydayType === payslipData.paydayType)) {
+          employeeHistory.push(payslipData);
+        } else {
+          employeeHistory = employeeHistory.map(p =>
+            p.salaryMonth === payslipData.salaryMonth && p.paydayType === payslipData.paydayType ? payslipData : p
+          );
+        }
+        this.allPayslipHistories[employee.id] = employeeHistory;
+        this.payslipHistory = employeeHistory;
+        this.selectedPayslip = payslipData;
+
+        this.showSuccessMessage(`Payslip generated now for ${employee.name} - ${payslipData.paydayType === 'mid-month' ? expectedPaydays.midMonthPayday : expectedPaydays.endMonthPayday}!`);
+      } catch (error) {
+        console.error('Error generating payslip now:', error);
+        this.showErrorMessage(`Failed to generate payslip: ${error.message}`);
+      } finally {
+        this.payslipGenerationStatus.generating = false;
+      }
+    },
     showPrintModal() {
       this.employeesWithPayslips = [];
       this.selectedEmployeesForPrint = [];
@@ -1006,7 +1117,11 @@ export default {
         text = text.replace('₱', 'P');
         doc.setFontSize(options.fontSize || 10);
         doc.setFont(options.font || 'Helvetica', options.fontStyle || 'normal');
-        doc.setTextColor(options.textColor ? options.textColor[0] : 0, options.textColor ? options.textColor[1] : 0, options.textColor ? options.textColor[2] : 0);
+        doc.setTextColor(
+          options.textColor ? options.textColor[0] : 0,
+          options.textColor ? options.textColor[1] : 0,
+          options.textColor ? options.textColor[2] : 0
+        );
         doc.text(text, x, y, { align: options.align || 'left', maxWidth: options.maxWidth });
       }
 
