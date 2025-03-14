@@ -1,5 +1,5 @@
 <script>
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore } from '@/stores/auth.store.js';
 
 export default {
     name: 'EmployeeLayout',
@@ -64,7 +64,8 @@ export default {
                             <router-link :to="item.path"
                                 class="flex items-center p-3 rounded-xl transition-all duration-200 hover:bg-teal-50 hover:text-teal-600"
                                 active-class="bg-teal-50 text-teal-600 font-medium shadow-sm">
-                                <span :class="['material-icons', 'mr-3 w-5 text-center text-cyan-600']">{{ item.icon }}</span>
+                                <span :class="['material-icons', 'mr-3 w-5 text-center text-cyan-600']">{{ item.icon
+                                    }}</span>
                                 <span>{{ item.name }}</span>
                             </router-link>
                         </li>

@@ -1,18 +1,5 @@
 <template>
-  <router-view />
+  <main>
+    <router-view :key="$route.path"></router-view>
+  </main>
 </template>
-
-<script>
-export default {
-  name: 'App',
-};
-</script>
-
-<style>
-@import 'tailwindcss/tailwind.css';
-
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
-</style>

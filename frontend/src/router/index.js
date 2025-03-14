@@ -1,86 +1,59 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { useAuthStore } from '@/store/auth';
+import employeeRoutes from './employee.routes.js';
+import adminRoutes from './admin.routes.js';
+import { useAuthStore } from '@/stores/auth.store.js';
 
 const routes = [
-  { path: '/', component: () => import('../views/LoginSelection.vue') },
-  { path: '/admin-login', component: () => import('../views/admins/auth/AdminLogin.vue') },
-  { path: '/employee-login', component: () => import('../views/employee/auth/EmployeeLogin.vue') },
-  { path: '/register', component: () => import('../components/employeelogin/EmployeeRegister.vue') },
-  {
-    path: '/admin',
-    component: () => import('../layouts/AdminLayout.vue'),
-    meta: { requiresAuth: true, role: 'admin' },
-    children: [
-      { path: '', component: () => import('../views/admins/AdminDashboard.vue') },
-      { path: 'manage-positions', component: () => import('../views/admins/ManagePositions.vue') },
-      { path: 'employee-attendance', component: () => import('../views/admins/EmployeeAttendance.vue') },
-      { path: 'manage-employees', component: () => import('../views/admins/ManageEmployees.vue') },
-      { path: 'salary-slips', component: () => import('../views/admins/SalarySlips.vue') },
-      { path: 'manage-pay-heads', component: () => import('../views/admins/ManagePayHeads.vue') },
-      { path: 'month-selection', component: () => import('../views/admins/MonthSelection.vue') },
-      { path: 'payroll-with-deductions', component: () => import('../views/admins/PayrollWithDeductions.vue') },
-      { path: 'employee-leave-management', component: () => import('../views/admins/EmployeeLeaveManagement.vue') },
-      { path: 'list-holidays', component: () => import('../views/admins/ListHolidays.vue') },
-      { path: 'employee-reports', component: () => import('../views/employee/EmployeeReports.vue') },
-      { path: 'records', component: () => import('../views/admins/EmployeeRecords.vue') },
-    ],
-  },
-  {
-    path: '/employee',
-    component: () => import('../layouts/EmployeeLayout.vue'),
-    meta: { requiresAuth: true, role: 'employee' },
-    children: [
-      { path: '', component: () => import('../views/employee/EmployeeDashboard.vue') },
-      { path: 'attendance', component: () => import('../views/admins/EmployeeAttendance.vue') },
-      { path: 'salary-slips', component: () => import('../views/employee/EmployeeSalarySlips.vue') },
-      { path: 'leave-management', component: () => import('../views/admins/EmployeeLeaveManagement.vue') },
-      { path: 'holidays', component: () => import('../views/employee/EmployeeHolidays.vue') },
-      { path: 'reports', component: () => import('../views/employee/EmployeeReports.vue') },
-      { path: 'employee-leave-request', name: 'EmployeeLeaveRequest', component: () => import('../views/employee/EmployeeLeaveRequest.vue') },
-    ],
-  },
+    {
+        path: '/',
+        name: 'login-selection',
+        component: () => import('../views/LoginSelection.vue'),
+        meta: {
+            requiresGuest: true,
+            title: 'Landing page'
+        }
+    },
+    ...employeeRoutes,
+    ...adminRoutes,
+    {
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        component: () => import('../views/NotFound.vue'),
+        meta: {
+            title: '404 | Not Found'
+        }
+    }
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
-  routes,
+    history: createWebHistory(),
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        return savedPosition || { top: 0 };
+    }
 });
 
-// Navigation Guard
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore(); // Access Pinia store
+router.beforeEach((to, from) => {
+    const auth = useAuthStore();
+    document.title = to.meta.title ? `${to.meta.title} - Payroll` : 'Payroll';
 
-  // Restore session from localStorage if not already done
-  if (!authStore.isAuthenticated) {
-    authStore.restoreSession();
-  }
-
-  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
-  const userRole = authStore.userRole; // Getter from Pinia store
-  const isAuthenticated = authStore.isAuthenticated;
-
-  // If the route requires authentication
-  if (requiresAuth) {
-    if (!isAuthenticated) {
-      // Redirect unauthenticated users to the root (login selection)
-      next('/');
-    } else if (to.meta.role && to.meta.role !== userRole) {
-      // Redirect to the appropriate dashboard if role doesn't match
-      next(userRole === 'admin' ? '/admin' : '/employee');
-    } else {
-      // Allow access if authenticated and role matches
-      next();
+    if (to.meta.requiresAuth) {
+        if (to.path.startsWith('/employee') && !auth.employee) {
+            return { name: 'employee-login', query: { redirect: to.fullPath } };
+        }
+        if (to.path.startsWith('/admin') && !auth.admin) {
+            return { name: 'admin-login', query: { redirect: to.fullPath } };
+        }
     }
-  } 
-  // If navigating to a public route (e.g., login) while authenticated
-  else if (isAuthenticated && ['/', '/admin-login', '/employee-login', '/register'].includes(to.path)) {
-    // Redirect authenticated users to their respective dashboards
-    next(userRole === 'admin' ? '/admin' : '/employee');
-  } 
-  // Allow access to public routes for unauthenticated users
-  else {
-    next();
-  }
+
+    if (to.meta.requiresGuest) {
+        if (to.path.startsWith('/employee') && auth.employee) {
+            return { name: 'employee-dashboard' };
+        }
+        if (to.path.startsWith('/admin') && auth.admin) {
+            return { name: 'admin-dashboard' };
+        }
+    }
 });
 
 export default router;
