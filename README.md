@@ -30,7 +30,7 @@ npm install
 #### Compile and Hot-Reload for Development
 
 ```sh
-npm run client
+npm run dev
 ```
 
 #### Type-Check, Compile and Minify for Production
@@ -55,13 +55,13 @@ This is an Express.js server with MongoDB, using **dotenv** for environment vari
 Navigate to the `server` folder and install dependencies:
 
 ```sh
-cd server
+cd backend
 npm install
 ```
 
 ### Environment Variables
 
-Create a `.env` file in the `server` folder and configure the necessary environment variables, such as:
+Create a `.env` file in the `backend` folder and configure the necessary environment variables, such as:
 
 ```
 MONGO_URI=mongodb+srv://your-username:your-password@cluster.mongodb.net/your-database
@@ -77,13 +77,7 @@ PORT=5000
 For development with automatic restarts (using **nodemon**):
 
 ```sh
-npm run server
-```
-
-For production:
-
-```sh
-npm start
+npm run start
 ```
 
 ---
