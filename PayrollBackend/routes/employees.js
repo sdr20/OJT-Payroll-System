@@ -18,24 +18,20 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Validate input
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    // Find the employee by username
     const employee = await Employee.findOne({ username });
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    // Compare the provided password with the hashed password
     const isMatch = await employee.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Return success response (you can also generate a JWT token here)
     res.status(200).json({
       message: 'Login successful',
       employee: {
@@ -58,7 +54,6 @@ router.get('/', isAdmin, async (req, res) => {
     let query = {};
 
     if (month) {
-      // Validate month format (YYYY-MM)
       if (!/^\d{4}-\d{2}$/.test(month)) {
         console.error('Invalid month format:', month);
         return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM (e.g., 2025-03)' });
@@ -76,8 +71,8 @@ router.get('/', isAdmin, async (req, res) => {
       console.log('Filtering employees for month:', month);
       query = {
         hireDate: {
-          $gte: new Date(parsedYear, parsedMonth - 1, 1), // Start of the month
-          $lt: new Date(parsedYear, parsedMonth, 1), // Start of the next month
+          $gte: new Date(parsedYear, parsedMonth - 1, 1),
+          $lt: new Date(parsedYear, parsedMonth, 1),
         },
       };
     }
@@ -101,13 +96,22 @@ router.get('/', isAdmin, async (req, res) => {
   }
 });
 
-// POST a new employee with auto-generated ID
+// POST a new employee with auto-generated ID and initial position history
 router.post('/', isAdmin, async (req, res) => {
   try {
     console.log('Received employee data:', req.body);
     const maxIdEmployee = await Employee.findOne().sort({ id: -1 });
     const newId = maxIdEmployee ? maxIdEmployee.id + 1 : 1;
-    const employeeData = { ...req.body, id: newId };
+    const employeeData = {
+      ...req.body,
+      id: newId,
+      positionHistory: [{
+        position: req.body.position,
+        salary: req.body.salary,
+        startDate: new Date(),
+        endDate: null
+      }]
+    };
     const employee = new Employee(employeeData);
     await employee.save();
     console.log('Employee created:', employee.id);
@@ -132,7 +136,7 @@ router.put('/:id', isAdmin, async (req, res) => {
     const employee = await Employee.findOneAndUpdate(
       { id: parseInt(req.params.id) },
       req.body,
-      { new: true },
+      { new: true, runValidators: true }
     );
     if (!employee) {
       console.log(`Employee not found for ID: ${req.params.id}`);

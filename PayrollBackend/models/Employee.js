@@ -8,6 +8,12 @@ const employeeSchema = new mongoose.Schema({
   middleName: { type: String, default: '' },
   lastName: { type: String, required: true },
   position: { type: String, required: true },
+  positionHistory: [{
+    position: { type: String, required: true },
+    salary: { type: Number, required: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, default: null }
+  }],
   salary: { type: Number, required: true, min: 0 },
   hourlyRate: { type: Number, default: 0 },
   email: { type: String, required: true },
@@ -48,18 +54,16 @@ const employeeSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-// Hash password before saving
 employeeSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
-  if (this.salary && !this.hourlyRate) {
+  if (this.isModified('salary') && !this.hourlyRate) {
     this.hourlyRate = this.salary / (8 * 22);
   }
   next();
 });
 
-// Compare password method
 employeeSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

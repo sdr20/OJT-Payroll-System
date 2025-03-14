@@ -1,11 +1,9 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes\payslips.js
 const express = require('express');
 const router = express.Router();
 const Payslip = require('../models/Payslip');
 const nodemailer = require('nodemailer');
 const Employee = require('../models/Employee');
 
-// Middleware to check admin role
 const isAdmin = (req, res, next) => {
   const userRole = req.headers['user-role'];
   if (!userRole || userRole.toLowerCase() !== 'admin') {
@@ -22,21 +20,16 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('Nodemailer configuration error:', error);
-  } else {
-    console.log('Nodemailer ready to send emails');
-  }
+transporter.verify((error) => {
+  if (error) console.error('Nodemailer configuration error:', error);
+  else console.log('Nodemailer ready to send emails');
 });
 
-// Fetch all payslips (optionally filtered by month)
 router.get('/', isAdmin, async (req, res) => {
   try {
     const { month } = req.query;
     const query = month ? { salaryMonth: month } : {};
     const payslips = await Payslip.find(query);
-    console.log(`Fetched ${payslips.length} payslips for month: ${month || 'all'}`);
     res.status(200).json(payslips);
   } catch (error) {
     console.error('Error fetching payslips:', error);
@@ -44,54 +37,44 @@ router.get('/', isAdmin, async (req, res) => {
   }
 });
 
-// Fetch payslips by employee ID (one per expected salary date)
 router.get('/:employeeId', isAdmin, async (req, res) => {
   try {
     const employeeId = Number(req.params.employeeId);
     const payslips = await Payslip.find({ employeeId });
-    console.log(`Fetched ${payslips.length} payslips for employee ID: ${employeeId}`);
-    res.status(200).json(payslips); // Returns all payslips, frontend will handle display logic
+    res.status(200).json(payslips);
   } catch (error) {
     console.error('Error fetching payslips by employee ID:', error);
     res.status(500).json({ error: 'Failed to fetch payslips', message: error.message });
   }
 });
 
-// Generate a new payslip (ensure one per expected salary date)
 router.post('/generate', isAdmin, async (req, res) => {
   try {
-    const { employeeId, empNo, payslipData, salaryMonth, paydayType } = req.body;
-    if (!employeeId || !empNo || !payslipData || !salaryMonth || !paydayType) {
-      console.error('Missing required fields for generate:', req.body);
+    const { employeeId, empNo, payslipData, salaryMonth, paydayType, position } = req.body;
+    if (!employeeId || !empNo || !payslipData || !salaryMonth || !paydayType || !position) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     if (!['mid-month', 'end-of-month'].includes(paydayType)) {
-      console.error('Invalid paydayType:', paydayType);
-      return res.status(400).json({ error: 'Invalid paydayType, must be "mid-month" or "end-of-month"' });
+      return res.status(400).json({ error: 'Invalid paydayType' });
     }
 
     const employee = await Employee.findOne({ id: employeeId, empNo });
     if (!employee) {
-      console.error('Employee not found:', { employeeId, empNo });
       return res.status(404).json({ error: 'Employee not found' });
     }
 
     if (!payslipData.startsWith('data:application/pdf;base64,')) {
-      console.error('Invalid payslipData format:', payslipData.slice(0, 50));
       return res.status(400).json({ error: 'Invalid payslipData format' });
     }
 
-    // Check if a payslip already exists for this salaryMonth and paydayType
     const existingPayslip = await Payslip.findOne({ employeeId, salaryMonth, paydayType });
     if (existingPayslip) {
-      console.log(`Payslip already exists for employee ${employeeId}, month ${salaryMonth}, type ${paydayType}`);
       return res.status(409).json({ error: 'Payslip already exists for this salary date' });
     }
 
-    const payslip = new Payslip({ employeeId, empNo, payslipData, salaryMonth, paydayType });
+    const payslip = new Payslip({ employeeId, empNo, payslipData, salaryMonth, paydayType, position });
     await payslip.save();
-    console.log(`Payslip generated for employee ${employeeId}, month ${salaryMonth}, type ${paydayType}`);
     res.status(200).json({ success: true, message: 'Payslip generated successfully' });
   } catch (error) {
     console.error('Error generating payslip:', error);
@@ -99,24 +82,16 @@ router.post('/generate', isAdmin, async (req, res) => {
   }
 });
 
-// Send payslip via email
 router.post('/send-email', isAdmin, async (req, res) => {
   try {
-    const { employeeId, employeeEmail, payslipData, salaryMonth } = req.body;
-    if (!employeeId || !employeeEmail || !payslipData || !salaryMonth) {
-      console.error('Missing required fields for send-email:', req.body);
+    const { employeeId, employeeEmail, payslipData, salaryMonth, position } = req.body; // Added position
+    if (!employeeId || !employeeEmail || !payslipData || !salaryMonth || !position) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const employee = await Employee.findOne({ id: employeeId, email: employeeEmail });
     if (!employee) {
-      console.error('Employee not found or email mismatch:', { employeeId, employeeEmail });
-      return res.status(404).json({ error: 'Employee not found or email does not match' });
-    }
-
-    if (!payslipData.startsWith('data:application/pdf;base64,')) {
-      console.error('Invalid payslipData format:', payslipData.slice(0, 50));
-      return res.status(400).json({ error: 'Invalid payslipData format' });
+      return res.status(404).json({ error: 'Employee not found or email mismatch' });
     }
 
     const pdfBuffer = Buffer.from(payslipData.split(',')[1], 'base64');
@@ -126,14 +101,13 @@ router.post('/send-email', isAdmin, async (req, res) => {
       subject: `Payslip for ${salaryMonth}`,
       text: `Dear ${employee.firstName} ${employee.lastName},\n\nPlease find your payslip for ${salaryMonth} attached.\n\nBest regards,\nPayroll Team`,
       attachments: [{
-        filename: `payslip-${employeeId}-${salaryMonth}.pdf`,
+        filename: `payslip-${employeeId}-${salaryMonth}-${position}.pdf`, // Updated to include position
         content: pdfBuffer,
         contentType: 'application/pdf'
       }]
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`Payslip email sent to ${employeeEmail} for employee ${employeeId}, month ${salaryMonth}`);
     res.status(200).json({ success: true, message: 'Email sent successfully' });
   } catch (error) {
     console.error('Error sending email:', error);

@@ -14,7 +14,8 @@ const payslipRoutes = require('./routes/payslips');
 const attendanceRoutes = require('./routes/attendance');
 const payheadRoutes = require('./routes/payheads');
 const authRoutes = require('./routes/auth');
-const positionRoutes = require('./routes/positions'); // Added position routes
+const positionRoutes = require('./routes/positions'); // Existing position routes
+const positionHistoryRoutes = require('./routes/positionHistory'); // New position history routes
 
 const app = express();
 
@@ -106,7 +107,8 @@ app.use('/api/payslips', payslipRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/payheads', payheadRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/positions', positionRoutes); // Added position routes
+app.use('/api/positions', positionRoutes); // Existing position routes
+app.use('/api/positionHistory', positionHistoryRoutes); // New position history routes
 
 // Health Check Route
 app.get('/health', (req, res) => {

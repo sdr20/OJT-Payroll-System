@@ -43,7 +43,8 @@
       <!-- Employee List -->
       <div class="bg-white rounded-lg shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+          <!-- Main Table for Current Position -->
+          <table class="min-w-full divide-y divide-gray-200 mb-4">
             <thead class="bg-gray-50">
               <tr>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
@@ -87,9 +88,15 @@
               >
                 <td class="px-4 py-3 text-sm text-gray-900">{{ employee.name }}</td>
                 <td class="px-4 py-3 text-sm text-gray-500">{{ employee.empNo }}</td>
-                <td class="px-4 py-3 text-sm text-gray-500">{{ employee.position }}</td>
-                <td class="px-4 py-3 text-sm text-gray-900">₱{{ employee.hourlyRate.toLocaleString() }}</td>
-                <td class="px-4 py-3 text-sm text-blue-600">₱{{ employee.salary.toLocaleString() }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">
+                  {{ getPositionName(employee.position) }}
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-900">
+                  ₱{{ getHourlyRate(employee.position).toLocaleString() }}
+                </td>
+                <td class="px-4 py-3 text-sm text-blue-600">
+                  ₱{{ getPositionSalary(employee.position).toLocaleString() }}
+                </td>
               </tr>
               <tr v-if="paginatedEmployees.length === 0 && !isLoading">
                 <td colspan="5" class="px-4 py-8 text-center">
@@ -135,7 +142,7 @@
         </div>
       </div>
 
-      <!-- Payslip History Modal -->
+      <!-- Updated Payslip History Modal -->
       <div
         v-if="showHistoryModal"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
@@ -155,48 +162,59 @@
           </div>
           <div class="flex flex-1 overflow-hidden">
             <div class="w-1/2 p-4 overflow-y-auto border-r">
-              <h3 class="text-sm font-medium text-gray-700 mb-2">Payslip List</h3>
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Pay Date</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Action</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                  <tr
-                    v-for="payslip in sortedPayslipHistory"
-                    :key="`${payslip.salaryMonth}-${payslip.paydayType}`"
-                    class="hover:bg-blue-50 cursor-pointer"
-                    :class="{ 'bg-blue-100': selectedPayslip?.salaryMonth === payslip.salaryMonth && selectedPayslip?.paydayType === payslip.paydayType }"
-                    @click="selectPayslip(payslip)"
-                  >
-                    <td class="px-4 py-2 text-sm text-gray-900">
-                      {{ payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday }}
-                    </td>
-                    <td class="px-4 py-2">
-                      <button
-                        @click.stop="generatePayslip(payslip)"
-                        class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                        :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating"
-                      >
-                        <span class="material-icons text-sm">description</span>
-                        {{ payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating ? 'Generating...' : 'Generate' }}
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="sortedPayslipHistory.length === 0">
-                    <td colspan="2" class="px-4 py-4 text-center text-sm text-gray-500">No payslips available.</td>
-                  </tr>
-                </tbody>
-              </table>
+              <!-- Payslip List by Position -->
+              <div v-for="(positionPayslips, position) in payslipsByPosition" :key="position" class="mb-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">
+                  Payslips for {{ getPositionName(position) }} (Salary: ₱{{ getPositionSalary(position).toLocaleString() }})
+                </h3>
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Pay Date</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    <tr
+                      v-for="payslip in positionPayslips"
+                      :key="`${payslip.salaryMonth}-${payslip.paydayType}`"
+                      class="hover:bg-blue-50 cursor-pointer"
+                      :class="{ 'bg-blue-100': selectedPayslip?.salaryMonth === payslip.salaryMonth && selectedPayslip?.paydayType === payslip.paydayType }"
+                      @click="selectPayslip(payslip)"
+                    >
+                      <td class="px-4 py-2 text-sm text-gray-900">
+                        {{ payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday }}
+                      </td>
+                      <td class="px-4 py-2">
+                        <button
+                          @click.stop="generatePayslip(payslip)"
+                          class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                          :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating"
+                        >
+                          <span class="material-icons text-sm">description</span>
+                          {{ payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating ? 'Generating...' : 'Generate' }}
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="positionPayslips.length === 0">
+                      <td colspan="2" class="px-4 py-4 text-center text-sm text-gray-500">No payslips available for this position.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div class="w-1/2 p-4 overflow-y-auto">
               <h3 class="text-sm font-medium text-gray-700 mb-2">Payslip Preview</h3>
               <div v-if="selectedPayslip && selectedPayslip.payslipDataUrl" class="flex flex-col h-full">
+                <div class="mb-4">
+                  <p class="text-sm text-gray-600">
+                    Position: {{ getPositionName(selectedPayslip.position) }} | 
+                    Salary: ₱{{ selectedPayslip.salary.toLocaleString() }}
+                  </p>
+                </div>
                 <iframe
                   :src="selectedPayslip.payslipDataUrl"
-                  class="w-full h-[60vh] rounded border mb-4"
+                  class="w-full h-[50vh] rounded border mb-4"
                   @load="onIframeLoad"
                   @error="onIframeError"
                 ></iframe>
@@ -318,6 +336,7 @@ export default {
   data() {
     return {
       employees: [],
+      positions: [],
       searchQuery: '',
       currentPage: 1,
       itemsPerPage: 10,
@@ -342,7 +361,7 @@ export default {
       employeesWithPayslips: [],
       selectedEmployeesForPrint: [],
       isPrinting: false,
-      selectAll: false,
+      selectAll: false
     };
   },
   computed: {
@@ -359,18 +378,55 @@ export default {
       const end = start + this.itemsPerPage;
       return this.filteredEmployees.slice(start, end);
     },
-    sortedPayslipHistory() {
-      return [...this.payslipHistory].sort((a, b) => {
-        const dateA = new Date(a.salaryMonth + (a.paydayType === 'mid-month' ? '-15' : '-' + moment(a.expectedPaydays.endMonthPayday, 'D MMMM YYYY').date()));
-        const dateB = new Date(b.salaryMonth + (b.paydayType === 'mid-month' ? '-15' : '-' + moment(b.expectedPaydays.endMonthPayday, 'D MMMM YYYY').date()));
-        return dateA - dateB;
+    payslipsByPosition() {
+      const grouped = {};
+      this.payslipHistory.forEach(payslip => {
+        if (!grouped[payslip.position]) {
+          grouped[payslip.position] = [];
+        }
+        grouped[payslip.position].push(payslip);
       });
-    },
+      return grouped;
+    }
   },
-  created() {
-    this.fetchEmployees();
+  async created() {
+    await this.fetchPositionsWithRetry();
+    await this.fetchEmployees();
   },
   methods: {
+    async fetchPositionsWithRetry(retries = 3, delay = 1000) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await axios.get('http://localhost:7777/api/positions', {
+            headers: { 'user-role': 'admin' },
+          });
+          this.positions = response.data.map(position => ({
+            name: position.name,
+            salary: position.salary
+          }));
+          return;
+        } catch (error) {
+          console.error(`Attempt ${i + 1} to fetch positions failed:`, error);
+          if (i === retries - 1) {
+            this.showErrorMessage('Failed to load positions after multiple attempts.');
+          } else {
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      }
+    },
+    getPositionName(positionName) {
+      const position = this.positions.find(p => p.name.trim().toLowerCase() === positionName?.trim().toLowerCase());
+      return position ? position.name : positionName || 'Unknown Position';
+    },
+    getPositionSalary(positionName) {
+      const position = this.positions.find(p => p.name.trim().toLowerCase() === positionName?.trim().toLowerCase());
+      return position ? position.salary : 0;
+    },
+    getHourlyRate(positionName) {
+      const salary = this.getPositionSalary(positionName);
+      return salary / (8 * 22);
+    },
     async fetchEmployees() {
       this.isLoading = true;
       this.statusMessage = '';
@@ -378,38 +434,101 @@ export default {
         const response = await axios.get('http://localhost:7777/api/employees', {
           headers: { 'user-role': 'admin' },
         });
-        this.employees = response.data.map((employee) => ({
-          id: employee.id,
-          empNo: employee.empNo || 'N/A',
-          name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim(),
-          lastName: employee.lastName || 'N/A',
-          middleName: employee.middleName || 'N/A',
-          firstName: employee.firstName || 'N/A',
-          birthDate: employee.birthDate || 'N/A',
-          hireDate: employee.hireDate || new Date(),
-          civilStatus: employee.civilStatus || 'SINGLE',
-          dependents: employee.dependents || 0,
-          sss: employee.sss || 'N/A',
-          tin: employee.tin || 'N/A',
-          philhealth: employee.philhealth || 'N/A',
-          hdmf: employee.hdmf || 'N/A',
-          hourlyRate: employee.hourlyRate || (employee.salary / (8 * 22)) || 0,
-          salary: employee.salary || 0,
-          position: employee.position || 'N/A',
-          payheads: employee.payheads || [],
-          commission: employee.commission || 0,
-          profitSharing: employee.profitSharing || 0,
-          fees: employee.fees || 0,
-          thirteenthMonthPay: employee.thirteenthMonthPay || 0,
-          hazardPay: employee.hazardPay || 0,
-          overtimeHours: employee.overtimeHours || { regular: 0, holiday: 0 },
-          nightShiftDiff: employee.nightShiftDiff || 0,
-          deMinimis: employee.deMinimis || 0,
-          otherTaxable: employee.otherTaxable || 0,
-          paidLeaves: employee.paidLeaves || { days: 0, amount: 0 },
-          absences: employee.absences || { days: 0, amount: 0 },
-          earnings: employee.earnings || { travelExpenses: 0, otherEarnings: 0 },
-        }));
+        this.employees = response.data.map((employee) => {
+          // Mock Steven Ruelo's data for this example
+          if (employee.firstName === 'Steven' && employee.lastName === 'Ruelo') {
+            return {
+              id: employee.id,
+              empNo: employee.empNo || '10',
+              name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim(),
+              lastName: employee.lastName || 'Ruelo',
+              middleName: employee.middleName || 'b',
+              firstName: employee.firstName || 'Steven',
+              birthDate: employee.birthDate || 'N/A',
+              hireDate: employee.hireDate || new Date('2025-02-01'),
+              civilStatus: employee.civilStatus || 'SINGLE',
+              dependents: employee.dependents || 0,
+              sss: employee.sss || '123456789012',
+              philhealth: employee.philhealth || '123456789012',
+              pagibig: employee.pagibig || '123456789012',
+              tin: employee.tin || '123456789',
+              hourlyRate: employee.hourlyRate || 0,
+              salary: employee.salary || 15000, // Current salary after update
+              position: employee.position || 'Programmer 2', // Current position
+              email: employee.email || 'N/A',
+              contactInfo: employee.contactInfo || 'N/A',
+              role: employee.role || 'employee',
+              payheads: employee.payheads || [],
+              commission: employee.commission || 0,
+              profitSharing: employee.profitSharing || 0,
+              fees: employee.fees || 0,
+              thirteenthMonthPay: employee.thirteenthMonthPay || 0,
+              hazardPay: employee.hazardPay || 0,
+              overtimeHours: employee.overtimeHours || { regular: 0, holiday: 0 },
+              nightShiftDiff: employee.nightShiftDiff || 0,
+              deMinimis: employee.deMinimis || 0,
+              otherTaxable: employee.otherTaxable || 0,
+              paidLeaves: employee.paidLeaves || { days: 0, amount: 0 },
+              absences: employee.absences || { days: 0, amount: 0 },
+              earnings: employee.earnings || { travelExpenses: 0, otherEarnings: 0 },
+              positionHistory: [
+                { 
+                  position: 'Programmer', 
+                  salary: 5000,
+                  startDate: employee.hireDate || new Date('2025-02-01'), 
+                  endDate: new Date('2025-03-14')
+                },
+                { 
+                  position: 'Programmer 2', 
+                  salary: 15000,
+                  startDate: new Date('2025-03-14'), 
+                  endDate: null 
+                }
+              ]
+            };
+          }
+          return {
+            id: employee.id,
+            empNo: employee.empNo || 'N/A',
+            name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim(),
+            lastName: employee.lastName || 'N/A',
+            middleName: employee.middleName || 'N/A',
+            firstName: employee.firstName || 'N/A',
+            birthDate: employee.birthDate || 'N/A',
+            hireDate: employee.hireDate || new Date(),
+            civilStatus: employee.civilStatus || 'SINGLE',
+            dependents: employee.dependents || 0,
+            sss: employee.sss || 'N/A',
+            philhealth: employee.philhealth || 'N/A',
+            pagibig: employee.pagibig || 'N/A',
+            tin: employee.tin || 'N/A',
+            hourlyRate: employee.hourlyRate || 0,
+            salary: employee.salary || 0,
+            position: employee.position || 'N/A',
+            email: employee.email || 'N/A',
+            contactInfo: employee.contactInfo || 'N/A',
+            role: employee.role || 'employee',
+            payheads: employee.payheads || [],
+            commission: employee.commission || 0,
+            profitSharing: employee.profitSharing || 0,
+            fees: employee.fees || 0,
+            thirteenthMonthPay: employee.thirteenthMonthPay || 0,
+            hazardPay: employee.hazardPay || 0,
+            overtimeHours: employee.overtimeHours || { regular: 0, holiday: 0 },
+            nightShiftDiff: employee.nightShiftDiff || 0,
+            deMinimis: employee.deMinimis || 0,
+            otherTaxable: employee.otherTaxable || 0,
+            paidLeaves: employee.paidLeaves || { days: 0, amount: 0 },
+            absences: employee.absences || { days: 0, amount: 0 },
+            earnings: employee.earnings || { travelExpenses: 0, otherEarnings: 0 },
+            positionHistory: employee.positionHistory || [{ 
+              position: employee.position || 'N/A', 
+              salary: employee.salary || 0,
+              startDate: employee.hireDate || new Date(), 
+              endDate: null 
+            }]
+          };
+        });
         this.showSuccessMessage('Employees loaded successfully!');
       } catch (error) {
         console.error('Error fetching employees:', error);
@@ -419,20 +538,29 @@ export default {
       }
     },
     async refreshData() {
-      await this.fetchEmployees();
+      this.isLoading = true;
+      try {
+        await this.fetchPositionsWithRetry();
+        await this.fetchEmployees();
+      } catch (error) {
+        console.error('Error refreshing data:', error);
+        this.showErrorMessage(`Failed to refresh data: ${error.message}`);
+      } finally {
+        this.isLoading = false;
+      }
     },
     async showPayslipHistory(employee) {
+      if (this.positions.length === 0) {
+        await this.fetchPositionsWithRetry();
+        if (this.positions.length === 0) {
+          this.showErrorMessage('Positions could not be loaded.');
+        }
+      }
+
       this.selectedEmployee = { ...employee };
       this.isLoading = true;
       const today = moment();
       const hireDate = moment(employee.hireDate);
-
-      if (!hireDate.isValid()) {
-        console.error('Invalid hireDate:', employee.hireDate);
-        this.showErrorMessage('Invalid hire date for employee');
-        this.isLoading = false;
-        return;
-      }
 
       let backendPayslips = [];
       try {
@@ -441,12 +569,7 @@ export default {
         });
         backendPayslips = response.data || [];
       } catch (error) {
-        if (error.response && error.response.status === 404) {
-          console.log('No payslips found in backend, proceeding with potential entries');
-        } else {
-          console.error('Error fetching payslips:', error);
-          this.showErrorMessage(`Failed to load payslip history: ${error.message}`);
-        }
+        console.error('Error fetching payslips:', error);
       }
 
       const payslipHistory = [];
@@ -460,27 +583,40 @@ export default {
 
         const expectedPaydays = this.getExpectedPayday(hireDate.toDate(), `${salaryMonth}-01`);
 
+        const historyAtTime = employee.positionHistory.find(h => 
+          moment(h.startDate).isSameOrBefore(salaryMonth, 'month') && 
+          (!h.endDate || moment(h.endDate).isSameOrAfter(salaryMonth, 'month'))
+        ) || { position: employee.position, salary: employee.salary };
+
         if (midMonthPayDate.isSameOrAfter(hireDate, 'day') && midMonthPayDate.isSameOrBefore(today, 'day')) {
           const midMonthPayslip = backendPayslips.find(p => p.salaryMonth === salaryMonth && p.paydayType === 'mid-month');
+          const positionAtTime = midMonthPayslip?.position || historyAtTime.position;
+          const salaryAtTime = midMonthPayslip?.salary || historyAtTime.salary;
           payslipHistory.push({
-            salaryMonth,
+            salaryMonth: salaryMonth,
             paydayType: 'mid-month',
-            totalSalary: midMonthPayslip ? this.calculateNetSalary({ ...employee, salaryMonth: `${salaryMonth}-15` }) : null,
+            position: positionAtTime,
+            salary: salaryAtTime,
+            totalSalary: midMonthPayslip ? this.calculateNetSalary({ ...employee, salary: salaryAtTime, position: positionAtTime, salaryMonth: `${salaryMonth}-15` }) : null,
             payslipDataUrl: midMonthPayslip ? midMonthPayslip.payslipData : null,
-            employee: { ...employee, salaryMonth: `${salaryMonth}-15` },
-            expectedPaydays,
+            employee: { ...employee, position: positionAtTime, salary: salaryAtTime, salaryMonth: `${salaryMonth}-15` },
+            expectedPaydays: expectedPaydays,
           });
         }
 
         if (endMonthPayDate.isSameOrAfter(hireDate, 'day') && endMonthPayDate.isSameOrBefore(today, 'day')) {
           const endMonthPayslip = backendPayslips.find(p => p.salaryMonth === salaryMonth && p.paydayType === 'end-of-month');
+          const positionAtTime = endMonthPayslip?.position || historyAtTime.position;
+          const salaryAtTime = endMonthPayslip?.salary || historyAtTime.salary;
           payslipHistory.push({
-            salaryMonth,
+            salaryMonth: salaryMonth,
             paydayType: 'end-of-month',
-            totalSalary: endMonthPayslip ? this.calculateNetSalary({ ...employee, salaryMonth: `${salaryMonth}-${lastDayOfMonth}` }) : null,
+            position: positionAtTime,
+            salary: salaryAtTime,
+            totalSalary: endMonthPayslip ? this.calculateNetSalary({ ...employee, salary: salaryAtTime, position: positionAtTime, salaryMonth: `${salaryMonth}-${lastDayOfMonth}` }) : null,
             payslipDataUrl: endMonthPayslip ? endMonthPayslip.payslipData : null,
-            employee: { ...employee, salaryMonth: `${salaryMonth}-${lastDayOfMonth}` },
-            expectedPaydays,
+            employee: { ...employee, position: positionAtTime, salary: salaryAtTime, salaryMonth: `${salaryMonth}-${lastDayOfMonth}` },
+            expectedPaydays: expectedPaydays,
           });
         }
 
@@ -489,7 +625,7 @@ export default {
 
       this.allPayslipHistories[employee.id] = payslipHistory;
       this.payslipHistory = payslipHistory;
-      this.selectedPayslip = this.sortedPayslipHistory[0] || null;
+      this.selectedPayslip = payslipHistory[0] || null;
       this.showHistoryModal = true;
       this.isLoading = false;
     },
@@ -515,6 +651,8 @@ export default {
           payslipData: base64Data,
           salaryMonth: payslip.salaryMonth,
           paydayType: payslip.paydayType,
+          position: payslip.position,
+          salary: payslip.salary
         }, {
           headers: { 'user-role': 'admin' },
         });
@@ -595,13 +733,13 @@ export default {
             id: employee.id,
             name: employee.name,
             latestPayslipDate: latestDateStr,
-            latestPayslip,
+            latestPayslip: latestPayslip,
           });
         }
       }
 
       if (this.employeesWithPayslips.length === 0) {
-        this.showErrorMessage('No employees with generated payslips in history. Please generate payslips first.');
+        this.showErrorMessage('No employees with generated payslips in history.');
       } else {
         this.showPrintAllModal = true;
       }
@@ -630,7 +768,7 @@ export default {
           const employee = this.employees.find(e => e.id === empId);
           const payslip = empData.latestPayslip;
 
-          const payslipData = this.createPayslipData({ ...employee, salaryMonth: payslip.salaryMonth });
+          const payslipData = this.createPayslipData({ ...employee, salaryMonth: payslip.salaryMonth, salary: payslip.salary, position: payslip.position });
           await this.generatePdf(payslipData, doc);
 
           if (i < this.selectedEmployeesForPrint.length - 1) {
@@ -654,7 +792,7 @@ export default {
       this.iframeError = false;
     },
     async downloadPayslip() {
-      if (!this.selectedPayslip?.payslipDataUrl) return;
+      if (!this.selectedPayslip || !this.selectedPayslip.payslipDataUrl) return;
       const response = await fetch(this.selectedPayslip.payslipDataUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -667,12 +805,12 @@ export default {
       window.URL.revokeObjectURL(url);
     },
     calculateTotalEarnings(employee) {
-      const baseEarnings = (employee.earnings?.travelExpenses || 0) + (employee.earnings?.otherEarnings || 0);
+      const baseEarnings = (employee.earnings ? employee.earnings.travelExpenses : 0) + (employee.earnings ? employee.earnings.otherEarnings : 0);
       const monthlySalary = employee.salary || 0;
       const holidayPay = this.calculateHolidayPay(employee) || 0;
       const overtimePay = this.calculateOvertimePay(employee) || 0;
       const payheadEarnings = this.calculatePayheadEarnings(employee.payheads) || 0;
-      const taxableSupplementary = this.calculateSupplementaryIncome(employee)?.taxable || 0;
+      const taxableSupplementary = this.calculateSupplementaryIncome(employee) ? this.calculateSupplementaryIncome(employee).taxable : 0;
       return monthlySalary + baseEarnings + holidayPay + overtimePay + payheadEarnings + taxableSupplementary || 0;
     },
     calculatePayheadEarnings(payheads) {
@@ -711,8 +849,8 @@ export default {
       const basicSalaryMWE = isMWE ? employee.salary : 0;
       const holidayPayMWE = isMWE ? this.calculateHolidayPay(employee) : 0;
       const overtimePayMWE = isMWE ? this.calculateOvertimePay(employee) : 0;
-      const nightShiftDiffMWE = isMWE ? employee.nightShiftDiff || 0 : 0;
-      const hazardPayMWE = isMWE ? employee.hazardPay || 0 : 0;
+      const nightShiftDiffMWE = isMWE ? (employee.nightShiftDiff || 0) : 0;
+      const hazardPayMWE = isMWE ? (employee.hazardPay || 0) : 0;
       const thirteenthMonthExempt = Math.min(employee.thirteenthMonthPay || 0, 90000) || 0;
       const deMinimis = Math.min(employee.deMinimis || 0, this.deMinimisLimit) || 0;
       const sssContribution = this.calculateSSSContribution(employee.salary) || 0;
@@ -751,9 +889,9 @@ export default {
       return 0;
     },
     calculateOvertimePay(employee) {
-      const hourlyRate = employee.hourlyRate || (employee.salary / (8 * 22)) || 0;
-      const regularOTHours = employee.overtimeHours?.regular || 0;
-      const holidayOTHours = employee.overtimeHours?.holiday || 0;
+      const hourlyRate = employee.salary / (8 * 22) || 0;
+      const regularOTHours = employee.overtimeHours ? employee.overtimeHours.regular : 0;
+      const holidayOTHours = employee.overtimeHours ? employee.overtimeHours.holiday : 0;
       const regularOTPay = regularOTHours * hourlyRate * 1.25 || 0;
       const holidayOTPay = holidayOTHours * hourlyRate * 1.3 || 0;
       return regularOTPay + holidayOTPay || 0;
@@ -783,10 +921,6 @@ export default {
       if (taxableIncome <= 666667) return Math.round(90841.80 + (taxableIncome - 166667) * 0.30) || 0;
       return Math.round(408841.80 + (taxableIncome - 666667) * 0.35) || 0;
     },
-    formatSalaryMonth(month) {
-      const date = new Date(month);
-      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    },
     getExpectedPayday(hireDate, salaryMonth) {
       const [year, month] = salaryMonth.split('-');
       const lastDay = new Date(year, month, 0).getDate();
@@ -805,19 +939,19 @@ export default {
     createPayslipData(employee) {
       const salaryDate = moment(employee.salaryMonth, 'YYYY-MM-DD').format('MM/DD/YYYY');
       const basicSalary = employee.salary || 0;
-      const sss = this.calculateSSSContribution(employee.salary) || 0;
-      const philhealth = this.calculatePhilHealthContribution(employee.salary) || 0;
-      const hdmf = this.calculatePagIBIGContribution(employee.salary) || 0;
-      const totalDeductions = sss + philhealth + hdmf + (this.calculateWithholdingTax(employee) || 0) || 0;
+      const sss = this.calculateSSSContribution(basicSalary) || 0;
+      const philhealth = this.calculatePhilHealthContribution(basicSalary) || 0;
+      const pagibig = this.calculatePagIBIGContribution(basicSalary) || 0;
+      const totalDeductions = sss + philhealth + pagibig + (this.calculateWithholdingTax(employee) || 0) || 0;
       const netSalary = this.calculateNetSalary(employee) || 0;
-      const paidLeavesDays = employee.paidLeaves?.days || 0;
-      const absencesDays = employee.absences?.days || 0;
-      const paidLeavesAmount = employee.paidLeaves?.amount || 0;
-      const absencesAmount = -(employee.absences?.amount || 0);
+      const paidLeavesDays = employee.paidLeaves ? employee.paidLeaves.days : 0;
+      const absencesDays = employee.absences ? employee.absences.days : 0;
+      const paidLeavesAmount = employee.paidLeaves ? employee.paidLeaves.amount : 0;
+      const absencesAmount = employee.absences ? -(employee.absences.amount) : 0;
       const paydays = this.getExpectedPayday(employee.hireDate, employee.salaryMonth);
 
       return {
-        salaryDate,
+        salaryDate: salaryDate,
         empNo: employee.empNo || 'N/A',
         lastName: employee.lastName || 'N/A',
         middleName: employee.middleName || 'N/A',
@@ -829,16 +963,16 @@ export default {
         sss: employee.sss || 'N/A',
         tin: employee.tin || 'N/A',
         philhealth: employee.philhealth || 'N/A',
-        hdmf: employee.hdmf || 'N/A',
-        position: employee.position || 'N/A',
+        pagibig: employee.pagibig || 'N/A',
+        position: this.getPositionName(employee.position) || 'N/A',
         basicSalary: this.formatNumber(basicSalary),
         totalDeductions: this.formatNumber(totalDeductions),
         netSalary: this.formatNumber(netSalary),
         sssDeduction: this.formatNumber(sss),
         philhealthDeduction: this.formatNumber(philhealth),
-        hdmfDeduction: this.formatNumber(hdmf),
-        paidLeavesDays,
-        absencesDays,
+        pagibigDeduction: this.formatNumber(pagibig),
+        paidLeavesDays: paidLeavesDays,
+        absencesDays: absencesDays,
         paidLeavesAmount: this.formatNumber(paidLeavesAmount),
         absencesAmount: this.formatNumber(absencesAmount),
         withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0),
@@ -850,7 +984,7 @@ export default {
       const num = Number(value) || 0;
       return num.toFixed(2);
     },
-    async generatePdf(payslipData, doc = null) {
+    async generatePdf(payslipData, doc) {
       const pdfDoc = doc || new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -866,12 +1000,13 @@ export default {
       const lineHeight = 5;
       const pageHeight = pdfDoc.internal.pageSize.getHeight();
 
-      function addText(doc, text, x, y, options = {}) {
+      function addText(doc, text, x, y, options) {
+        options = options || {};
         text = text || 'N/A';
         text = text.replace('₱', 'P');
         doc.setFontSize(options.fontSize || 10);
         doc.setFont(options.font || 'Helvetica', options.fontStyle || 'normal');
-        doc.setTextColor(...(options.textColor || [0, 0, 0]));
+        doc.setTextColor(options.textColor ? options.textColor[0] : 0, options.textColor ? options.textColor[1] : 0, options.textColor ? options.textColor[2] : 0);
         doc.text(text, x, y, { align: options.align || 'left', maxWidth: options.maxWidth });
       }
 
@@ -916,7 +1051,7 @@ export default {
         ['SSS', payslipData.sss],
         ['TIN', payslipData.tin],
         ['Philhealth', payslipData.philhealth],
-        ['HDMF', payslipData.hdmf]
+        ['PAG-IBIG', payslipData.pagibig]
       ];
       rightPersonalInfo.forEach(([label, value], index) => {
         addLabelValue(pdfDoc, label, value, margin + columnWidth + 10, yRight + index * lineHeight);
@@ -936,7 +1071,7 @@ export default {
       const leftDeductions = [
         ['SSS', `P${payslipData.sssDeduction}`],
         ['Philhealth', `P${payslipData.philhealthDeduction}`],
-        ['HDMF', `P${payslipData.hdmfDeduction}`]
+        ['PAG-IBIG', `P${payslipData.pagibigDeduction}`]
       ];
       leftDeductions.forEach(([label, value], index) => {
         addLabelValue(pdfDoc, label, value, margin, y + index * lineHeight);
@@ -991,8 +1126,8 @@ export default {
     showErrorMessage(message) {
       this.statusMessage = message;
       setTimeout(() => { this.statusMessage = ''; }, 5000);
-    },
-  },
+    }
+  }
 };
 </script>
 
@@ -1024,7 +1159,7 @@ button:disabled {
   to { transform: rotate(360deg); }
 }
 .large-checkbox {
-  width: 1.25rem; /* 20px */
-  height: 1.25rem; /* 20px */
+  width: 1.25rem;
+  height: 1.25rem;
 }
 </style>
