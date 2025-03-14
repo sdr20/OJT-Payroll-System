@@ -124,7 +124,7 @@ export default {
                 };
                 this.authStore.setEmployee(userData);
                 this.authStore.setAccessToken(response.data.token);
-                this.$router.push(userData.role === 'admin' ? '/admin' : '/employee');
+                this.$router.push('/employee/dashboard');
             } catch (error) {
                 this.loginError = error.response?.data?.message || 'Unable to connect to the server.';
                 this.password = '';
