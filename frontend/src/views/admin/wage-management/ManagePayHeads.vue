@@ -1,9 +1,9 @@
 <script>
 import axios from 'axios';
-import PayHeadModal from '@/components/payhead/PayHeadModal.vue';
-import PayHeadTable from '@/components/payhead/PayHeadTable.vue';
-import EmployeePayrollTable from '@/components/payhead/EmployeePayrollTable.vue';
-import AddPayheadModal from '@/components/payhead/AddPayheadModal.vue';
+import PayHeadModal from './partials/PayHeadModal.vue';
+import PayHeadTable from './partials/PayHeadTable.vue';
+import EmployeePayrollTable from './partials/EmployeePayrollTable.vue';
+import AddPayHeadModal from './partials/AddPayHeadModal.vue';
 
 export default {
     name: 'ManagePayHeads',
@@ -11,7 +11,7 @@ export default {
         PayHeadModal,
         PayHeadTable,
         EmployeePayrollTable,
-        AddPayheadModal,
+        AddPayHeadModal,
     },
 
     data() {
