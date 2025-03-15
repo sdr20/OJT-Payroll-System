@@ -239,7 +239,8 @@ export default {
           ...response.data,
           positionHistory: response.data.positionHistory || [
             { position: response.data.position || 'N/A', startDate: response.data.hireDate || new Date(), endDate: null }
-          ]
+          ],
+          name: `${response.data.firstName || ''} ${response.data.lastName || ''}`.trim()
         };
         this.recordDataUrl = this.records[`${this.employee.id}_${this.employee.salaryMonth}`] || '';
       } catch (error) {
@@ -263,7 +264,19 @@ export default {
         const url = URL.createObjectURL(pdfBlob);
         this.records[`${this.employee.id}_${this.employee.salaryMonth}`] = url;
         this.recordDataUrl = url;
-        this.showSuccessMessage('Record generated successfully!');
+
+        // Save to backend
+        const pdfBase64 = await this.blobToBase64(pdfBlob);
+        await this.saveEmployeeRecord({
+          employeeId: this.employee.id,
+          empNo: this.employee.empNo,
+          recordData: pdfBase64,
+          salaryMonth: this.employee.salaryMonth,
+          position: this.employee.position,
+          salary: this.employee.salary
+        });
+
+        this.showSuccessMessage('Record generated and saved successfully!');
         await this.viewRecordHistory(); // Refresh history after generation
       } catch (error) {
         console.error('Error generating record:', error);
@@ -281,61 +294,108 @@ export default {
       }
 
       this.isGenerating = true;
-      const today = moment();
-      const hireDate = moment(this.employee.hireDate);
+      try {
+        // Fetch historical records from the backend
+        const response = await axios.get(`http://localhost:7777/api/employee-records/${this.employee.id}`);
+        const serverRecords = response.data;
 
-      if (!hireDate.isValid()) {
-        console.error('Invalid hireDate:', this.employee.hireDate);
-        this.showErrorMessage('Invalid hire date for employee');
+        const today = moment();
+        const hireDate = moment(this.employee.hireDate);
+
+        if (!hireDate.isValid()) {
+          console.error('Invalid hireDate:', this.employee.hireDate);
+          this.showErrorMessage('Invalid hire date for employee');
+          this.isGenerating = false;
+          return;
+        }
+
+        const recordHistory = [];
+        let currentMonth = hireDate.clone().startOf('month');
+
+        while (currentMonth.isSameOrBefore(today, 'month')) {
+          const salaryMonth = currentMonth.format('YYYY-MM');
+          const positionAtTime = this.employee.positionHistory.find(h => 
+            moment(h.startDate).isSameOrBefore(salaryMonth, 'month') && 
+            (!h.endDate || moment(h.endDate).isSameOrAfter(salaryMonth, 'month'))
+          )?.position || this.employee.position;
+
+          const serverRecord = serverRecords.find(r => r.salaryMonth === salaryMonth);
+          const localUrl = this.records[`${this.employee.id}_${salaryMonth}`] || (serverRecord ? `data:application/pdf;base64,${serverRecord.recordData.split(',')[1]}` : null);
+
+          recordHistory.push({
+            salaryMonth,
+            position: positionAtTime,
+            recordDataUrl: localUrl || null,
+            employee: { ...this.employee, salaryMonth }
+          });
+
+          currentMonth.add(1, 'month');
+        }
+
+        this.recordHistory = recordHistory;
+        this.selectedRecord = this.filteredRecordHistory.find(r => r.recordDataUrl) || null;
+        this.modalFilterPosition = '';
+        this.showRecordModal = true;
+      } catch (error) {
+        console.error('Error fetching record history:', error);
+        this.showErrorMessage('Failed to load record history. Please try again.');
+      } finally {
         this.isGenerating = false;
+      }
+    },
+    async generateRecordForHistory(record) {
+      if (!record || !record.employee) {
+        console.error('No record or employee data available:', record);
+        this.showErrorMessage('Please select a valid record.');
         return;
       }
 
-      const recordHistory = [];
-      let currentMonth = hireDate.clone().startOf('month');
-
-      while (currentMonth.isSameOrBefore(today, 'month')) {
-        const salaryMonth = currentMonth.format('YYYY-MM');
-        const positionAtTime = this.employee.positionHistory.find(h => 
-          moment(h.startDate).isSameOrBefore(salaryMonth, 'month') && 
-          (!h.endDate || moment(h.endDate).isSameOrAfter(salaryMonth, 'month'))
-        )?.position || this.employee.position;
-
-        const localUrl = this.records[`${this.employee.id}_${salaryMonth}`];
-        recordHistory.push({
-          salaryMonth,
-          position: positionAtTime,
-          recordDataUrl: localUrl || null,
-          employee: { ...this.employee, salaryMonth }
-        });
-
-        currentMonth.add(1, 'month');
-      }
-
-      this.recordHistory = recordHistory;
-      this.selectedRecord = this.filteredRecordHistory.find(r => r.recordDataUrl) || null;
-      this.modalFilterPosition = '';
-      this.showRecordModal = true;
-      this.isGenerating = false;
-    },
-    async generateRecordForHistory(record) {
-      const employee = record.employee;
       const key = record.salaryMonth;
       this.recordGenerationStatus[key] = { generating: true };
       try {
-        const recordData = this.createRecordData(employee);
+        const recordData = this.createRecordData(record.employee);
         const pdfBlob = await this.generatePdf(recordData);
+        const pdfBase64 = await this.blobToBase64(pdfBlob);
         const url = URL.createObjectURL(pdfBlob);
-        this.records[`${employee.id}_${key}`] = url;
+        this.records[`${record.employee.id}_${record.salaryMonth}`] = url;
         record.recordDataUrl = url;
         this.selectedRecord = record;
-        this.showSuccessMessage(`Record generated for ${employee.name} - ${record.salaryMonth}!`);
+
+        // Save to backend
+        await this.saveEmployeeRecord({
+          employeeId: record.employee.id,
+          empNo: record.employee.empNo,
+          recordData: pdfBase64,
+          salaryMonth: record.salaryMonth,
+          position: record.position,
+          salary: record.employee.salary || this.employee.salary
+        });
+
+        this.showSuccessMessage(`Record generated and saved for ${record.employee.name} - ${record.salaryMonth}!`);
       } catch (error) {
         console.error('Error generating record:', error);
-        this.showErrorMessage(`Failed to generate record: ${error.message}`);
+        console.error('Server response:', error.response?.data);
+        this.showErrorMessage(error.response?.data?.error || 'Failed to generate record. Please try again.');
       } finally {
         this.recordGenerationStatus[key] = { generating: false };
       }
+    },
+    async saveEmployeeRecord(payload) {
+      try {
+        const response = await axios.post('http://localhost:7777/api/employee-records/generate', payload);
+        console.log('Employee record saved:', response.data);
+      } catch (error) {
+        console.error('Error saving employee record:', error);
+        throw error;
+      }
+    },
+    async blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
     },
     selectRecord(record) {
       this.selectedRecord = record.recordDataUrl ? record : null;

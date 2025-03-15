@@ -50,32 +50,59 @@ router.get('/:employeeId', isAdmin, async (req, res) => {
 
 router.post('/generate', isAdmin, async (req, res) => {
   try {
-    const { employeeId, empNo, payslipData, salaryMonth, paydayType, position } = req.body;
-    if (!employeeId || !empNo || !payslipData || !salaryMonth || !paydayType || !position) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    console.log('Received payload for payslip generation:', req.body);
+    const { employeeId, empNo, payslipData, salaryMonth, paydayType, position, salary } = req.body;
+    if (!employeeId || !empNo || !payslipData || !salaryMonth || !paydayType || !position || !salary) {
+      const missing = [];
+      if (!employeeId) missing.push('employeeId');
+      if (!empNo) missing.push('empNo');
+      if (!payslipData) missing.push('payslipData');
+      if (!salaryMonth) missing.push('salaryMonth');
+      if (!paydayType) missing.push('paydayType');
+      if (!position) missing.push('position');
+      if (!salary) missing.push('salary');
+      console.log('Missing fields:', missing);
+      return res.status(400).json({ error: 'Missing required fields', missing });
     }
 
     if (!['mid-month', 'end-of-month'].includes(paydayType)) {
+      console.log('Invalid paydayType:', paydayType);
       return res.status(400).json({ error: 'Invalid paydayType' });
     }
 
     const employee = await Employee.findOne({ id: employeeId, empNo });
     if (!employee) {
+      console.log('Employee not found:', { employeeId, empNo });
       return res.status(404).json({ error: 'Employee not found' });
     }
 
+    const payslipDate = new Date(salaryMonth + (paydayType === 'mid-month' ? '-15' : '-28'));
+    const historyEntry = employee.positionHistory.find(h =>
+      h.startDate <= payslipDate && (!h.endDate || h.endDate >= payslipDate)
+    );
+    if (!historyEntry || historyEntry.position !== position || historyEntry.salary !== salary) {
+      console.log('Position/salary mismatch:', {
+        providedPosition: position,
+        providedSalary: salary,
+        historyEntry
+      });
+      return res.status(400).json({ error: 'Position or salary does not match employee history for this period' });
+    }
+
     if (!payslipData.startsWith('data:application/pdf;base64,')) {
+      console.log('Invalid payslipData format:', payslipData);
       return res.status(400).json({ error: 'Invalid payslipData format' });
     }
 
     const existingPayslip = await Payslip.findOne({ employeeId, salaryMonth, paydayType });
     if (existingPayslip) {
+      console.log('Payslip already exists:', { employeeId, salaryMonth, paydayType });
       return res.status(409).json({ error: 'Payslip already exists for this salary date' });
     }
 
-    const payslip = new Payslip({ employeeId, empNo, payslipData, salaryMonth, paydayType, position });
+    const payslip = new Payslip({ employeeId, empNo, payslipData, salaryMonth, paydayType, position, salary });
     await payslip.save();
-    res.status(200).json({ success: true, message: 'Payslip generated successfully' });
+    res.status(200).json({ success: true, message: 'Payslip generated successfully', payslip });
   } catch (error) {
     console.error('Error generating payslip:', error);
     res.status(500).json({ error: 'Failed to generate payslip', message: error.message });
@@ -84,7 +111,7 @@ router.post('/generate', isAdmin, async (req, res) => {
 
 router.post('/send-email', isAdmin, async (req, res) => {
   try {
-    const { employeeId, employeeEmail, payslipData, salaryMonth, position } = req.body; // Added position
+    const { employeeId, employeeEmail, payslipData, salaryMonth, position } = req.body;
     if (!employeeId || !employeeEmail || !payslipData || !salaryMonth || !position) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -101,7 +128,7 @@ router.post('/send-email', isAdmin, async (req, res) => {
       subject: `Payslip for ${salaryMonth}`,
       text: `Dear ${employee.firstName} ${employee.lastName},\n\nPlease find your payslip for ${salaryMonth} attached.\n\nBest regards,\nPayroll Team`,
       attachments: [{
-        filename: `payslip-${employeeId}-${salaryMonth}-${position}.pdf`, // Updated to include position
+        filename: `payslip-${employeeId}-${salaryMonth}-${position}.pdf`,
         content: pdfBuffer,
         contentType: 'application/pdf'
       }]

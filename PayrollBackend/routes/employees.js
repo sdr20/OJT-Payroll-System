@@ -130,20 +130,42 @@ router.post('/', isAdmin, async (req, res) => {
   }
 });
 
-// PUT (update) an existing employee by ID
+// PUT (update) an existing employee by ID with position history management
 router.put('/:id', isAdmin, async (req, res) => {
   try {
-    const employee = await Employee.findOneAndUpdate(
-      { id: parseInt(req.params.id) },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid employee ID' });
+    }
+
+    const employee = await Employee.findOne({ id });
     if (!employee) {
-      console.log(`Employee not found for ID: ${req.params.id}`);
+      console.log(`Employee not found for ID: ${id}`);
       return res.status(404).json({ error: 'Employee not found' });
     }
-    console.log('Employee updated:', employee.id);
-    res.json(employee);
+
+    const { position, salary } = req.body;
+    if ((position && position !== employee.position) || (salary && salary !== employee.salary)) {
+      const currentHistory = employee.positionHistory.find(h => !h.endDate);
+      if (currentHistory) {
+        currentHistory.endDate = new Date();
+      }
+      employee.positionHistory.push({
+        position: position || employee.position,
+        salary: salary || employee.salary,
+        startDate: new Date(),
+        endDate: null
+      });
+    }
+
+    const updatedEmployee = await Employee.findOneAndUpdate(
+      { id },
+      { ...req.body, positionHistory: employee.positionHistory },
+      { new: true, runValidators: true }
+    );
+
+    console.log('Employee updated:', updatedEmployee.id);
+    res.json(updatedEmployee);
   } catch (error) {
     console.error('Error updating employee:', error);
     if (error.name === 'ValidationError') {

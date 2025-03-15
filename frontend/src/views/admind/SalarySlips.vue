@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen p-1">
     <div class="max-w-8xl mx-auto">
-      <!-- Header Section -->
+      <!-- Header Section (Unchanged) -->
       <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div class="relative">
@@ -40,10 +40,9 @@
         </div>
       </div>
 
-      <!-- Employee List -->
+      <!-- Employee List (Unchanged) -->
       <div class="bg-white rounded-lg shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-          <!-- Main Table for Current Position -->
           <table class="min-w-full divide-y divide-gray-200 mb-4">
             <thead class="bg-gray-50">
               <tr>
@@ -153,7 +152,6 @@
               <span class="material-icons text-sm">history</span>
               Payslip History - {{ selectedEmployee?.name }}
             </h2>
-            <!-- NEW: Added Generate Now button to the header -->
             <div class="flex items-center gap-2">
               <button
                 @click.stop="generatePayslipNow(selectedEmployee)"
@@ -173,10 +171,17 @@
           </div>
           <div class="flex flex-1 overflow-hidden">
             <div class="w-1/2 p-4 overflow-y-auto border-r">
-              <!-- Payslip List by Position -->
-              <div v-for="(positionPayslips, position) in payslipsByPosition" :key="position" class="mb-6">
+              <!-- Payslip List by Position History -->
+              <div
+                v-for="(history, index) in sortedPositionHistory"
+                :key="`history-${index}`"
+                class="mb-6"
+              >
                 <h3 class="text-sm font-medium text-gray-700 mb-2">
-                  Payslips for {{ getPositionName(position) }} (Salary: ₱{{ getPositionSalary(position).toLocaleString() }})
+                  Payslips for {{ getPositionName(history.position) }} 
+                  (Salary: ₱{{ history.salary.toLocaleString() }}, 
+                  {{ formatDate(history.startDate) }} - 
+                  {{ history.endDate ? formatDate(history.endDate) : 'Present' }})
                 </h3>
                 <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gray-50 sticky top-0">
@@ -187,7 +192,7 @@
                   </thead>
                   <tbody class="divide-y divide-gray-200">
                     <tr
-                      v-for="payslip in positionPayslips"
+                      v-for="payslip in getPayslipsForPosition(history.position, history.startDate, history.endDate)"
                       :key="`${payslip.salaryMonth}-${payslip.paydayType}`"
                       class="hover:bg-blue-50 cursor-pointer"
                       :class="{ 'bg-blue-100': selectedPayslip?.salaryMonth === payslip.salaryMonth && selectedPayslip?.paydayType === payslip.paydayType }"
@@ -207,7 +212,7 @@
                         </button>
                       </td>
                     </tr>
-                    <tr v-if="positionPayslips.length === 0">
+                    <tr v-if="getPayslipsForPosition(history.position, history.startDate, history.endDate).length === 0">
                       <td colspan="2" class="px-4 py-4 text-center text-sm text-gray-500">No payslips available for this position.</td>
                     </tr>
                   </tbody>
@@ -252,7 +257,7 @@
         </div>
       </div>
 
-      <!-- Print All Modal -->
+      <!-- Print All Modal (Unchanged) -->
       <div
         v-if="showPrintAllModal"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
@@ -317,7 +322,7 @@
         </div>
       </div>
 
-      <!-- Toast Messages -->
+      <!-- Toast Messages (Unchanged) -->
       <div
         v-if="statusMessage"
         :class="[
@@ -389,15 +394,11 @@ export default {
       const end = start + this.itemsPerPage;
       return this.filteredEmployees.slice(start, end);
     },
-    payslipsByPosition() {
-      const grouped = {};
-      this.payslipHistory.forEach(payslip => {
-        if (!grouped[payslip.position]) {
-          grouped[payslip.position] = [];
-        }
-        grouped[payslip.position].push(payslip);
-      });
-      return grouped;
+    sortedPositionHistory() {
+      if (!this.selectedEmployee || !this.selectedEmployee.positionHistory) return [];
+      return [...this.selectedEmployee.positionHistory].sort((a, b) => 
+        new Date(a.startDate) - new Date(b.startDate)
+      );
     }
   },
   async created() {
@@ -446,7 +447,6 @@ export default {
           headers: { 'user-role': 'admin' },
         });
         this.employees = response.data.map((employee) => {
-          // Mock Steven Ruelo's data for this example
           if (employee.firstName === 'Steven' && employee.lastName === 'Ruelo') {
             return {
               id: employee.id,
@@ -464,8 +464,8 @@ export default {
               pagibig: employee.pagibig || '123456789012',
               tin: employee.tin || '123456789',
               hourlyRate: employee.hourlyRate || 0,
-              salary: employee.salary || 15000, // Current salary after update
-              position: employee.position || 'Programmer 2', // Current position
+              salary: employee.salary || 15000,
+              position: employee.position || 'Programmer 2',
               email: employee.email || 'N/A',
               contactInfo: employee.contactInfo || 'N/A',
               role: employee.role || 'employee',
@@ -492,7 +492,7 @@ export default {
                 { 
                   position: 'Programmer 2', 
                   salary: 15000,
-                  startDate: new Date('2025-03-14'), 
+                  startDate: new Date('2025-03-15'), 
                   endDate: null 
                 }
               ]
@@ -721,7 +721,6 @@ export default {
         this.isGeneratingAll = false;
       }
     },
-    // Helper method to get the latest position from positionHistory
     getLatestPosition(employee) {
       if (!employee.positionHistory || employee.positionHistory.length === 0) {
         return {
@@ -730,14 +729,12 @@ export default {
         };
       }
 
-      // Sort positionHistory by startDate in descending order
       const sortedHistory = [...employee.positionHistory].sort((a, b) => {
         const dateA = new Date(a.startDate);
         const dateB = new Date(b.startDate);
-        return dateB - dateA; // Latest startDate first
+        return dateB - dateA;
       });
 
-      // Find the latest position where endDate is null or in the future
       const today = new Date();
       const latestPosition = sortedHistory.find(history => 
         !history.endDate || new Date(history.endDate) >= today
@@ -753,20 +750,16 @@ export default {
 
       this.payslipGenerationStatus.generating = true;
       try {
-        // Get the latest position and salary from positionHistory
         const latestPositionData = this.getLatestPosition(employee);
         const positionAtTime = latestPositionData.position;
         const salaryAtTime = latestPositionData.salary;
 
-        // Generate payslip for the current month and next available payday
         const today = moment();
         const salaryMonth = today.format('YYYY-MM');
         const lastDayOfMonth = today.clone().endOf('month').date();
         const midMonthPayDate = moment(`${salaryMonth}-15`, 'YYYY-MM-DD');
-        // const endMonthPayDate = moment(`${salaryMonth}-${lastDayOfMonth}`, 'YYYY-MM-DD');
         const expectedPaydays = this.getExpectedPayday(employee.hireDate, `${salaryMonth}-01`);
 
-        // Determine the paydayType before constructing payslipData
         const paydayType = today.isBefore(midMonthPayDate.clone().endOf('day')) ? 'mid-month' : 'end-of-month';
         const employeeSalaryMonth = `${salaryMonth}-${paydayType === 'mid-month' ? '15' : lastDayOfMonth}`;
 
@@ -779,13 +772,11 @@ export default {
           expectedPaydays,
         };
 
-        // Create payslip data for PDF generation
         const pdfPayslipData = this.createPayslipData(payslipData.employee);
         const pdfBlob = await this.generatePdf(pdfPayslipData);
         const url = URL.createObjectURL(pdfBlob);
         const base64Data = await this.blobToBase64(pdfBlob);
 
-        // Save to backend
         await axios.post('http://localhost:7777/api/payslips/generate', {
           employeeId: employee.id,
           empNo: employee.empNo,
@@ -798,7 +789,6 @@ export default {
           headers: { 'user-role': 'admin' },
         });
 
-        // Update payslip history
         payslipData.payslipDataUrl = url;
         payslipData.totalSalary = this.calculateNetSalary(payslipData.employee);
         let employeeHistory = this.allPayslipHistories[employee.id] || [];
@@ -914,6 +904,19 @@ export default {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+    },
+    getPayslipsForPosition(position, startDate, endDate) {
+      return this.payslipHistory.filter(payslip => {
+        const payslipDate = moment(payslip.salaryMonth, 'YYYY-MM');
+        const start = moment(startDate);
+        const end = endDate ? moment(endDate) : moment();
+        return payslip.position === position && 
+               payslipDate.isSameOrAfter(start, 'month') && 
+               payslipDate.isSameOrBefore(end, 'month');
+      });
+    },
+    formatDate(date) {
+      return moment(date).format('D MMMM YYYY');
     },
     calculateTotalEarnings(employee) {
       const baseEarnings = (employee.earnings ? employee.earnings.travelExpenses : 0) + (employee.earnings ? employee.earnings.otherEarnings : 0);

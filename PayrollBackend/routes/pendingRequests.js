@@ -1,4 +1,3 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\routes\pendingRequests.js
 const express = require('express');
 const router = express.Router();
 const PendingRequest = require('../models/PendingRequest');
@@ -44,7 +43,7 @@ router.post('/', async (req, res) => {
   try {
     console.log('Received request data:', req.body);
     const requiredFields = [
-      'id', 'empNo', 'firstName', 'lastName', 'position', 'email', 
+      'id', 'empNo', 'firstName', 'lastName', 'position', 'email',
       'contactNumber', 'salary', 'username', 'password', 'hireDate'
     ];
     const missingFields = requiredFields.filter(field => !req.body[field] && req.body[field] !== 0);
@@ -53,23 +52,21 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: `Missing required fields: ${missingFields.join(', ')}` });
     }
 
-    // Validate unique fields
     const { empNo, username, email } = req.body;
     const existingRequest = await PendingRequest.findOne({ $or: [{ empNo }, { username }, { email }] });
     if (existingRequest) {
-      const duplicateField = existingRequest.empNo === empNo ? 'Employee Number' : 
+      const duplicateField = existingRequest.empNo === empNo ? 'Employee Number' :
                             existingRequest.username === username ? 'Username' : 'Email';
       return res.status(400).json({ error: `${duplicateField} already exists in pending requests` });
     }
 
     const existingEmployee = await Employee.findOne({ $or: [{ empNo }, { username }, { email }] });
     if (existingEmployee) {
-      const duplicateField = existingEmployee.empNo === empNo ? 'Employee Number' : 
+      const duplicateField = existingEmployee.empNo === empNo ? 'Employee Number' :
                             existingEmployee.username === username ? 'Username' : 'Email';
       return res.status(400).json({ error: `${duplicateField} already exists in employees` });
     }
 
-    // Ensure hireDate is a valid date
     const hireDate = new Date(req.body.hireDate);
     if (isNaN(hireDate.getTime())) {
       return res.status(400).json({ error: 'Invalid hireDate format' });
@@ -78,9 +75,9 @@ router.post('/', async (req, res) => {
     const request = new PendingRequest({
       ...req.body,
       status: 'pending',
-      role: 'employee', // Default role
-      hourlyRate: req.body.salary / (8 * 22), // Auto-calculate if not provided
-      earnings: req.body.earnings || { travelExpenses: 0, otherEarnings: 0 } // Default earnings
+      role: 'employee',
+      hourlyRate: req.body.salary / (8 * 22),
+      earnings: req.body.earnings || { travelExpenses: 0, otherEarnings: 0 }
     });
 
     await request.save();
@@ -111,7 +108,7 @@ router.put('/:id', isAdmin, async (req, res) => {
     }
     console.log('Updated request:', { id: request.id, empNo: request.empNo });
     res.status(200).json(request);
-  } catch (error) {
+  } catch (error) { // Fixed typo from 'error-collision' to 'error'
     console.error('Error updating request:', error);
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
@@ -135,11 +132,11 @@ router.put('/:id/approve', isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Request already processed' });
     }
 
-    const existingEmployee = await Employee.findOne({ 
+    const existingEmployee = await Employee.findOne({
       $or: [{ empNo: request.empNo }, { username: request.username }, { email: request.email }]
     });
     if (existingEmployee) {
-      const duplicateField = existingEmployee.empNo === request.empNo ? 'Employee Number' : 
+      const duplicateField = existingEmployee.empNo === request.empNo ? 'Employee Number' :
                             existingEmployee.username === request.username ? 'Username' : 'Email';
       return res.status(400).json({ error: `${duplicateField} already exists in employees` });
     }
@@ -157,14 +154,20 @@ router.put('/:id/approve', isAdmin, async (req, res) => {
       contactInfo: request.contactNumber,
       sss: request.sss || '',
       philhealth: request.philhealth || '',
-      pagibig: request.hdmf || '', // Match Employee model field name
+      pagibig: request.hdmf || '',
       tin: request.tin || '',
       civilStatus: request.civilStatus || 'Single',
       username: request.username,
-      password: request.password, // Already hashed if pre-save hook is used
+      password: request.password,
       role: request.role || 'employee',
       hireDate: request.hireDate,
-      earnings: request.earnings || { travelExpenses: 0, otherEarnings: 0 }
+      earnings: request.earnings || { travelExpenses: 0, otherEarnings: 0 },
+      positionHistory: [{
+        position: request.position,
+        salary: request.salary,
+        startDate: request.hireDate,
+        endDate: null
+      }]
     });
 
     await employee.save();

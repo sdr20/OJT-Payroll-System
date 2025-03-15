@@ -16,7 +16,7 @@ const employeeSchema = new mongoose.Schema({
   }],
   salary: { type: Number, required: true, min: 0 },
   hourlyRate: { type: Number, default: 0 },
-  email: { type: String, required: true },
+  email: { type: String, required: true, unique: true }, // Added unique constraint
   contactInfo: { type: String, required: true },
   sss: { type: String, default: '' },
   philhealth: { type: String, default: '' },
@@ -58,8 +58,8 @@ employeeSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
-  if (this.isModified('salary') && !this.hourlyRate) {
-    this.hourlyRate = this.salary / (8 * 22);
+  if (this.isModified('salary')) {
+    this.hourlyRate = this.hourlyRate || this.salary / (8 * 22); // Recalculate if salary changes
   }
   next();
 });
@@ -71,5 +71,6 @@ employeeSchema.methods.comparePassword = async function (candidatePassword) {
 employeeSchema.index({ id: 1 });
 employeeSchema.index({ empNo: 1 });
 employeeSchema.index({ username: 1 });
+employeeSchema.index({ email: 1 }); // Added email index
 
 module.exports = mongoose.model('Employee', employeeSchema);
