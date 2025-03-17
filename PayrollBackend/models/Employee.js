@@ -16,7 +16,7 @@ const employeeSchema = new mongoose.Schema({
   }],
   salary: { type: Number, required: true, min: 0 },
   hourlyRate: { type: Number, default: 0 },
-  email: { type: String, required: true, unique: true }, // Added unique constraint
+  email: { type: String, required: true, unique: true },
   contactInfo: { type: String, required: true },
   sss: { type: String, default: '' },
   philhealth: { type: String, default: '' },
@@ -71,6 +71,6 @@ employeeSchema.methods.comparePassword = async function (candidatePassword) {
 employeeSchema.index({ id: 1 });
 employeeSchema.index({ empNo: 1 });
 employeeSchema.index({ username: 1 });
-employeeSchema.index({ email: 1 }); // Added email index
+employeeSchema.index({ email: 1 });
 
 module.exports = mongoose.model('Employee', employeeSchema);

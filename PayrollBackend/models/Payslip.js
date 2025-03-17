@@ -7,8 +7,8 @@ const payslipSchema = new mongoose.Schema({
   salaryMonth: { type: String, required: true },
   paydayType: { type: String, enum: ['mid-month', 'end-of-month'], required: true },
   position: { type: String, required: true },
-  salary: { type: Number, required: true }, // Added salary field
-  generatedAt: { type: Date, default: Date.now }
+  salary: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now }
 }, {
   indexes: [{ key: { employeeId: 1, salaryMonth: 1, paydayType: 1 }, unique: true }]
 });
