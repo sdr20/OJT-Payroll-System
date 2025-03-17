@@ -3,11 +3,12 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAttendanceStore } from '@/stores/attendance.store.js';
 import { BASE_API_URL } from '@/utils/constants.js';
+import EmployeeAttendanceDetails from './employee-management/partials/EmployeeAttendanceDetails.vue';
 
 export default {
     name: 'AttendanceDashboard',
     components: {
-        EmployeeAttendanceDetails: () => import('./employee-management/partials/EmployeeAttendanceDetails.vue'),
+        EmployeeAttendanceDetails,
     },
     setup() {
         const router = useRouter();
@@ -17,7 +18,6 @@ export default {
         const isProcessingPayroll = ref(false);
         const showModals = ref({});
 
-        // Fetch total employees
         const fetchTotalEmployees = async () => {
             try {
                 const response = await fetch(`${BASE_API_URL}/api/employee/total`, {
@@ -32,7 +32,6 @@ export default {
             }
         };
 
-        // Format time
         const formatTime = (time) => {
             if (!time) return '--';
             const [hours, minutes] = time.split(':');
@@ -41,11 +40,11 @@ export default {
             return `${displayHours}:${minutes} ${period}`;
         };
 
-        // Refresh attendance
         const refreshAttendance = async () => {
             isLoading.value = true;
             try {
                 await attendanceStore.fetchAttendance();
+                console.log('Fetched attendance records:', attendanceStore.attendanceRecords); // Debug log
             } catch (error) {
                 console.error('Failed to refresh attendance:', error);
             } finally {
@@ -53,7 +52,6 @@ export default {
             }
         };
 
-        // Export attendance
         const exportAttendance = () => {
             const currentDate = new Date().toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -68,8 +66,8 @@ export default {
                     record.employeeId?.empNo || 'N/A',
                     `${record.employeeId?.firstName} ${record.employeeId?.lastName}`,
                     record.employeeId?.position || 'N/A',
-                    formatTime(record.timeIn),
-                    formatTime(record.timeOut),
+                    formatTime(record.morningTimeIn), // Changed from timeIn to morningTimeIn
+                    formatTime(record.morningTimeOut || record.afternoonTimeOut), // Changed to use model fields
                     record.status || 'N/A',
                 ]),
             ]
@@ -85,7 +83,6 @@ export default {
             document.body.removeChild(link);
         };
 
-        // Process payroll
         const processPayroll = async () => {
             isProcessingPayroll.value = true;
             try {
@@ -96,7 +93,6 @@ export default {
             }
         };
 
-        // Delete attendance
         const deleteAttendance = async (id) => {
             if (confirm('Are you sure you want to delete this attendance record?')) {
                 try {
@@ -112,14 +108,12 @@ export default {
             }
         };
 
-        // Logout
         const logout = () => {
             localStorage.removeItem('userId');
             localStorage.removeItem('userRole');
             router.push('/admin/login');
         };
 
-        // Modal controls
         const openModal = (recordId) => {
             showModals.value[recordId] = true;
         };
@@ -128,26 +122,32 @@ export default {
             showModals.value[recordId] = false;
         };
 
-        // Computed property to dynamically determine absent count
+        const today = new Date().toISOString().split('T')[0];
+
+        const todayRecords = computed(() => {
+            return attendanceStore.attendanceRecords.filter(r => r.date === today);
+        });
+
+        const presentCount = computed(() => {
+            return todayRecords.value.filter(r => r.morningTimeIn).length; // Changed to morningTimeIn
+        });
+
+        const lateCount = computed(() => {
+            const OFFICE_START = "08:00:00";
+            return todayRecords.value.filter(r => r.morningTimeIn && r.morningTimeIn > OFFICE_START).length; // Changed to morningTimeIn
+        });
+
         const absentCount = computed(() => {
-            const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
-            const CUTOFF_TIME = '13:00:00';
-
-            if (currentTime > CUTOFF_TIME) {
-                const presentEmployeeIds = attendanceStore.attendanceRecords
-                    .filter((record) => record.timeIn && record.status !== 'Absent')
-                    .map((record) => record.employeeId._id.toString());
-                const totalIds = attendanceStore.attendanceRecords.map((record) => record.employeeId._id.toString());
-                const uniqueAbsentIds = [...new Set(totalIds.filter((id) => !presentEmployeeIds.includes(id)))];
-
-                return uniqueAbsentIds.length;
-            }
-            return attendanceStore.attendanceRecords.filter((r) => r.status === 'Absent').length;
+            const presentEmployeeIds = todayRecords.value
+                .filter(r => r.morningTimeIn) // Changed to morningTimeIn
+                .map(r => r.employeeId._id.toString());
+            const absentEmployees = totalEmployees.value - new Set(presentEmployeeIds).size;
+            return absentEmployees < 0 ? 0 : absentEmployees;
         });
 
         onMounted(() => {
             fetchTotalEmployees();
-            attendanceStore.fetchAttendance();
+            refreshAttendance();
         });
 
         return {
@@ -164,6 +164,10 @@ export default {
             openModal,
             closeModal,
             absentCount,
+            presentCount,
+            lateCount,
+            todayRecords,
+            today,
             attendanceStore,
         };
     },
@@ -171,7 +175,7 @@ export default {
         getStatusClass(status) {
             return {
                 'text-red-500': status === 'Absent',
-                'text-green-500': status === 'On Time',
+                'text-green-500': status === 'On Time' || status === 'Present',
                 'text-yellow-500': status === 'Late',
                 'text-orange-500': status === 'Early Departure',
             };
@@ -208,7 +212,7 @@ export default {
                         <div>
                             <p class="text-sm font-medium text-gray-600">Present Today</p>
                             <h3 class="text-2xl font-bold text-gray-900">
-                                {{attendanceStore.attendanceRecords.filter(r => r.status === 'On Time').length}}
+                                {{ presentCount }}
                             </h3>
                         </div>
                     </div>
@@ -223,7 +227,7 @@ export default {
                             <div class="ml-5">
                                 <p class="text-sm font-medium text-gray-600">Late Today</p>
                                 <h3 class="text-2xl font-bold text-gray-900">
-                                    {{attendanceStore.attendanceRecords.filter(r => r.status === 'Late').length}}
+                                    {{ lateCount }}
                                 </h3>
                             </div>
                         </div>
@@ -334,8 +338,7 @@ export default {
                                 </tr>
                             </template>
                             <template v-else>
-                                <tr v-for="record in attendanceStore.attendanceRecords" :key="record._id"
-                                    class="hover:bg-gray-50">
+                                <tr v-for="record in todayRecords" :key="record._id" class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ record.employeeId?.firstName }} {{ record.employeeId?.lastName }}
                                     </td>
@@ -343,18 +346,15 @@ export default {
                                         {{ record.employeeId?.position?.name || 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ formatTime(record.timeIn) }}
+                                        {{ formatTime(record.morningTimeIn) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ formatTime(record.timeOut) }}
+                                        {{ formatTime(record.morningTimeOut || record.afternoonTimeOut) }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium" :class="{
-                                        'text-red-500': record.status === 'Absent',
-                                        'text-green-500': record.status === 'On Time',
-                                        'text-yellow-500': record.status === 'Late',
-                                        'text-orange-500': record.status === 'Early Departure',
-                                    }">
-                                        {{ record.status || 'N/A' }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium"
+                                        :class="getStatusClass(record.status)">
+                                        {{ record.morningTimeIn ? (record.status === 'Late' ? 'Late' : 'Present') :
+                                            (record.status || 'N/A') }}
                                     </td>
                                     <td class="px-6 py-4 text-sm">
                                         <div class="flex space-x-2">

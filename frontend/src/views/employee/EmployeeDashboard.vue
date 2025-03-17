@@ -11,12 +11,16 @@ const attendanceRecords = ref([]);
 const isTimedIn = ref(false);
 const isLoading = ref(false);
 const currentPayPeriod = ref('Feb 16 - Feb 28, 2025');
+const router = useRouter();
 
+// Time thresholds
 const OFFICE_START = '08:00:00';
 const OFFICE_END = '17:00:00';
 const EARLY_TIME_IN_THRESHOLD = '06:00:00';
 const EARLY_TIME_OUT_THRESHOLD = '11:30:00';
+const LUNCH_START = '12:00:00';
 const LUNCH_END = '13:00:00';
+const AFTERNOON_START_THRESHOLD = '13:00:00';
 
 onMounted(async () => {
     if (!token) {
@@ -24,7 +28,6 @@ onMounted(async () => {
         router.push('/employee/login');
         return;
     }
-
     await getEmployeeProfile();
     if (authStore.employee && authStore.employee._id) {
         await fetchAttendanceRecords();
@@ -117,36 +120,48 @@ async function checkTimedInStatus() {
     const records = Array.isArray(attendanceRecords.value) ? attendanceRecords.value : [];
     const todayRecords = records.filter(record => record.date.split('T')[0] === today);
     const latestRecord = todayRecords[todayRecords.length - 1];
-    isTimedIn.value = latestRecord && latestRecord.morningTimeIn && !latestRecord.morningTimeOut; // Updated fields
-    console.log('Checked Timed In Status:', { today, todayRecords, latestRecord, isTimedIn: isTimedIn.value });
+    const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+    if (latestRecord) {
+        if (currentTime < LUNCH_START && latestRecord.morningTimeIn && !latestRecord.morningTimeOut) {
+            isTimedIn.value = true;
+        } else if (currentTime >= AFTERNOON_START_THRESHOLD && latestRecord.afternoonTimeIn && !latestRecord.afternoonTimeOut) {
+            isTimedIn.value = true; 
+        } else {
+            isTimedIn.value = false;
+        }
+    } else {
+        isTimedIn.value = false;
+    }
 }
 
 function canTimeIn() {
-    const now = new Date();
-    const currentTime = now.toLocaleTimeString('en-US', { hour12: false });
-    return currentTime >= EARLY_TIME_IN_THRESHOLD;
+    const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+    return now >= EARLY_TIME_IN_THRESHOLD && (now < LUNCH_START || now >= AFTERNOON_START_THRESHOLD);
 }
 
 function canTimeOut() {
-    const now = new Date();
-    const currentTime = now.toLocaleTimeString('en-US', { hour12: false });
-    return currentTime >= EARLY_TIME_OUT_THRESHOLD;
+    const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+    return now >= EARLY_TIME_OUT_THRESHOLD;
 }
 
 async function timeIn() {
     if (!canTimeIn()) {
-        alert('Time In is only allowed after 6:00 AM.');
+        alert('Time In allowed after 6:00 AM or 1:00 PM.');
         return;
     }
     isLoading.value = true;
     try {
         if (!authStore.employee || !authStore.employee._id) {
-            console.error('No employee ID available for time in');
             alert('Please log in again to refresh your profile');
             return;
         }
-        const payload = { employeeId: authStore.employee._id };
-        console.log('Time In Payload:', payload);
+        const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const isAfternoon = now >= AFTERNOON_START_THRESHOLD;
+        const payload = {
+            employeeId: authStore.employee._id,
+            timeType: isAfternoon ? 'afternoon' : 'morning'
+        };
         const response = await fetch(`${BASE_API_URL}/api/attendance/time-in`, {
             method: 'POST',
             headers: {
@@ -155,19 +170,14 @@ async function timeIn() {
             },
             body: JSON.stringify(payload),
         });
-
         const responseData = await response.json();
-        console.log('Time In Response:', response.status, responseData);
-
         if (response.ok) {
             attendanceRecords.value.push(responseData);
             await checkTimedInStatus();
         } else {
-            console.log('Time In Error:', responseData.message);
             alert(responseData.message || 'Failed to time in');
         }
     } catch (error) {
-        console.error('Error during time in:', error);
         alert('An error occurred while timing in');
     } finally {
         isLoading.value = false;
@@ -176,13 +186,12 @@ async function timeIn() {
 
 async function timeOut() {
     if (!canTimeOut()) {
-        alert('Time Out is only allowed after 11:30 AM.');
+        alert('Time Out allowed after 11:30 AM.');
         return;
     }
     isLoading.value = true;
     try {
         if (!authStore.employee || !authStore.employee._id) {
-            console.error('No employee ID available for time out');
             alert('Please log in again to refresh your profile');
             return;
         }
@@ -195,10 +204,7 @@ async function timeOut() {
             },
             body: JSON.stringify(payload),
         });
-
         const responseData = await response.json();
-        console.log('Time Out Response:', response.status, responseData);
-
         if (response.ok) {
             const updatedRecord = responseData;
             const index = attendanceRecords.value.findIndex(record => record._id === updatedRecord._id);
@@ -210,7 +216,6 @@ async function timeOut() {
             alert(responseData.message || 'Failed to time out');
         }
     } catch (error) {
-        console.error('Error during time out:', error);
         alert('An error occurred while timing out');
     } finally {
         isLoading.value = false;
@@ -342,10 +347,16 @@ const handleImageError = () => {
                                             Date</th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Time In</th>
+                                            Morning In</th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Time Out</th>
+                                            Morning Out</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Afternoon In</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Afternoon Out</th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Status</th>
@@ -353,15 +364,16 @@ const handleImageError = () => {
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <tr v-for="record in attendanceRecords" :key="record._id" class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ formatDate(record.date) }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ formatTime(record.morningTimeIn) }} <!-- Updated to morningTimeIn -->
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ formatTime(record.morningTimeOut) }} <!-- Updated to morningTimeOut -->
-                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
+                                            formatDate(record.date) }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
+                                            formatTime(record.morningTimeIn) }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
+                                            formatTime(record.morningTimeOut) }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
+                                            formatTime(record.afternoonTimeIn) }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
+                                            formatTime(record.afternoonTimeOut) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm"><span
                                                 :class="getStatusClass(record.status)">{{ record.status }}</span></td>
                                     </tr>
