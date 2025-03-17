@@ -9,7 +9,9 @@ import {
 } from '../../utils/payrollCalculations.js';
 export const getEmployeeById = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const employee = await Employee.findById(id).select('-password');
+    const employee = await Employee.findById(id)
+        .select('-password')
+        .populate('position', 'name');
     if (!employee) {
         return res.status(404).json({ message: 'Employee not found' });
     }

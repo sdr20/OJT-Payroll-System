@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from '@/stores/auth.store';
+import { useAuthStore } from '@/stores/auth.store.js';
 import UpdateDetailsForm from './partials/UpdateDetailsForm.vue';
 import UpdatePasswordForm from './partials/UpdatePasswordForm.vue';
 import UploadProfilePicture from './partials/UploadProfilePicture.vue';
@@ -42,7 +42,7 @@ const handleEmployeeUpdated = (updatedEmployee) => {
 
 <template>
     <div class="space-y-2">
-        <h2 class="pb-5 text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+        <h2 class="pb-5 text-xl font-semibold leading-tight text-gray-800">
             Settings
         </h2>
 
@@ -53,14 +53,14 @@ const handleEmployeeUpdated = (updatedEmployee) => {
             {{ error }}
         </div>
         <div v-else-if="employee" class="space-y-3">
-            <div class="bg-white p-4 shadow sm:rounded-lg sm:p-8 dark:bg-gray-800">
+            <div class="bg-white p-4 shadow sm:rounded-lg sm:p-8">
                 <UploadProfilePicture :employee="employee" @employee-updated="handleEmployeeUpdated"
                     class="max-w-3xl" />
             </div>
-            <div class="bg-white p-4 shadow sm:rounded-lg sm:p-8 dark:bg-gray-800">
+            <div class="bg-white p-4 shadow sm:rounded-lg sm:p-8">
                 <UpdateDetailsForm :employee="employee" @employee-updated="handleEmployeeUpdated" class="max-w-3xl" />
             </div>
-            <div class="bg-white p-4 shadow sm:rounded-lg sm:p-8 dark:bg-gray-800">
+            <div class="bg-white p-4 shadow sm:rounded-lg sm:p-8">
                 <UpdatePasswordForm class="max-w-3xl" />
             </div>
         </div>

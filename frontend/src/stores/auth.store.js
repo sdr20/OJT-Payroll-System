@@ -21,7 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function fetchEmployeeDetails(id) {
         try {
-            const response = await fetch(`${BASE_API_URL}/api/employees/${id}`, {
+            const response = await fetch(`${BASE_API_URL}/api/employee/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${accessToken.value}`,
                     'Content-Type': 'application/json'

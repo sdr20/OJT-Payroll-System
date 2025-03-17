@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth.store.js';
 import { useRouter } from 'vue-router';
 import { computed } from 'vue';
 import Dropdown from '../components/Dropdown.vue';
+import { BASE_API_URL } from '@/utils/constants';
 import DropdownLink from '../components/DropdownLink.vue';
 
 const router = useRouter();
