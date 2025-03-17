@@ -187,7 +187,7 @@ export default {
 <template>
     <div class="min-h-screen bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Stats Overview -->
+            <!-- Stats Overview (unchanged) -->
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div
                     class="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
@@ -251,6 +251,7 @@ export default {
                 </div>
             </div>
 
+            <!-- Buttons (unchanged) -->
             <div class="mt-8 flex space-x-4">
                 <button @click="refreshAttendance"
                     class="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
@@ -303,14 +304,28 @@ export default {
                                     class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <div class="flex items-center space-x-2">
                                         <span class="material-icons text-gray-400">login</span>
-                                        <span>Sign In</span>
+                                        <span>Morning In</span>
                                     </div>
                                 </th>
                                 <th
                                     class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <div class="flex items-center space-x-2">
                                         <span class="material-icons text-gray-400">logout</span>
-                                        <span>Sign Out</span>
+                                        <span>Morning Out</span>
+                                    </div>
+                                </th>
+                                <th
+                                    class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="material-icons text-gray-400">login</span>
+                                        <span>Afternoon In</span>
+                                    </div>
+                                </th>
+                                <th
+                                    class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="material-icons text-gray-400">logout</span>
+                                        <span>Afternoon Out</span>
                                     </div>
                                 </th>
                                 <th
@@ -332,7 +347,7 @@ export default {
                         <tbody class="divide-y divide-gray-200">
                             <template v-if="isLoading">
                                 <tr v-for="n in 5" :key="n" class="animate-pulse">
-                                    <td v-for="m in 6" :key="m" class="px-6 py-4">
+                                    <td v-for="m in 8" :key="m" class="px-6 py-4">
                                         <div class="h-4 bg-gray-200 rounded"></div>
                                     </td>
                                 </tr>
@@ -349,7 +364,13 @@ export default {
                                         {{ formatTime(record.morningTimeIn) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ formatTime(record.morningTimeOut || record.afternoonTimeOut) }}
+                                        {{ formatTime(record.morningTimeOut) }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ formatTime(record.afternoonTimeIn) }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ formatTime(record.afternoonTimeOut) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium"
                                         :class="getStatusClass(record.status)">

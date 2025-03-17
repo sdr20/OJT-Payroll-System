@@ -236,7 +236,7 @@
 <script>
 import axios from 'axios';
 import moment from 'moment';
-import { BASE_API_URL } from '@/utils/constants';
+import { BASE_API_URL } from '@/utils/constants.js';
 
 export default {
     name: 'EmployeeAttendance',
@@ -303,8 +303,8 @@ export default {
             this.isLoading = true;
             this.statusMessage = 'Loading data...';
             try {
-                const empResponse = await axios.get(`${BASE_API_URL}/api/employees`, {
-                    headers: { 'user-role': 'admin' },
+                const empResponse = await axios.get(`${BASE_API_URL}/api/employee`, {
+                    headers: { "Content-Type": "application/json" },
                 }).catch(error => {
                     throw new Error(`Employees API failed: ${error.message}`);
                 });
@@ -322,7 +322,7 @@ export default {
 
                 const attResponse = await axios.get(`${BASE_API_URL}/api/attendance`, {
                     params: { date: this.date },
-                    headers: { 'user-role': 'admin' },
+                    headers: { "Content-Type": "application/json" },
                 }).catch(error => {
                     console.error('Attendance API response:', error.response?.data);
                     throw new Error(`Attendance API failed: ${error.message}`);
@@ -465,7 +465,7 @@ export default {
                 const response = await axios.put(
                     `${BASE_API_URL}/api/attendance/${employee.id}`,
                     payload,
-                    { headers: { 'user-role': 'admin' } }
+                    { headers: { "Content-Type": "application/json" }, }
                 );
 
                 if (response.status === 200) {
