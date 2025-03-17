@@ -65,7 +65,7 @@ export default {
                 ['Date', 'Employee ID', 'Name', 'Position', 'Sign In Time', 'Sign Out Time', 'Status'],
                 ...attendanceStore.attendanceRecords.map((record) => [
                     currentDate,
-                    record.employeeId?.employeeIdNumber || 'N/A',
+                    record.employeeId?.empNo || 'N/A',
                     `${record.employeeId?.firstName} ${record.employeeId?.lastName}`,
                     record.employeeId?.position || 'N/A',
                     formatTime(record.timeIn),
@@ -116,7 +116,7 @@ export default {
         const logout = () => {
             localStorage.removeItem('userId');
             localStorage.removeItem('userRole');
-            router.push('/login');
+            router.push('/admin/login');
         };
 
         // Modal controls
@@ -340,7 +340,7 @@ export default {
                                         {{ record.employeeId?.firstName }} {{ record.employeeId?.lastName }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ record.employeeId?.position || 'N/A' }}
+                                        {{ record.employeeId?.position?.name || 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ formatTime(record.timeIn) }}

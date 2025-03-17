@@ -20,7 +20,9 @@ export const getEmployeeById = asyncHandler(async (req, res) => {
 
 export const getAllEmployees = asyncHandler(async (req, res) => {
     try {
-        const employees = await Employee.find({ status: { $ne: 'trashed' } }).select('-password');
+        const employees = await Employee.find({ status: { $ne: 'trashed' } })
+            .select('-password')
+            .populate('position', 'name');
         res.status(200).json(employees);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching employees', error: error.message });

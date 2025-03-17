@@ -32,57 +32,35 @@ export const getLateEmployeesCount = asyncHandler(async (req, res) => {
  */
 export const updateAttendance = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { morningTimeIn, morningTimeOut, afternoonTimeIn, afternoonTimeOut, status } = req.body;
+    const { timeIn, timeOut, status } = req.body;
 
     if (!isValidObjectId(id)) {
         return res.status(400).json({ message: 'Invalid attendance ID' });
     }
 
-    console.log('Received payload:', req.body);
-
     const attendance = await Attendance.findById(id);
-    if (!attendanceच्च
-
-) {
+    if (!attendance) {
         return res.status(404).json({ message: 'Attendance record not found' });
     }
 
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
 
-    if (morningTimeIn !== undefined) {
-        if (morningTimeIn !== null && !timeRegex.test(morningTimeIn)) {
-            console.log('Validation failed for morningTimeIn:', morningTimeIn);
-            return res.status(400).json({ message: 'Invalid morningTimeIn format (HH:mm:ss)' });
+    if (timeIn !== undefined) {
+        if (timeIn !== null && !timeRegex.test(timeIn)) {
+            return res.status(400).json({ message: 'Invalid timeIn format (HH:mm:ss)' });
         }
-        attendance.morningTimeIn = morningTimeIn;
-        if (morningTimeIn) {
+        attendance.timeIn = timeIn;
+        if (timeIn) {
             const OFFICE_START = "08:00:00";
-            attendance.status = morningTimeIn <= OFFICE_START ? 'Present' : 'Late';
+            attendance.status = timeIn <= OFFICE_START ? 'Present' : 'Late';
         }
     }
 
-    if (morningTimeOut !== undefined) {
-        if (morningTimeOut !== null && !timeRegex.test(morningTimeOut)) {
-            console.log('Validation failed for morningTimeOut:', morningTimeOut);
-            return res.status(400).json({ message: 'Invalid morningTimeOut format (HH:mm:ss)' });
+    if (timeOut !== undefined) {
+        if (timeOut !== null && !timeRegex.test(timeOut)) {
+            return res.status(400).json({ message: 'Invalid timeOut format (HH:mm:ss)' });
         }
-        attendance.morningTimeOut = morningTimeOut;
-    }
-
-    if (afternoonTimeIn !== undefined) {
-        if (afternoonTimeIn !== null && !timeRegex.test(afternoonTimeIn)) {
-            console.log('Validation failed for afternoonTimeIn:', afternoonTimeIn);
-            return res.status(400).json({ message: 'Invalid afternoonTimeIn format (HH:mm:ss)' });
-        }
-        attendance.afternoonTimeIn = afternoonTimeIn;
-    }
-
-    if (afternoonTimeOut !== undefined) {
-        if (afternoonTimeOut !== null && !timeRegex.test(afternoonTimeOut)) {
-            console.log('Validation failed for afternoonTimeOut:', afternoonTimeOut);
-            return res.status(400).json({ message: 'Invalid afternoonTimeOut format (HH:mm:ss)' });
-        }
-        attendance.afternoonTimeOut = afternoonTimeOut;
+        attendance.timeOut = timeOut;
     }
 
     if (status) {
@@ -90,10 +68,14 @@ export const updateAttendance = asyncHandler(async (req, res) => {
     }
 
     await attendance.save();
-    const updatedAttendance = await Attendance.findById(id).populate(
-        'employeeId',
-        'firstName lastName empNo position'
-    );
+    const updatedAttendance = await Attendance.findById(id).populate({
+        path: 'employeeId',
+        select: 'firstName lastName empNo position',
+        populate: {
+            path: 'position',
+            select: 'name'
+        }
+    });
     res.status(200).json(updatedAttendance);
 });
 
@@ -119,27 +101,43 @@ export const timeIn = asyncHandler(async (req, res) => {
     }
 
     const existingRecord = await Attendance.findOne({ employeeId, date: currentDate });
-    if (existingRecord && existingRecord.morningTimeIn) {
+    if (existingRecord && existingRecord.timeIn) {
         return res.status(400).json({ message: 'You are already Timed In for today.' });
     }
 
     let status = currentTime <= OFFICE_START ? 'Present' : 'Late';
     if (currentTime > CUTOFF_TIME && existingRecord && existingRecord.status === 'Absent') {
-        existingRecord.morningTimeIn = currentTime;
+        existingRecord.timeIn = currentTime;
         existingRecord.status = 'Late';
         await existingRecord.save();
-        return res.status(200).json(existingRecord);
+        const populatedRecord = await Attendance.findById(existingRecord._id).populate({
+            path: 'employeeId',
+            select: 'firstName lastName empNo position',
+            populate: {
+                path: 'position',
+                select: 'name'
+            }
+        });
+        return res.status(200).json(populatedRecord);
     }
 
     const attendance = new Attendance({
         employeeId,
         date: currentDate,
-        morningTimeIn: currentTime,
+        timeIn: currentTime,
         status,
     });
 
     await attendance.save();
-    res.status(200).json(attendance);
+    const populatedAttendance = await Attendance.findById(attendance._id).populate({
+        path: 'employeeId',
+        select: 'firstName lastName empNo position',
+        populate: {
+            path: 'position',
+            select: 'name'
+        }
+    });
+    res.status(200).json(populatedAttendance);
 });
 
 /**
@@ -158,21 +156,28 @@ export const timeOut = asyncHandler(async (req, res) => {
     const EARLY_THRESHOLD = "11:30:00";
 
     const attendance = await Attendance.findOne({ employeeId, date: currentDate });
-    if (!attendance || !attendance.morningTimeIn) {
+    if (!attendance || !attendance.timeIn) {
         return res.status(400).json({ message: 'No Time In record found for today. Please Time In first.' });
     }
-    if (attendance.afternoonTimeOut) {
+    if (attendance.timeOut) {
         return res.status(400).json({ message: 'You have already Timed Out for today.' });
     }
     if (currentTime < EARLY_THRESHOLD) {
         return res.status(400).json({ message: 'Time Out is not allowed before 11:30 AM' });
     }
 
-    attendance.afternoonTimeOut = currentTime;
+    attendance.timeOut = currentTime;
     await attendance.save();
-    res.status(200).json(attendance);
+    const populatedAttendance = await Attendance.findById(attendance._id).populate({
+        path: 'employeeId',
+        select: 'firstName lastName empNo position',
+        populate: {
+            path: 'position',
+            select: 'name'
+        }
+    });
+    res.status(200).json(populatedAttendance);
 });
-
 /**
  * @desc check employee's absent
  * @route GET /api/attendance/check-absent
@@ -182,7 +187,9 @@ export const checkAbsent = asyncHandler(async (req, res) => {
     const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
     const CUTOFF_TIME = "13:00:00";
 
-    const attendanceRecords = await Attendance.find({ date: today });
+    const attendanceRecords = await Attendance.find({ date: today })
+        .populate('employeeId', 'firstName lastName position')
+        .populate('position', 'name');
     const presentEmployeeIds = attendanceRecords
         .filter(record => record.morningTimeIn)
         .map(record => record.employeeId.toString());
@@ -245,7 +252,14 @@ export const createAttendance = asyncHandler(async (req, res) => {
  * @route GET /api/attendance
  */
 export const getAllAttendance = asyncHandler(async (req, res) => {
-    const attendance = await Attendance.find().populate('employeeId', 'firstName lastName empNo position');
+    const attendance = await Attendance.find().populate({
+        path: 'employeeId',
+        select: 'firstName lastName empNo position',
+        populate: {
+            path: 'position',
+            select: 'name'
+        }
+    });
     res.status(200).json(attendance);
 });
 
@@ -265,6 +279,14 @@ export const getAttendanceByEmployeeId = asyncHandler(async (req, res) => {
 
     const totalRecords = await Attendance.countDocuments({ employeeId });
     const attendanceRecords = await Attendance.find({ employeeId })
+        .populate({
+            path: 'employeeId',
+            select: 'firstName lastName empNo position',
+            populate: {
+                path: 'position',
+                select: 'name'
+            }
+        })
         .sort({ date: -1 })
         .skip(skip)
         .limit(limit);
