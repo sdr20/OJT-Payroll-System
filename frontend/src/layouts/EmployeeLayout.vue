@@ -12,7 +12,7 @@ const employee = computed(() => authStore.employee);
 const menuItems = [
     { name: 'Dashboard', path: '/employee/dashboard', icon: 'home' },
     { name: 'Salary Slips', path: '/employee/salary-slips', icon: 'description' },
-    { name: 'Leave Management', path: '/employee/employee-leave-request', icon: 'event' },
+    { name: 'Leave Management', path: '/employee/leave/request', icon: 'event' },
     { name: 'Holidays', path: '/employee/holidays', icon: 'beach_access' },
 ];
 

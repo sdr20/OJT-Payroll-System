@@ -32,7 +32,7 @@ export default {
             try {
                 const response = await axios.post(
                     'http://localhost:7777/api/admin/login',
-                    { username: this.username.trim(), password: this.password.trim() }, // Changed email to username
+                    { username: this.username.trim(), password: this.password.trim() },
                     { headers: { 'Content-Type': 'application/json' } }
                 );
 
@@ -43,10 +43,10 @@ export default {
 
                 // Extract token and admin data
                 const { token, id, username, email } = response.data;
-                const admin = { id, username, email, role: 'admin' }; // Add role for authStore
-                this.authStore.setAdmin(admin); // Changed from login to setAdmin
-                this.authStore.setAccessToken(token); // Explicitly set token
-                this.$router.push('/admin');
+                const admin = { id, username, email, role: 'admin' };
+                this.authStore.setAdmin(admin);
+                this.authStore.setAccessToken(token);
+                this.$router.push('/admin/dashboard');
             } catch (error) {
                 this.loginError = true;
                 this.errorMessage = error.response?.data?.message || error.message || 'An unexpected error occurred';
@@ -101,15 +101,16 @@ export default {
                         <label for="username" class="text-sm font-medium text-gray-700">Admin Username</label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="#1e2939">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
-                            <input v-model="username" type="text" id="username" name="username" :class="['block w-full pl-10 pr-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300 ease-in-out hover:border-indigo-300',
-                                loginError ? 'border-red-300' : 'border-gray-300']" placeholder="Enter admin username"
-                                required />
+                            <input v-model="username" type="text" id="username" name="username" :class="[
+                                'block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-300 outline-none backdrop-blur-sm transition-all duration-300 ease-in-out hover:border-indigo-300',
+                                loginError ? 'border-red-300' : 'border-gray-300'
+                            ]" placeholder="Enter admin username" required />
                         </div>
                     </div>
 
@@ -117,13 +118,13 @@ export default {
                         <label for="password" class="text-sm font-medium text-gray-700">Password</label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="#1e2939">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
                             </div>
-                            <input v-model="password" type="password" id="password" name="password" :class="['block w-full pl-10 pr-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300 ease-in-out hover:border-indigo-300',
+                            <input v-model="password" type="password" id="password" name="password" :class="['block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-300 outline-none backdrop-blur-sm transition-all duration-300 ease-in-out hover:border-indigo-300',
                                 loginError ? 'border-red-300' : 'border-gray-300']" placeholder="Enter your password"
                                 required />
                         </div>

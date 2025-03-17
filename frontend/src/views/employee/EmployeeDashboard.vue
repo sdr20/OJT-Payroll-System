@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { BASE_API_URL } from '../../utils/constants.js';
+import { useRouter } from 'vue-router';
+import { BASE_API_URL } from '@/utils/constants.js';
 import { useAuthStore } from '@/stores/auth.store.js';
 
 const authStore = useAuthStore();
@@ -47,8 +48,8 @@ async function getEmployeeProfile() {
         if (response.ok) {
             const employeeData = await response.json();
             employee.value = employeeData;
-            authStore.employee = { ...employeeData, _id: employeeData.id };
-            console.log('Fetched employee profile:', employeeData); // Debug log
+            authStore.employee = { ...employeeData, _id: employeeData.id, empNo: employeeData.empNo }; // Include empNo
+            console.log('Fetched employee profile:', employeeData);
         } else {
             throw new Error(await response.text());
         }
@@ -59,10 +60,10 @@ async function getEmployeeProfile() {
 
 async function fetchSalaryDetails() {
     try {
-        const employeeId = authStore.employee?.empNo;
-        if (!employeeId) return;
+        const empNo = authStore.employee?.empNo;
+        if (!empNo) return;
 
-        const response = await fetch(`${BASE_API_URL}/api/employee/${employeeId}/salary?month=${new Date().toISOString().slice(0, 7)}`, {
+        const response = await fetch(`${BASE_API_URL}/api/employee/${empNo}/salary?month=${new Date().toISOString().slice(0, 7)}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
@@ -71,6 +72,7 @@ async function fetchSalaryDetails() {
 
         if (response.ok) {
             const salaryData = await response.json();
+            console.log('Salary Data:', salaryData); // Debug log
             employee.value = { ...employee.value, ...salaryData };
         } else {
             throw new Error(await response.text());
@@ -97,7 +99,8 @@ async function fetchAttendanceRecords() {
         });
 
         if (response.ok) {
-            attendanceRecords.value = await response.json();
+            const data = await response.json();
+            attendanceRecords.value = data.records;
         } else if (response.status === 404) {
             attendanceRecords.value = [];
         } else {
@@ -111,9 +114,10 @@ async function fetchAttendanceRecords() {
 
 async function checkTimedInStatus() {
     const today = new Date().toISOString().split('T')[0];
-    const todayRecords = attendanceRecords.value.filter(record => record.date.split('T')[0] === today);
+    const records = Array.isArray(attendanceRecords.value) ? attendanceRecords.value : [];
+    const todayRecords = records.filter(record => record.date.split('T')[0] === today);
     const latestRecord = todayRecords[todayRecords.length - 1];
-    isTimedIn.value = latestRecord && latestRecord.timeIn && !latestRecord.timeOut;
+    isTimedIn.value = latestRecord && latestRecord.morningTimeIn && !latestRecord.morningTimeOut; // Updated fields
     console.log('Checked Timed In Status:', { today, todayRecords, latestRecord, isTimedIn: isTimedIn.value });
 }
 
@@ -142,6 +146,7 @@ async function timeIn() {
             return;
         }
         const payload = { employeeId: authStore.employee._id };
+        console.log('Time In Payload:', payload);
         const response = await fetch(`${BASE_API_URL}/api/attendance/time-in`, {
             method: 'POST',
             headers: {
@@ -158,6 +163,7 @@ async function timeIn() {
             attendanceRecords.value.push(responseData);
             await checkTimedInStatus();
         } else {
+            console.log('Time In Error:', responseData.message);
             alert(responseData.message || 'Failed to time in');
         }
     } catch (error) {
@@ -297,8 +303,8 @@ const handleImageError = () => {
                     <div>
                         <h1 class="text-xl font-bold text-gray-800">{{ `${employee.firstName} ${employee.lastName}` }}
                         </h1>
-                        <p class="text-sm text-gray-500">ID: {{ employee.empNo }} | {{ employee.position }}
-                        </p>
+                        <p class="text-sm text-gray-500">ID: {{ employee.empNo }} | {{
+                            employee.position?.name || 'N/A' }}</p>
                     </div>
                 </div>
             </div>
@@ -348,11 +354,14 @@ const handleImageError = () => {
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <tr v-for="record in attendanceRecords" :key="record._id" class="hover:bg-gray-50">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ formatDate(record.date) }}</td>
+                                            {{ formatDate(record.date) }}
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ formatTime(record.timeIn) }}</td>
+                                            {{ formatTime(record.morningTimeIn) }} <!-- Updated to morningTimeIn -->
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ formatTime(record.timeOut) }}</td>
+                                            {{ formatTime(record.morningTimeOut) }} <!-- Updated to morningTimeOut -->
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm"><span
                                                 :class="getStatusClass(record.status)">{{ record.status }}</span></td>
                                     </tr>

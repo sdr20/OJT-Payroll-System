@@ -39,7 +39,7 @@ export const updatePayHead = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!payHead) {
-            return res.status(404).json({ message: 'Payhead not found' });
+            return res.status(404).json({ message: 'PayHead not found' });
         }
         res.status(200).json(payHead);
     } catch (error) {
@@ -56,11 +56,11 @@ export const deletePayHead = async (req, res) => {
     }
 
     try {
-        const payHead = await PayHead.findByIdAndDelete(id);
+        const payHead = await PayHead.findByIdAndDelete(id); // Changed from PayHead to PayHead
         if (!payHead) {
-            return res.status(404).json({ message: 'Payhead not found' });
+            return res.status(404).json({ message: 'PayHead not found' });
         }
-        res.status(200).json({ message: 'Payhead deleted successfully' });
+        res.status(200).json({ message: 'PayHead deleted successfully' });
     } catch (error) {
         console.error('Error deleting payhead:', error);
         res.status(500).json({ message: 'Failed to delete payhead: ' + error.message });

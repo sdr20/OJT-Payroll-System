@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue'; // Added computed import
+import { ref, computed } from 'vue';
 import { BASE_API_URL } from '../utils/constants.js';
 
 export const useAuthStore = defineStore('auth', () => {

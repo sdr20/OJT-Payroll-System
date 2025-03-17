@@ -79,10 +79,10 @@ const employeeSchema = new Schema({
         travelExpenses: { type: Number, default: 0 },
         otherEarnings: { type: Number, default: 0 },
     },
-    payheads: [
+    payHead: [
         { 
             type: Schema.Types.ObjectId, 
-            ref: 'Payhead' 
+            ref: 'PayHead' 
         }
     ],
     commission: { type: Number, default: 0 },

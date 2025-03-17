@@ -215,22 +215,27 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { month } = req.query;
 
+    console.log('Fetching salary slip for empNo:', id, 'month:', month);
+
     try {
-        const employee = await Employee.findOne({ empNo: id }).populate('payHeads');
+        const employee = await Employee.findOne({ empNo: id }).populate('payHead'); // Changed from payheads to payHead
         if (!employee) {
+            console.log('Employee not found for empNo:', id);
             return res.status(404).json({ message: 'Employee not found' });
         }
+
+        console.log('Found employee:', employee);
 
         const baseSalary = employee.salary || 0;
         const sssContribution = calculateSSSContribution(baseSalary);
         const philHealthContribution = calculatePhilHealthContribution(baseSalary);
         const pagIbigContribution = calculatePagIBIGContribution(baseSalary);
         
-        const earnings = employee.payHeads.filter(p => p.type === 'Earnings');
+        const earnings = employee.payHead.filter(p => p.type === 'Earnings'); // Changed from payheads to payHead
         const totalEarningsFromPayHeads = earnings.reduce((sum, p) => sum + p.amount, 0);
         const totalEarnings = baseSalary + totalEarningsFromPayHeads;
 
-        const deductions = employee.payHeads.filter(p => p.type === 'Deductions');
+        const deductions = employee.payHead.filter(p => p.type === 'Deductions'); // Changed from payheads to payHead
         const totalCustomDeductions = deductions.reduce((sum, p) => sum + p.amount, 0);
         const withholdingTax = calculateWithholdingTax(totalEarnings);
         const totalDeductions = totalCustomDeductions + sssContribution + philHealthContribution + pagIbigContribution + withholdingTax;
@@ -239,7 +244,7 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
         const hourlyRate = baseSalary / (8 * 22);
 
         const salarySlip = {
-            id: employee._id, // Use MongoDB _id for consistency with frontend
+            id: employee._id,
             empNo: employee.empNo,
             name: `${employee.firstName} ${employee.middleName} ${employee.lastName}`.trim(),
             hourlyRate,
@@ -248,10 +253,10 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
             hireDate: employee.hireDate ? employee.hireDate.toISOString().split('T')[0] : 'N/A',
             civilStatus: employee.civilStatus || 'SINGLE',
             dependents: employee.dependents || 0,
-            sss: employee.sss || 'N/A', // Match model field
+            sss: employee.sss || 'N/A',
             tin: employee.tin || 'N/A',
-            philHeath: employee.philHealth || 'N/A', // Match model field
-            pagIbig: employee.pagIbig || 'N/A', // Match model field
+            philHeath: employee.philHealth || 'N/A',
+            pagIbig: employee.pagibig || 'N/A',
             position: employee.position || 'N/A',
             earnings: earnings.map(p => ({ name: p.name, amount: p.amount })),
             deductions: {
@@ -267,6 +272,7 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
             salaryMonth: month
         };
 
+        console.log('Generated salary slip:', salarySlip);
         res.status(200).json(salarySlip);
     } catch (error) {
         console.error('Error fetching salary slip:', error);
@@ -282,7 +288,6 @@ export const getProfile = asyncHandler(async (req, res) => {
     if (!employee) {
         return res.status(404).json({ error: 'Employee not found' });
     }
-
     const employeeObj = employee.toObject();
     res.status(200).json({
         id: employeeObj._id,

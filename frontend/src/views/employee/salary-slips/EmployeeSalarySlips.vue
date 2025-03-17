@@ -129,7 +129,7 @@ export default {
                 if (!userId) {
                     this.errorMessage = 'User not logged in. Redirecting to login...';
                     setTimeout(() => {
-                        this.$router.push('/login');
+                        this.$router.push('/employee/login');
                     }, 2000);
                     return;
                 }
