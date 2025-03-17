@@ -48,7 +48,7 @@ async function getEmployeeProfile() {
             const employeeData = await response.json();
             employee.value = employeeData;
             authStore.employee = { ...employeeData, _id: employeeData.id };
-            console.log('Fetched employee profile:', employeeData); 
+            console.log('Fetched employee profile:', employeeData); // Debug log
         } else {
             throw new Error(await response.text());
         }
@@ -62,7 +62,7 @@ async function fetchSalaryDetails() {
         const employeeId = authStore.employee?.empNo;
         if (!employeeId) return;
 
-        const response = await fetch(`${BASE_API_URL}/api/employees/${employeeId}/salary?month=${new Date().toISOString().slice(0, 7)}`, {
+        const response = await fetch(`${BASE_API_URL}/api/employee/${employeeId}/salary?month=${new Date().toISOString().slice(0, 7)}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',

@@ -239,7 +239,7 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
         const hourlyRate = baseSalary / (8 * 22);
 
         const salarySlip = {
-            id: employee._id,
+            id: employee._id, // Use MongoDB _id for consistency with frontend
             empNo: employee.empNo,
             name: `${employee.firstName} ${employee.middleName} ${employee.lastName}`.trim(),
             hourlyRate,
@@ -248,10 +248,10 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
             hireDate: employee.hireDate ? employee.hireDate.toISOString().split('T')[0] : 'N/A',
             civilStatus: employee.civilStatus || 'SINGLE',
             dependents: employee.dependents || 0,
-            sss: employee.sss || 'N/A',
+            sss: employee.sss || 'N/A', // Match model field
             tin: employee.tin || 'N/A',
-            philHeath: employee.philHealth || 'N/A',
-            pagIbig: employee.pagIbig || 'N/A',
+            philHeath: employee.philHealth || 'N/A', // Match model field
+            pagIbig: employee.pagIbig || 'N/A', // Match model field
             position: employee.position || 'N/A',
             earnings: earnings.map(p => ({ name: p.name, amount: p.amount })),
             deductions: {
@@ -276,7 +276,9 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
 
 export const getProfile = asyncHandler(async (req, res) => {
     console.log('req.employeeId:', req.employeeId);
-    const employee = await Employee.findById(req.employeeId).select('-password');
+    const employee = await Employee.findById(req.employeeId)
+        .select('-password')
+        .populate('position', 'name');
     if (!employee) {
         return res.status(404).json({ error: 'Employee not found' });
     }
