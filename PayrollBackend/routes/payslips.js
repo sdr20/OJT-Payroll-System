@@ -17,6 +17,10 @@ const isAdmin = (req, res, next) => {
 router.get('/:employeeId', isAdmin, async (req, res) => {
   try {
     const employeeId = parseInt(req.params.employeeId);
+    if (isNaN(employeeId)) {
+      return res.status(400).json({ error: 'Invalid employeeId format' });
+    }
+
     const payslips = await Payslip.find({ employeeId }).sort({ salaryMonth: 1, paydayType: 1 });
 
     if (!payslips || payslips.length === 0) {
@@ -51,16 +55,29 @@ router.post('/generate', isAdmin, async (req, res) => {
       salary
     } = req.body;
 
+    // Validate required fields
     if (!employeeId || !empNo || !payslipData || !salaryMonth || !paydayType || !position || salary === undefined) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const employee = await Employee.findOne({ id: parseInt(employeeId) });
+    const parsedEmployeeId = parseInt(employeeId);
+    if (isNaN(parsedEmployeeId)) {
+      return res.status(400).json({ error: 'Invalid employeeId format' });
+    }
+
+    // Find employee by custom id
+    const employee = await Employee.findOne({ id: parsedEmployeeId });
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    const [year, month] = salaryMonth.split('-');
+    // Validate salaryMonth format
+    const [year, month] = salaryMonth.split('-').map(Number);
+    if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+      return res.status(400).json({ error: 'Invalid salaryMonth format. Use YYYY-MM' });
+    }
+
+    // Calculate payslip date
     const payslipDate = new Date(
       paydayType.toLowerCase() === 'mid-month'
         ? `${year}-${month}-15`
@@ -72,7 +89,11 @@ router.post('/generate', isAdmin, async (req, res) => {
       return res.status(400).json({ error: `Payslip date (${payslipDate.toISOString()}) cannot be before hire date (${employee.hireDate.toISOString()})` });
     }
 
-    const positionHistory = employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    // Handle positionHistory safely
+    const positionHistory = Array.isArray(employee.positionHistory) && employee.positionHistory.length > 0
+      ? employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+      : [{ position: employee.position, salary: employee.salary, startDate: employee.hireDate, endDate: null }];
+
     const activePosition = positionHistory.find(history => {
       const startDate = new Date(history.startDate);
       const endDate = history.endDate ? new Date(history.endDate) : new Date();
@@ -86,7 +107,8 @@ router.post('/generate', isAdmin, async (req, res) => {
     const historyPosition = activePosition.position;
     const historySalary = activePosition.salary;
 
-    if (historyPosition !== position || historySalary !== salary) {
+    // Normalize salary to number for comparison
+    if (historyPosition !== position || Number(historySalary) !== Number(salary)) {
       return res.status(400).json({
         error: 'Position or salary mismatch with historical data',
         details: {
@@ -97,7 +119,7 @@ router.post('/generate', isAdmin, async (req, res) => {
       });
     }
 
-    const existingPayslip = await Payslip.findOne({ employeeId, salaryMonth, paydayType });
+    const existingPayslip = await Payslip.findOne({ employeeId: parsedEmployeeId, salaryMonth, paydayType });
 
     if (existingPayslip) {
       existingPayslip.payslipData = payslipData;
@@ -106,9 +128,9 @@ router.post('/generate', isAdmin, async (req, res) => {
       await existingPayslip.save();
       return res.status(200).json({
         success: true,
-        message: `Payslip updated for employee ID ${employeeId}, ${salaryMonth}, ${paydayType}`,
+        message: `Payslip updated for employee ID ${parsedEmployeeId}, ${salaryMonth}, ${paydayType}`,
         payslip: {
-          employeeId,
+          employeeId: parsedEmployeeId,
           empNo,
           payslipData,
           salaryMonth,
@@ -120,7 +142,7 @@ router.post('/generate', isAdmin, async (req, res) => {
     }
 
     const payslip = new Payslip({
-      employeeId,
+      employeeId: parsedEmployeeId,
       empNo,
       payslipData,
       salaryMonth,
@@ -133,9 +155,9 @@ router.post('/generate', isAdmin, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Payslip generated for employee ID ${employeeId}, ${salaryMonth}, ${paydayType}`,
+      message: `Payslip generated for employee ID ${parsedEmployeeId}, ${salaryMonth}, ${paydayType}`,
       payslip: {
-        employeeId,
+        employeeId: parsedEmployeeId,
         empNo,
         payslipData,
         salaryMonth,
@@ -154,9 +176,13 @@ router.post('/generate', isAdmin, async (req, res) => {
 router.delete('/:employeeId/:salaryMonth/:paydayType', isAdmin, async (req, res) => {
   try {
     const { employeeId, salaryMonth, paydayType } = req.params;
+    const parsedEmployeeId = parseInt(employeeId);
+    if (isNaN(parsedEmployeeId)) {
+      return res.status(400).json({ error: 'Invalid employeeId format' });
+    }
 
     const payslip = await Payslip.findOneAndDelete({
-      employeeId: parseInt(employeeId),
+      employeeId: parsedEmployeeId,
       salaryMonth,
       paydayType
     });
@@ -167,7 +193,7 @@ router.delete('/:employeeId/:salaryMonth/:paydayType', isAdmin, async (req, res)
 
     res.status(200).json({
       success: true,
-      message: `Payslip for employee ID ${employeeId}, ${salaryMonth}, ${paydayType} deleted successfully`
+      message: `Payslip for employee ID ${parsedEmployeeId}, ${salaryMonth}, ${paydayType} deleted successfully`
     });
   } catch (error) {
     console.error('Error deleting payslip:', error);

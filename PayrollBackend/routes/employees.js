@@ -35,7 +35,7 @@ router.post('/login', async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       employee: {
-        id: employee.id,
+        id: employee.id, // Use custom id
         username: employee.username,
         role: employee.role,
         name: `${employee.firstName} ${employee.lastName}`,
@@ -101,19 +101,23 @@ router.post('/', isAdmin, async (req, res) => {
   try {
     console.log('Received employee data:', req.body);
     const maxIdEmployee = await Employee.findOne().sort({ id: -1 });
-    const newId = maxIdEmployee ? maxIdEmployee.id + 1 : 1;
+    const newId = maxIdEmployee && maxIdEmployee.id ? maxIdEmployee.id + 1 : 1;
 
     const hireDate = req.body.hireDate ? new Date(req.body.hireDate) : new Date();
+    if (isNaN(hireDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid hireDate format' });
+    }
+
     const employeeData = {
       ...req.body,
       id: newId,
       hireDate,
-      positionHistory: [{
+      positionHistory: req.body.position ? [{
         position: req.body.position,
-        salary: req.body.salary,
-        startDate: hireDate, // Use hireDate for initial position
+        salary: req.body.salary || 0,
+        startDate: hireDate,
         endDate: null
-      }]
+      }] : []
     };
 
     const employee = new Employee(employeeData);
@@ -150,14 +154,18 @@ router.put('/:id', isAdmin, async (req, res) => {
 
     const { position, salary } = req.body;
     if ((position && position !== employee.position) || (salary !== undefined && salary !== employee.salary)) {
-      const currentHistory = employee.positionHistory.find(h => !h.endDate);
+      const currentHistory = Array.isArray(employee.positionHistory) 
+        ? employee.positionHistory.find(h => !h.endDate) 
+        : null;
       if (currentHistory) {
         currentHistory.endDate = new Date();
+      } else {
+        employee.positionHistory = [];
       }
       employee.positionHistory.push({
         position: position || employee.position,
         salary: salary !== undefined ? salary : employee.salary,
-        startDate: new Date(), // New position starts now
+        startDate: new Date(),
         endDate: null
       });
     }
@@ -174,25 +182,31 @@ router.put('/:id', isAdmin, async (req, res) => {
     console.error('Error updating employee:', error);
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map((err) => err.message);
-      res.status(400).json({ error: 'Validation failed', message: 'Invalid employee data', details: validationErrors });
+      return res.status(400).json({ error: 'Validation failed', details: validationErrors });
     } else if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      res.status(400).json({ error: 'Duplicate key error', message: `${field} already exists` });
-    } else {
-      res.status(500).json({ error: 'Failed to update employee', message: error.message });
+      return res.status(400).json({ error: 'Duplicate key error', message: `${field} already exists` });
+    } else if (error.name === 'CastError') {
+      return res.status(400).json({ error: 'Invalid ID format' });
     }
+    return res.status(500).json({ error: 'Failed to update employee', message: error.message });
   }
 });
 
 // DELETE an employee by ID
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
-    const result = await Employee.deleteOne({ id: parseInt(req.params.id) });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid employee ID' });
+    }
+
+    const result = await Employee.deleteOne({ id });
     if (result.deletedCount === 0) {
-      console.log(`Employee not found for ID: ${req.params.id}`);
+      console.log(`Employee not found for ID: ${id}`);
       return res.status(404).json({ error: 'Employee not found' });
     }
-    console.log(`Employee deleted with ID: ${req.params.id}`);
+    console.log(`Employee deleted with ID: ${id}`);
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting employee:', error);

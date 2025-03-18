@@ -23,17 +23,27 @@ router.post('/record', isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const employee = await Employee.findOne({ id: parseInt(employeeId) });
+    const parsedEmployeeId = parseInt(employeeId);
+    if (isNaN(parsedEmployeeId)) {
+      return res.status(400).json({ error: 'Invalid employeeId format' });
+    }
+
+    const employee = await Employee.findOne({ id: parsedEmployeeId });
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
     const newStartDate = new Date(startDate);
+    if (isNaN(newStartDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid startDate format' });
+    }
     if (newStartDate < new Date(employee.hireDate)) {
       return res.status(400).json({ error: `startDate (${newStartDate.toISOString()}) cannot be before hireDate (${employee.hireDate.toISOString()})` });
     }
 
-    const sortedHistory = employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    const sortedHistory = Array.isArray(employee.positionHistory) && employee.positionHistory.length > 0
+      ? employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+      : [];
     const currentPosition = sortedHistory.find(p => !p.endDate);
     if (currentPosition) {
       const currentStartDate = new Date(currentPosition.startDate);
@@ -69,7 +79,7 @@ router.post('/record', isAdmin, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Position history updated for employee ID ${employeeId}`,
+      message: `Position history updated for employee ID ${parsedEmployeeId}`,
       employee: {
         id: employee.id,
         name: `${employee.firstName} ${employee.lastName}`,
@@ -92,25 +102,28 @@ router.post('/record', isAdmin, async (req, res) => {
 router.get('/:employeeId', isAdmin, async (req, res) => {
   try {
     const employeeId = parseInt(req.params.employeeId);
-    console.log('Fetching position history for employeeId:', employeeId);
-    const employee = await Employee.findOne({ id: employeeId }).select('firstName lastName positionHistory position salary hireDate');
+    if (isNaN(employeeId)) {
+      return res.status(400).json({ error: 'Invalid employeeId format' });
+    }
 
+    const employee = await Employee.findOne({ id: employeeId }).select('firstName lastName positionHistory position salary hireDate');
     if (!employee) {
-      console.log('Employee not found for ID:', employeeId);
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    const sortedHistory = Array.isArray(employee.positionHistory) && employee.positionHistory.length > 0
+      ? employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+      : [];
 
     res.status(200).json({
       success: true,
       employee: {
-        id: employeeId,
+        id: employee.id,
         name: `${employee.firstName} ${employee.lastName}`,
         position: employee.position,
         salary: employee.salary,
         hireDate: normalizeDate(employee.hireDate),
-        positionHistory: employee.positionHistory.map(history => ({
+        positionHistory: sortedHistory.map(history => ({
           position: history.position,
           salary: history.salary,
           startDate: normalizeDate(history.startDate),
@@ -127,6 +140,10 @@ router.get('/:employeeId', isAdmin, async (req, res) => {
 router.put('/update/:employeeId', isAdmin, async (req, res) => {
   try {
     const employeeId = parseInt(req.params.employeeId);
+    if (isNaN(employeeId)) {
+      return res.status(400).json({ error: 'Invalid employeeId format' });
+    }
+
     const { position, startDate, endDate, newSalary } = req.body;
 
     if (!employeeId || !position || !startDate) {
@@ -190,14 +207,13 @@ router.put('/update/:employeeId', isAdmin, async (req, res) => {
       );
     }
 
-    employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
     await employee.save();
 
     res.status(200).json({
       success: true,
       message: `Position history updated successfully for employee ID ${employeeId}`,
       employee: {
-        id: employeeId,
+        id: employee.id,
         name: `${employee.firstName} ${employee.lastName}`,
         position: employee.position,
         salary: employee.salary,
