@@ -26,7 +26,7 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const fileExtension = path.extname(file.originalname);
-        const fileName = `${req.employeeId || req.adminId}-${Date.now()}${fileExtension}`; // Use adminId if available
+        const fileName = `${req.employeeId || req.adminId}-${Date.now()}${fileExtension}`;
         cb(null, fileName);
     }
 });
@@ -37,10 +37,7 @@ const upload = multer({
         const filetypes = /jpeg|jpg|png/;
         const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = filetypes.test(file.mimetype);
-        
-        if (extname && mimetype) {
-            return cb(null, true);
-        }
+        if (extname && mimetype) return cb(null, true);
         cb(new Error('Only JPEG/JPG/PNG images are allowed'));
     },
     limits: { fileSize: 5 * 1024 * 1024 }
@@ -48,23 +45,21 @@ const upload = multer({
 
 const router = express.Router();
 
-router.get('/total', getTotalEmployees);
-router.get('/', getAllEmployees);
+router.get('/total', verifyAdminOnly, getTotalEmployees);
+router.get('/', verifyAdminOnly, getAllEmployees);
 router.post('/login', loginEmployee);
 router.post('/register', registerEmployee);
 router.post('/', verifyAdminOnly, createEmployee);
 router.put('/approve/:id', verifyAdminOnly, approveEmployee);
-
 router.get('/pending', verifyAdminOnly, getPendingEmployees); 
 router.get('/trashed', verifyAdminOnly, getTrashedEmployees);
 router.get('/:id/salary', verifyAuthToken, getEmployeeSalarySlip);
 router.get('/profile', verifyAuthToken, getProfile);
-router.get('/:id', getEmployeeById);
+router.get('/:id', verifyAuthToken, getEmployeeById);
 router.put('/update/:id', verifyAuthToken, updateEmployee);
-router.post('/profile-picture', verifyAuthToken, upload.single('profilePicture'), uploadProfilePicture); // Accessible by employees
+router.post('/profile-picture', verifyAuthToken, upload.single('profilePicture'), uploadProfilePicture);
 router.delete('/:id', verifyAdminOnly, deleteEmployee);
 router.put('/trash/:id', verifyAdminOnly, trashEmployee);
 router.put('/restore/:id', verifyAdminOnly, restoreEmployee);
-router.delete('/:id', verifyAdminOnly, deleteEmployee);
 
 export default router;

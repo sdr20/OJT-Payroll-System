@@ -3,12 +3,12 @@ import { ref, computed } from 'vue';
 import { BASE_API_URL } from '../utils/constants.js';
 
 export const useAuthStore = defineStore('auth', () => {
-    // Initialize with null as default if no user exists in localStorage
     const admin = ref(JSON.parse(localStorage.getItem('admin') || 'null'));
     const employee = ref(JSON.parse(localStorage.getItem('employee') || 'null'));
     const accessToken = ref(localStorage.getItem('token') || null);
 
-    // Restore session from localStorage (if this is what you intended)
+    restoreSession();
+
     function restoreSession() {
         const storedAdmin = JSON.parse(localStorage.getItem('admin') || 'null');
         const storedEmployee = JSON.parse(localStorage.getItem('employee') || 'null');
@@ -82,7 +82,6 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem('token');
     }
 
-    // Computed properties to match AdminLogin.vue expectations
     const isAuthenticated = computed(() => !!admin.value || !!employee.value);
     const userRole = computed(() => {
         if (admin.value) return 'admin';

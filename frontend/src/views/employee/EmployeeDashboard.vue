@@ -5,7 +5,6 @@ import { BASE_API_URL } from '@/utils/constants.js';
 import { useAuthStore } from '@/stores/auth.store.js';
 
 const authStore = useAuthStore();
-const token = localStorage.getItem('token');
 const employee = ref(null);
 const attendanceRecords = ref([]);
 const isTimedIn = ref(false);
@@ -23,7 +22,7 @@ const LUNCH_END = '13:00:00';
 const AFTERNOON_START_THRESHOLD = '13:00:00';
 
 onMounted(async () => {
-    if (!token) {
+    if (!authStore.accessToken) {
         console.error('No token found, redirecting to login...');
         router.push('/employee/login');
         return;
@@ -40,10 +39,11 @@ onMounted(async () => {
 
 async function getEmployeeProfile() {
     try {
+        console.log('Sending request with token:', authStore.accessToken); // Debug log
         const response = await fetch(`${BASE_API_URL}/api/employee/profile`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${authStore.accessToken}`,
                 'Content-Type': 'application/json',
             },
         });
@@ -51,7 +51,7 @@ async function getEmployeeProfile() {
         if (response.ok) {
             const employeeData = await response.json();
             employee.value = employeeData;
-            authStore.employee = { ...employeeData, _id: employeeData.id, empNo: employeeData.empNo }; // Include empNo
+            authStore.employee = { ...employeeData, _id: employeeData.id, empNo: employeeData.empNo };
             console.log('Fetched employee profile:', employeeData);
         } else {
             throw new Error(await response.text());
@@ -68,7 +68,7 @@ async function fetchSalaryDetails() {
 
         const response = await fetch(`${BASE_API_URL}/api/employee/${empNo}/salary?month=${new Date().toISOString().slice(0, 7)}`, {
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${authStore.accessToken}`,
                 'Content-Type': 'application/json',
             },
         });
@@ -87,6 +87,10 @@ async function fetchSalaryDetails() {
 
 async function fetchAttendanceRecords() {
     try {
+        if (!authStore.accessToken) {
+            router.push('/employee/login');
+            return;
+        }
         const employeeId = authStore.employee?._id;
         if (!employeeId) {
             console.error('No employee ID available for fetching attendance');
@@ -96,7 +100,7 @@ async function fetchAttendanceRecords() {
         const response = await fetch(`${BASE_API_URL}/api/attendance/${employeeId}`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${authStore.accessToken}`,
                 'Content-Type': 'application/json',
             },
         });
@@ -165,7 +169,7 @@ async function timeIn() {
         const response = await fetch(`${BASE_API_URL}/api/attendance/time-in`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${authStore.accessToken}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload),
@@ -199,7 +203,7 @@ async function timeOut() {
         const response = await fetch(`${BASE_API_URL}/api/attendance/time-out`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${authStore.accessToken}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload),

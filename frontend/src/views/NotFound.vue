@@ -10,7 +10,7 @@ const homepageRoute = computed(() => {
     } else if (authStore.employee) {
         return { name: 'employee-dashboard' };
     } else {
-        return { name: 'landing-page' };
+        return { name: 'login-selection' };
     }
 });
 </script>

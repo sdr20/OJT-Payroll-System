@@ -65,22 +65,36 @@ export const generatePayslip = async (req, res) => {
             return res.status(409).json({ error: 'Payslip already generated for this period' });
         }
 
-        // Find position history entry for payslip date
-        let historyEntry = employee.positionHistory.find(h => {
-            const startDate = new Date(h.startDate);
-            const endDate = h.endDate ? new Date(h.endDate) : new Date('9999-12-31T23:59:59Z');
-            return startDate <= payslipDate && payslipDate <= endDate;
-        }) || { position: employee.position, salary: employee.salary };
+        // Validate position and salary against position history
+        const positionHistory = employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+        const activePosition = positionHistory.find(history => {
+            const startDate = new Date(history.startDate);
+            const endDate = history.endDate ? new Date(history.endDate) : new Date('9999-12-31');
+            return payslipDate >= startDate && payslipDate <= endDate;
+        }) || positionHistory[positionHistory.length - 1];
 
+        if (!activePosition) {
+            return res.status(400).json({ error: 'No active position found for the payslip date' });
+        }
+
+        const historyPosition = activePosition.position.trim().toLowerCase();
+        const historySalary = activePosition.salary;
         const receivedPosition = position.trim().toLowerCase();
-        const historyPosition = historyEntry.position.trim().toLowerCase();
         const receivedSalary = Number(salary);
-        const historySalary = historyEntry.salary;
 
         if (historyPosition !== receivedPosition || historySalary !== receivedSalary) {
-            console.warn('Position/salary mismatch (using received values):', {
-                history: { position: historyPosition, salary: historySalary },
-                received: { position: receivedPosition, salary: receivedSalary }
+            console.warn('Position/salary mismatch:', {
+                expected: { position: historyPosition, salary: historySalary },
+                received: { position: receivedPosition, salary: receivedSalary },
+                payslipDate: payslipDate.toISOString()
+            });
+            return res.status(400).json({
+                error: 'Position or salary mismatch with historical data',
+                details: {
+                    expected: { position: historyPosition, salary: historySalary },
+                    received: { position: receivedPosition, salary: receivedSalary },
+                    payslipDate: payslipDate.toISOString()
+                }
             });
         }
 
@@ -139,7 +153,7 @@ export const generatePayslip = async (req, res) => {
         const payslip = new Payslip({
             employeeId,
             empNo,
-            payslipData: { ...payslipData, ...fullPayslipData }, // Merge provided and calculated data
+            payslipData: { ...payslipData, ...fullPayslipData },
             salaryMonth,
             paydayType,
             position: position.trim(),
@@ -234,5 +248,34 @@ export const getEmployeePayslips = async (req, res) => {
     } catch (error) {
         console.error('Error fetching employee payslips:', error);
         res.status(500).json({ error: 'Failed to fetch payslips', message: error.message });
+    }
+};
+
+// Delete a payslip (admin-only)
+export const deletePayslip = async (req, res) => {
+    try {
+        const { employeeId, salaryMonth, paydayType } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+            return res.status(400).json({ error: 'Invalid employee ID format' });
+        }
+
+        const payslip = await Payslip.findOneAndDelete({
+            employeeId,
+            salaryMonth,
+            paydayType
+        });
+
+        if (!payslip) {
+            return res.status(404).json({ error: 'Payslip not found' });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Payslip for employee ID ${employeeId}, ${salaryMonth}, ${paydayType} deleted successfully`
+        });
+    } catch (error) {
+        console.error('Error deleting payslip:', error);
+        res.status(500).json({ error: 'Failed to delete payslip', message: error.message });
     }
 };

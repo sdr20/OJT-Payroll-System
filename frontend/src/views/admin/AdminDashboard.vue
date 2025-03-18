@@ -1,6 +1,7 @@
 <script>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth.store';
 import { useAttendanceStore } from '@/stores/attendance.store.js';
 import { BASE_API_URL } from '@/utils/constants.js';
 import EmployeeAttendanceDetails from './employee-management/partials/EmployeeAttendanceDetails.vue';
@@ -13,6 +14,7 @@ export default {
     setup() {
         const router = useRouter();
         const attendanceStore = useAttendanceStore();
+        const authStore = useAuthStore();
         const totalEmployees = ref(0);
         const isLoading = ref(false);
         const isProcessingPayroll = ref(false);
@@ -22,7 +24,10 @@ export default {
             try {
                 const response = await fetch(`${BASE_API_URL}/api/employee/total`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authStore.accessToken}`,
+                    },
                 });
                 if (!response.ok) throw new Error('Failed to fetch total employees');
                 const data = await response.json();
@@ -98,7 +103,10 @@ export default {
                 try {
                     const response = await fetch(`${BASE_API_URL}/api/attendance/${id}`, {
                         method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authStore.accessToken}`, // Add token
+                        },
                     });
                     if (!response.ok) throw new Error('Failed to delete attendance');
                     await attendanceStore.fetchAttendance();

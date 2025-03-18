@@ -50,8 +50,14 @@ const employeeSchema = new Schema({
     position: { 
         type: Schema.Types.ObjectId, 
         ref: 'Position', 
-        required: false
+        required: true
     },
+    positionHistory: [{
+        position: { type: String, required: true },
+        salary: { type: Number, required: true },
+        startDate: { type: Date, required: true },
+        endDate: { type: Date, default: null }
+    }],
     salary: { type: Number, required: true, min: 0 },
     hourlyRate: { type: Number, default: 0 },
     contactInfo: { type: String, required: false },

@@ -7,6 +7,9 @@ import {
     calculateWithholdingTax,
     calculatePagIBIGContribution
 } from '../../utils/payrollCalculations.js';
+
+const normalizeDate = (date) => new Date(date).toISOString().split('T')[0];
+
 export const getEmployeeById = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const employee = await Employee.findById(id)
@@ -20,9 +23,29 @@ export const getEmployeeById = asyncHandler(async (req, res) => {
 
 export const getAllEmployees = asyncHandler(async (req, res) => {
     try {
-        const employees = await Employee.find({ status: { $ne: 'trashed' } })
+        const { month } = req.query;
+        let query = { status: { $ne: 'trashed' } };
+
+        if (month) {
+            if (!/^\d{4}-\d{2}$/.test(month)) {
+                return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM' });
+            }
+            const [year, monthNum] = month.split('-');
+            const parsedYear = parseInt(year, 10);
+            const parsedMonth = parseInt(monthNum, 10);
+            if (isNaN(parsedYear) || isNaN(parsedMonth) || parsedMonth < 1 || parsedMonth > 12) {
+                return res.status(400).json({ error: 'Invalid year or month value' });
+            }
+            query.hireDate = {
+                $gte: new Date(parsedYear, parsedMonth - 1, 1),
+                $lt: new Date(parsedYear, parsedMonth, 1),
+            };
+        }
+
+        const employees = await Employee.find(query)
             .select('-password')
-            .populate('position', 'name');
+            .populate('position', 'name')
+            .sort({ empNo: 1 });
         res.status(200).json(employees);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching employees', error: error.message });
@@ -32,6 +55,8 @@ export const getAllEmployees = asyncHandler(async (req, res) => {
 export const createEmployee = asyncHandler(async (req, res) => {
     try {
         const employeeData = { ...req.body };
+        const { position, salary, hireDate } = employeeData;
+
         const existingEmployee = await Employee.findOne({
             $or: [
                 { empNo: employeeData.empNo },
@@ -45,7 +70,25 @@ export const createEmployee = asyncHandler(async (req, res) => {
             return res.status(400).json({ error: 'Duplicate key error', message: `${field} already exists` });
         }
 
-        const employee = new Employee(employeeData);
+        // Handle initial position and position history
+        const startDate = hireDate ? new Date(hireDate) : new Date();
+        let positionDoc = await Position.findOne({ name: position });
+        if (!positionDoc && position && salary !== undefined) {
+            positionDoc = new Position({ name: position, salary });
+            await positionDoc.save();
+        }
+
+        const employee = new Employee({
+            ...employeeData,
+            hireDate: startDate,
+            positionHistory: position && salary !== undefined ? [{
+                position,
+                salary,
+                startDate,
+                endDate: null
+            }] : []
+        });
+
         await employee.save();
         res.status(201).json(employee);
     } catch (error) {
@@ -56,7 +99,36 @@ export const createEmployee = asyncHandler(async (req, res) => {
 export const updateEmployee = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const { position, password, hireDate, ...otherDetails } = req.body;
+        const { position, salary, password, hireDate, ...otherDetails } = req.body;
+
+        const employee = await Employee.findById(id);
+        if (!employee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+
+        // Handle position and salary changes with position history
+        if ((position && position !== employee.position) || (salary !== undefined && salary !== employee.salary)) {
+            const currentHistory = employee.positionHistory.find(h => !h.endDate);
+            if (currentHistory) {
+                currentHistory.endDate = new Date(); // End current position
+            }
+            if (position && salary !== undefined) {
+                let positionDoc = await Position.findOne({ name: position });
+                if (!positionDoc) {
+                    positionDoc = new Position({ name: position, salary });
+                    await positionDoc.save();
+                } else if (positionDoc.salary !== salary) {
+                    positionDoc.salary = salary;
+                    await positionDoc.save();
+                }
+                employee.positionHistory.push({
+                    position,
+                    salary,
+                    startDate: new Date(),
+                    endDate: null
+                });
+            }
+        }
 
         const updateData = {
             ...otherDetails,
@@ -65,14 +137,15 @@ export const updateEmployee = asyncHandler(async (req, res) => {
             ...(req.body.earnings && { earnings: req.body.earnings }),
             ...(req.body.payheads && { payheads: req.body.payheads }),
             ...(hireDate && { hireDate: new Date(hireDate) }),
+            positionHistory: employee.positionHistory // Include updated history
         };
 
         if (req.file) {
             updateData.profilePicture = `/uploads/profile-pictures/${req.file.filename}`;
         }
 
-        if (req.body.salary) {
-            updateData.salary = Number(req.body.salary);
+        if (salary !== undefined) {
+            updateData.salary = Number(salary);
         }
 
         if (password) {
@@ -84,18 +157,11 @@ export const updateEmployee = asyncHandler(async (req, res) => {
             id,
             updateData,
             { new: true, runValidators: true }
-        );
-
-        if (!updatedEmployee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
-
-        const employeeObj = updatedEmployee.toObject();
-        delete employeeObj.password;
+        ).select('-password');
 
         res.status(200).json({ 
             message: 'Employee details updated successfully', 
-            updatedEmployee: employeeObj 
+            updatedEmployee
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -119,11 +185,6 @@ export const deleteEmployee = asyncHandler(async (req, res) => {
 
     try {
         await Employee.findByIdAndDelete(id).session(session);
-        await LeaveRequest.deleteMany({ employeeId: id }).session(session);
-        await PayHead.deleteMany({ employeeId: id }).session(session);
-        await Payslip.deleteMany({ employeeId: id }).session(session);
-        await Attendance.deleteMany({ employeeId: id }).session(session);
-
         await session.commitTransaction();
         session.endSession();
 
@@ -299,7 +360,6 @@ export const getEmployeeSalarySlip = asyncHandler(async (req, res) => {
 });
 
 export const getProfile = asyncHandler(async (req, res) => {
-    console.log('req.employeeId:', req.employeeId);
     const employee = await Employee.findById(req.employeeId)
         .select('-password')
         .populate('position', 'name');
@@ -325,6 +385,12 @@ export const getProfile = asyncHandler(async (req, res) => {
         pagIbig: employeeObj.pagIbig,
         position: employeeObj.position,
         role: employeeObj.role,
+        positionHistory: employeeObj.positionHistory.map(h => ({
+            position: h.position,
+            salary: h.salary,
+            startDate: normalizeDate(h.startDate),
+            endDate: h.endDate ? normalizeDate(h.endDate) : null
+        }))
     });
 });
 
@@ -398,6 +464,6 @@ export const handleError = asyncHandler(async (res, error) => {
         const field = Object.keys(error.keyPattern)[0];
         res.status(400).json({ error: 'Duplicate key error', message: `${field} already exists` });
     } else {
-        res.status(500).json({ error: defaultMessage, message: error.message });
+        res.status(500).json({ error: 'Failed to process request', message: error.message });
     }
 });
