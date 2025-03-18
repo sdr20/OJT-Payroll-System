@@ -148,7 +148,7 @@ export default {
             this.isLoading = true;
             this.statusMessage = '';
             try {
-                const response = await axios.get('http://localhost:7777/api/employees', {
+                const response = await axios.get('http://localhost:7777/api/employee', {
                     headers: { 'user-role': 'admin' },
                 });
                 this.employees = response.data.map(emp => ({
@@ -295,7 +295,7 @@ export default {
                 };
 
                 await axios.put(
-                    `http://localhost:7777/api/employees/${this.selectedEmployee.id}`,
+                    `http://localhost:7777/api/employee/${this.selectedEmployee.id}`,
                     updatedEmployee,
                     { headers: { 'user-role': 'admin' } }
                 );

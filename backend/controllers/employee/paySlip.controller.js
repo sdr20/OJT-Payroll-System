@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import nodemailer from 'nodemailer';
-import { Employee } from '../../models/employee.model.js'; 
+import mongoose from 'mongoose';
+import { Employee } from '../../models/employee.model.js';
 import { Payslip } from '../../models/payslip.model.js';
 import {
     calculateSSSContribution,
@@ -11,6 +12,8 @@ import {
     calculateTotalDeductions,
     calculateNetSalary
 } from '../../utils/payrollCalculations.js';
+
+// Fetch all payslips (admin-only)
 export const getPaySlips = async (req, res) => {
     try {
         const { month } = req.query;
@@ -18,48 +21,92 @@ export const getPaySlips = async (req, res) => {
         const payslips = await Payslip.find(query);
         res.status(200).json(payslips);
     } catch (error) {
+        console.error('Error fetching payslips:', error);
         res.status(500).json({ error: 'Failed to fetch payslips', message: error.message });
     }
 };
 
+// Generate a payslip (admin-only)
 export const generatePayslip = async (req, res) => {
     console.log('Received request to generate payslip:', req.body);
-    const { 
-        employeeId, 
-        empNo, 
-        payslipData, 
-        salaryMonth, 
-        paydayType 
-    } = req.body;
+    const { employeeId, empNo, payslipData, salaryMonth, paydayType, position, salary } = req.body;
+
+    const requiredFields = { employeeId, empNo, payslipData, salaryMonth, paydayType, position, salary };
+    const missingFields = Object.entries(requiredFields)
+        .filter(([_, value]) => value === undefined || value === null || value === '')
+        .map(([key]) => key);
+    if (missingFields.length > 0) {
+        console.log('Missing required fields:', missingFields);
+        return res.status(400).json({ error: `Missing required fields: ${missingFields.join(', ')}` });
+    }
 
     try {
-        const employee = await Employee.findById(employeeId).populate('payHead'); // Changed from payHeads to payHead
+        const employee = await Employee.findById(employeeId).populate('payHeads');
         if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
+            return res.status(404).json({ error: 'Employee not found' });
         }
 
-        const baseSalary = employee.salary || 0;
-        const payHead = Array.isArray(employee.payHead) ? employee.payHead : []; // Changed from payHeads to payHead
+        // Validate salaryMonth and calculate payslip date
+        const [year, month] = salaryMonth.split('-').map(Number);
+        const lastDayOfMonth = new Date(year, month, 0).getDate();
+        const day = paydayType === 'mid-month' ? 15 : lastDayOfMonth;
+        const payslipDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
 
-        const totalEarnings = calculateTotalEarnings(baseSalary, payHead);
-        const totalDeductions = calculateTotalDeductions(baseSalary, payHead, totalEarnings);
+        const hireDate = new Date(employee.hireDate);
+        if (payslipDate < hireDate) {
+            console.log('Payslip date before hire date:', { payslipDate, hireDate });
+            return res.status(400).json({ error: 'Payslip date cannot be before hire date' });
+        }
+
+        // Check for existing payslip
+        const existingPayslip = await Payslip.findOne({ employeeId, salaryMonth, paydayType });
+        if (existingPayslip) {
+            console.log('Payslip already exists:', { employeeId, salaryMonth, paydayType });
+            return res.status(409).json({ error: 'Payslip already generated for this period' });
+        }
+
+        // Find position history entry for payslip date
+        let historyEntry = employee.positionHistory.find(h => {
+            const startDate = new Date(h.startDate);
+            const endDate = h.endDate ? new Date(h.endDate) : new Date('9999-12-31T23:59:59Z');
+            return startDate <= payslipDate && payslipDate <= endDate;
+        }) || { position: employee.position, salary: employee.salary };
+
+        const receivedPosition = position.trim().toLowerCase();
+        const historyPosition = historyEntry.position.trim().toLowerCase();
+        const receivedSalary = Number(salary);
+        const historySalary = historyEntry.salary;
+
+        if (historyPosition !== receivedPosition || historySalary !== receivedSalary) {
+            console.warn('Position/salary mismatch (using received values):', {
+                history: { position: historyPosition, salary: historySalary },
+                received: { position: receivedPosition, salary: receivedSalary }
+            });
+        }
+
+        // Calculate payroll details
+        const baseSalary = receivedSalary;
+        const payHeads = Array.isArray(employee.payHeads) ? employee.payHeads : [];
+        const totalEarnings = calculateTotalEarnings(baseSalary, payHeads);
+        const totalDeductions = calculateTotalDeductions(baseSalary, payHeads, totalEarnings);
         const netSalary = calculateNetSalary(totalEarnings, totalDeductions);
 
         const sssContribution = calculateSSSContribution(baseSalary);
         const philHealthContribution = calculatePhilHealthContribution(baseSalary);
         const pagIbigContribution = calculatePagIBIGContribution(baseSalary);
         const withholdingTax = calculateWithholdingTax(totalEarnings);
-        const deductions = payHead.filter(p => p.type === 'Deductions'); // Changed from payHeads to payHead
+        const deductions = payHeads.filter(p => p.type === 'Deductions');
         const totalCustomDeductions = deductions.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-        const earnings = payHead.filter(p => p.type === 'Earnings'); // Changed from payHeads to payHead
+        const earnings = payHeads.filter(p => p.type === 'Earnings');
         const travelExpenses = earnings.find(p => p.name.toLowerCase().includes('travel'))?.amount || 0;
         const otherEarnings = earnings
             .filter(p => !p.name.toLowerCase().includes('travel'))
             .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-        const payslipData = {
-            empNo: employee.empNo || 'N/A',
+        // Prepare payslip data
+        const fullPayslipData = {
+            empNo: employee.empNo || empNo,
             firstName: employee.firstName || 'N/A',
             lastName: employee.lastName || 'N/A',
             middleName: employee.middleName || '',
@@ -69,13 +116,13 @@ export const generatePayslip = async (req, res) => {
             dependents: employee.dependents || 0,
             sss: employee.sssNumber || 'N/A',
             tin: employee.tin || 'N/A',
-            philHeath: employee.philHealthNumber || 'N/A',
+            philHealth: employee.philHealthNumber || 'N/A',
             pagIbig: employee.pagIbigNumber || 'N/A',
-            position: employee.position || 'N/A',
+            position: position.trim(),
             salary: baseSalary,
             salaryMonth,
             totalSalary: netSalary,
-            payHead,
+            payHeads,
             deductions: {
                 sss: sssContribution,
                 philHealth: philHealthContribution,
@@ -91,36 +138,42 @@ export const generatePayslip = async (req, res) => {
 
         const payslip = new Payslip({
             employeeId,
-            empNo: empNo,
-            payslipData: payslipData,
+            empNo,
+            payslipData: { ...payslipData, ...fullPayslipData }, // Merge provided and calculated data
             salaryMonth,
             paydayType,
+            position: position.trim(),
+            salary: receivedSalary
         });
         await payslip.save();
 
-        res.status(200).json({
+        console.log('Payslip generated successfully:', { employeeId, salaryMonth, paydayType });
+        res.status(201).json({
             message: 'Payslip generated successfully',
             payslip: {
                 id: payslip._id,
                 employeeId,
-                empNo: empNo,
+                empNo,
                 payslipData: payslip.payslipData,
                 salaryMonth,
                 paydayType,
-            },
+                position: payslip.position,
+                salary: payslip.salary
+            }
         });
     } catch (error) {
         console.error('Error generating payslip:', error);
-        res.status(500).json({ message: 'Failed to generate payslip', error: error.message });
+        res.status(500).json({ error: 'Failed to generate payslip', message: error.message });
     }
 };
 
+// Send payslip email (admin-only)
 export const sendPayslipEmail = async (req, res) => {
     const { employeeId, employeeEmail, payslipData, salaryMonth } = req.body;
 
     try {
         const employee = await Employee.findById(employeeId);
-        if (!employee) return res.status(404).json({ message: 'Employee not found' });
+        if (!employee) return res.status(404).json({ error: 'Employee not found' });
 
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -137,7 +190,7 @@ export const sendPayslipEmail = async (req, res) => {
             text: `Dear ${employee.firstName},\n\nAttached is your payslip for ${salaryMonth}.\n\nBest regards,\nHR Team`,
             attachments: [{
                 filename: `payslip-${employee.firstName}-${salaryMonth}.pdf`,
-                content: payslipData.split(',')[1],
+                content: payslipData.split(',')[1], // Assuming base64 data URI
                 encoding: 'base64'
             }]
         };
@@ -146,75 +199,40 @@ export const sendPayslipEmail = async (req, res) => {
         res.status(200).json({ message: 'Payslip email sent successfully' });
     } catch (error) {
         console.error('Error sending payslip email:', error);
-        res.status(500).json({ message: 'Failed to send payslip email', error: error.message });
+        res.status(500).json({ error: 'Failed to send payslip email', message: error.message });
     }
 };
 
+// Fetch payslips for a specific employee
 export const getEmployeePayslips = async (req, res) => {
-    const { id } = req.params;
-    const { month } = req.query;
-
-    console.log('Fetching salary slip for empNo:', id, 'month:', month);
+    const { employeeId } = req.params;
 
     try {
-        const employee = await Employee.findOne({ empNo: id }).populate('payHead'); // Changed from payHeads to payHead
+        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+            return res.status(400).json({ error: 'Invalid employee ID format' });
+        }
+        const employee = await Employee.findById(employeeId);
         if (!employee) {
-            console.log('Employee not found for empNo:', id);
-            return res.status(404).json({ message: 'Employee not found' });
+            return res.status(404).json({ error: 'Employee not found' });
         }
 
-        console.log('Found employee:', employee);
+        const payslips = await Payslip.find({ employeeId: employee._id });
+        if (!payslips || payslips.length === 0) {
+            return res.status(404).json({ error: 'No payslips found for this employee' });
+        }
 
-        const baseSalary = employee.salary || 0;
-        const sssContribution = calculateSSSContribution(baseSalary);
-        const philHealthContribution = calculatePhilHealthContribution(baseSalary);
-        const pagIbigContribution = calculatePagIBIGContribution(baseSalary);
-        
-        const earnings = employee.payHead.filter(p => p.type === 'Earnings'); // Changed from payHeads to payHead
-        const totalEarningsFromPayHeads = earnings.reduce((sum, p) => sum + p.amount, 0);
-        const totalEarnings = baseSalary + totalEarningsFromPayHeads;
-
-        const deductions = employee.payHead.filter(p => p.type === 'Deductions'); // Changed from payHeads to payHead
-        const totalCustomDeductions = deductions.reduce((sum, p) => sum + p.amount, 0);
-        const withholdingTax = calculateWithholdingTax(totalEarnings);
-        const totalDeductions = totalCustomDeductions + sssContribution + philHealthContribution + pagIbigContribution + withholdingTax;
-
-        const netSalary = totalEarnings - totalDeductions;
-        const hourlyRate = baseSalary / (8 * 22);
-
-        const salarySlip = {
-            id: employee._id,
-            empNo: employee.empNo,
-            name: `${employee.firstName} ${employee.middleName} ${employee.lastName}`.trim(),
-            hourlyRate,
-            baseSalary,
-            birthDate: employee.birthday ? employee.birthday.toISOString().split('T')[0] : 'N/A',
-            hireDate: employee.hireDate ? employee.hireDate.toISOString().split('T')[0] : 'N/A',
-            civilStatus: employee.civilStatus || 'SINGLE',
-            dependents: employee.dependents || 0,
-            sss: employee.sss || 'N/A',
-            tin: employee.tin || 'N/A',
-            philHeath: employee.philHealth || 'N/A',
-            pagIbig: employee.pagibig || 'N/A',
-            position: employee.position || 'N/A',
-            earnings: earnings.map(p => ({ name: p.name, amount: p.amount })),
-            deductions: {
-                customDeductions: deductions.map(p => ({ name: p.name, amount: p.amount })),
-                sss: sssContribution,
-                philHealth: philHealthContribution,
-                pagIbig: pagIbigContribution,
-                tax: withholdingTax
-            },
-            totalEarnings,
-            totalDeductions,
-            totalSalary: netSalary,
-            salaryMonth: month
-        };
-
-        console.log('Generated salary slip:', salarySlip);
-        res.status(200).json(salarySlip);
+        const formattedPayslips = payslips.map(payslip => ({
+            employeeId: payslip.employeeId,
+            empNo: payslip.empNo,
+            payslipDataUrl: payslip.payslipData,
+            salaryMonth: payslip.salaryMonth,
+            paydayType: payslip.paydayType,
+            position: payslip.position || null,
+            salary: payslip.salary || 0
+        }));
+        res.status(200).json(formattedPayslips);
     } catch (error) {
-        console.error('Error fetching salary slip:', error);
-        res.status(500).json({ message: 'Failed to fetch salary slip', error: error.message });
+        console.error('Error fetching employee payslips:', error);
+        res.status(500).json({ error: 'Failed to fetch payslips', message: error.message });
     }
 };

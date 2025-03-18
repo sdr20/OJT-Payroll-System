@@ -24,14 +24,15 @@ export const useAuthStore = defineStore('auth', () => {
             const response = await fetch(`${BASE_API_URL}/api/employee/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${accessToken.value}`,
-                    'Content-Type': 'application/json'
-                }
+                    'Content-Type': 'application/json',
+                },
             });
             if (!response.ok) throw new Error('Failed to fetch employee details');
             const employeeData = await response.json();
-            console.log('Fetched employee data:', employeeData);
+            if (employeeData.status === 'pending') {
+                throw new Error('Account is pending approval');
+            }
             employee.value = { ...employee.value, ...employeeData };
-            console.log('Updated employee value:', employee.value);
             saveEmployee();
         } catch (error) {
             console.error('Error fetching employee details:', error);

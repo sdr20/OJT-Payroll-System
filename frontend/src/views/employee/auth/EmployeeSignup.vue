@@ -326,18 +326,37 @@ export default {
             this.isSubmitting = true;
             this.statusMessage = '';
             try {
-                const maxIdResponse = await axios.get('http://localhost:7777/api/pending-requests/max-id');
-                const newId = (maxIdResponse.data.maxId || 0) + 1;
-                const requestData = { ...this.newRequest, id: newId, earnings: { travelExpenses: 0, otherEarnings: 0 } };
-                const response = await axios.post('http://localhost:7777/api/pending-requests', requestData);
+                const requestData = {
+                    empNo: this.newRequest.empNo,
+                    username: this.newRequest.username,
+                    password: this.newRequest.password,
+                    firstName: this.newRequest.firstName,
+                    middleName: this.newRequest.middleName || '',
+                    lastName: this.newRequest.lastName,
+                    email: this.newRequest.email,
+                    contactInfo: this.newRequest.contactNumber,
+                    civilStatus: this.newRequest.civilStatus,
+                    position: this.newRequest.position,
+                    salary: this.newRequest.salary,
+                    sss: this.newRequest.sss || '',
+                    philHealth: this.newRequest.philhealth || '',
+                    pagIbig: this.newRequest.hdmf || '',
+                    tin: this.newRequest.tin || '',
+                    hireDate: this.newRequest.hireDate,
+                    role: 'employee',
+                    status: 'pending',
+                };
+                console.log('Sending request data:', requestData);
+                const response = await axios.post('http://localhost:7777/api/employee/register', requestData);
                 if (response.status === 201) {
                     this.resetNewRequest();
-                    this.showSuccessMessage('Account request submitted successfully!');
+                    this.showSuccessMessage('Account request submitted successfully! Awaiting admin approval.');
                     this.$emit('success', 'Account request submitted successfully!');
                     this.$emit('close');
                 }
             } catch (error) {
-                this.showErrorMessage(error.response?.data?.error || 'Failed to submit request.');
+                console.error('Submit request error:', error.response?.data || error.message); 
+                this.showErrorMessage(error.response?.data?.error || 'Failed to submit request. Please try again.');
             } finally {
                 this.isSubmitting = false;
             }

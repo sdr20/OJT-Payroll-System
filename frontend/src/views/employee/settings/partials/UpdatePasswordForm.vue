@@ -121,7 +121,7 @@ const submitRequest = async () => {
 
     try {
         const payload = { password: newRequest.value.password };
-        const response = await fetch(`${BASE_API_URL}/api/employees/update/${employeeId.value}`, {
+        const response = await fetch(`${BASE_API_URL}/api/employee/update/${employeeId.value}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

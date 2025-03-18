@@ -134,7 +134,7 @@ export default {
                     return;
                 }
 
-                const response = await axios.get(`http://localhost:7777/api/employees/${userId}/salary`, {
+                const response = await axios.get(`http://localhost:7777/api/employee/${userId}/salary`, {
                     params: { month: this.selectedMonth }
                 });
                 if (!response.data) {

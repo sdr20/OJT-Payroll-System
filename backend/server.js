@@ -10,6 +10,7 @@ import positionRoutes from './routes/position.routes.js';
 import employeeRoutes from './routes/employee.routes.js';
 import attendanceRoutes from './routes/attendance.routes.js';
 import leaveRequestRoutes from './routes/leaveRequest.routes.js';
+import positionHistoryRoutes from './routes/positionHistory.routes.js';
 
 const PORT = process.env.PORT || 7777;
 const app = express();
@@ -27,6 +28,7 @@ app.use('/api/employee', employeeRoutes);
 app.use('/api/leaves', leaveRequestRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/positions', positionRoutes);
+app.use('/api/position-history', positionHistoryRoutes);
 app.use('/uploads', express.static('public/uploads'));
 
 app.use(express.static('public'));

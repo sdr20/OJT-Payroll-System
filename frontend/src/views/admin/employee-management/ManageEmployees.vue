@@ -57,6 +57,7 @@ export default {
     computed: {
         filteredEmployees() {
             return this.employees.filter(emp =>
+                emp.status !== 'pending' &&
                 `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
                 (this.positionFilter ? emp.position === this.positionFilter : true)
             );
@@ -135,7 +136,7 @@ export default {
         async fetchEmployees() {
             this.isLoading = true;
             try {
-                const response = await axios.get('http://localhost:7777/api/employee', { headers: { 'user-role': 'admin' } });
+                const response = await axios.get('http://localhost:7777/api/employee', { headers: { "Content-Type": "application/json" } });
                 this.employees = response.data.map(emp => ({
                     ...emp,
                     hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
@@ -152,8 +153,18 @@ export default {
         async fetchPendingRequests() {
             this.isLoading = true;
             try {
-                const response = await axios.get('http://localhost:7777/api/pending-requests', { headers: { 'user-role': 'admin' } });
-                this.pendingRequests = response.data || [];
+                const token = localStorage.getItem('token');
+                const response = await axios.get('http://localhost:7777/api/employee/pending', {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                this.pendingRequests = response.data.map(request => ({
+                    ...request,
+                    contactNumber: request.contactInfo, 
+                    password: request.password || 'defaultPassword'
+                })) || [];
             } catch (error) {
                 console.error('Error fetching pending requests:', error);
                 this.showErrorMessage('Failed to load pending requests');
@@ -164,7 +175,9 @@ export default {
 
         async fetchPositions() {
             try {
-                const response = await axios.get('http://localhost:7777/api/positions', { headers: { 'user-role': 'admin' } });
+                const response = await axios.get('http://localhost:7777/api/positions', {
+                    headers: { 'Content-Type': 'application/json' },
+                });
                 this.adminPositions = response.data || [];
             } catch (error) {
                 console.error('Error fetching positions:', error);
@@ -208,9 +221,9 @@ export default {
             this.isUpdating = true;
             try {
                 const response = await axios.put(
-                    `http://localhost:7777/api/employees/${this.selectedEmployee.id}`,
+                    `http://localhost:7777/api/employee/${this.selectedEmployee.id}`,
                     this.selectedEmployee,
-                    { headers: { 'user-role': 'admin' } }
+                    { headers: { 'Content-Type': 'application/json' }, }
                 );
                 if (response.status === 200) {
                     const index = this.employees.findIndex(emp => emp.id === this.selectedEmployee.id);
@@ -234,7 +247,7 @@ export default {
         async removeEmployee(id) {
             this.isDeleting = true;
             try {
-                const response = await axios.delete(`http://localhost:7777/api/employees/${id}`, { headers: { 'user-role': 'admin' } });
+                const response = await axios.delete(`http://localhost:7777/api/employee/${id}`, { headers: { 'Content-Type': 'application/json' }, });
                 if (response.status === 200 || response.status === 204) {
                     this.employees = this.employees.filter(emp => emp.id !== id);
                     this.showDeleteModal = false;
@@ -261,7 +274,9 @@ export default {
             }
             this.isUpdating = true;
             try {
-                const response = await axios.put(`http://localhost:7777/api/pending-requests/${this.selectedRequest.id}`, this.selectedRequest, { headers: { 'user-role': 'admin' } });
+                const response = await axios.put(`http://localhost:7777/api/pending-requests/${this.selectedRequest.id}`, this.selectedRequest, {
+                    headers: { 'Content-Type': 'application/json' },
+                });
                 if (response.status === 200) {
                     const index = this.pendingRequests.findIndex(req => req.id === this.selectedRequest.id);
                     if (index !== -1) this.pendingRequests[index] = { ...this.selectedRequest };
@@ -278,35 +293,62 @@ export default {
 
         async approveRequest(request) {
             const requiredFields = ['empNo', 'firstName', 'lastName', 'position', 'salary', 'email', 'contactNumber', 'username', 'password'];
-            if (requiredFields.some(field => !request[field])) {
-                this.showErrorMessage(`Missing required fields: ${requiredFields.filter(field => !request[field]).join(', ')}`);
+            const missingFields = requiredFields.filter(field => !request[field]);
+            if (missingFields.length > 0) {
+                this.showErrorMessage(`Missing required fields: ${missingFields.join(', ')}`);
                 return;
             }
+
+            const newEmployee = {
+                empNo: request.empNo,
+                firstName: request.firstName,
+                lastName: request.lastName,
+                middleName: request.middleName || '',
+                position: request.position,
+                salary: Number(request.salary),
+                hourlyRate: Number(request.hourlyRate || (request.salary / (8 * 22))),
+                email: request.email,
+                contactInfo: request.contactNumber,
+                sss: request.sss || '',
+                philhealth: request.philhealth || '',
+                pagibig: request.pagibig || '',
+                tin: request.tin || '',
+                earnings: {
+                    travelExpenses: Number(request.earnings?.travelExpenses || 0),
+                    otherEarnings: Number(request.earnings?.otherEarnings || 0)
+                },
+                username: request.username,
+                password: request.password,
+                role: 'employee',
+                hireDate: new Date().toISOString().slice(0, 10)
+            };
+
+            const token = localStorage.getItem('token');
             try {
-                const newEmployee = {
-                    empNo: request.empNo, firstName: request.firstName, lastName: request.lastName, middleName: request.middleName || '',
-                    position: request.position, salary: Number(request.salary), hourlyRate: Number(request.hourlyRate || (request.salary / (8 * 22))),
-                    email: request.email, contactInfo: request.contactNumber, sss: request.sss || '', philhealth: request.philhealth || '',
-                    pagibig: request.pagibig || '', tin: request.tin || '', earnings: { travelExpenses: Number(request.earnings?.travelExpenses || 0), otherEarnings: Number(request.earnings?.otherEarnings || 0) },
-                    payheads: request.payheads || [], username: request.username, password: request.password, role: 'employee', hireDate: new Date()
-                };
-                const response = await axios.post('http://localhost:7777/api/employees', newEmployee, { headers: { 'user-role': 'admin' } });
+                const response = await axios.post('http://localhost:7777/api/employee', newEmployee, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (response.status === 201) {
                     this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
-                    await axios.delete(`http://localhost:7777/api/pending-requests/${request.id}`, { headers: { 'user-role': 'admin' } });
+                    await axios.delete(`http://localhost:7777/api/pending/${request.id}`, {
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                    });
                     this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
                     this.showRequestModal = false;
                     this.showSuccessMessage('Employee approved and added successfully');
                 }
             } catch (error) {
-                console.error('Error approving request:', error);
-                this.showErrorMessage('Failed to approve employee');
+                console.error('Error approving request:', error.response?.data || error.message);
+                this.showErrorMessage(`Failed to approve employee: ${error.response?.data?.message || error.message}`);
             }
         },
 
         async rejectRequest(id) {
             try {
-                const response = await axios.delete(`http://localhost:7777/api/pending-requests/${id}`, { headers: { 'user-role': 'admin' } });
+                const response = await axios.delete(`http://localhost:7777/api/pending-requests/${id}`, { headers: { 'Content-Type': 'application/json' } });
                 if (response.status === 200 || response.status === 204) {
                     this.pendingRequests = this.pendingRequests.filter(req => req.id !== id);
                     this.showRequestModal = false;
@@ -326,7 +368,7 @@ export default {
             this.isAdding = true;
             try {
                 const employeeData = { ...this.newEmployee, hourlyRate: this.newEmployee.hourlyRate, role: 'employee' };
-                const response = await axios.post('http://localhost:7777/api/employees', employeeData, { headers: { 'user-role': 'admin' } });
+                const response = await axios.post('http://localhost:7777/api/employee', employeeData, { headers: { 'Content-Type': 'application/json' } });
                 if (response.status === 201) {
                     this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
                     this.showAddModal = false;
@@ -348,7 +390,7 @@ export default {
             }
             this.isAddingPosition = true;
             try {
-                const response = await axios.post('http://localhost:7777/api/positions', this.newPosition, { headers: { 'user-role': 'admin' } });
+                const response = await axios.post('http://localhost:7777/api/positions', this.newPosition, { headers: { 'Content-Type': 'application/json' } });
                 if (response.status === 201) {
                     this.adminPositions.push(response.data);
                     this.resetNewPosition();
@@ -374,7 +416,7 @@ export default {
             }
             this.isUpdatingPosition = true;
             try {
-                const response = await axios.put(`http://localhost:7777/api/positions/${this.editPositionData.id}`, this.editPositionData, { headers: { 'user-role': 'admin' } });
+                const response = await axios.put(`http://localhost:7777/api/positions/${this.editPositionData.id}`, this.editPositionData, { headers: { 'Content-Type': 'application/json' } });
                 if (response.status === 200) {
                     const index = this.adminPositions.findIndex(pos => pos.id === this.editPositionData.id);
                     if (index !== -1) this.adminPositions[index] = { ...this.editPositionData };
@@ -458,7 +500,7 @@ export default {
                     class="p-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48" />
                 <button @click="refreshAll"
                     class="bg-indigo-600 text-white px-3 py-1.5 text-sm rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
-                    <span class="material-icons-outlined text-lg">refresh</span>
+                    <span class="material-icons text-lg">refresh</span>
                     Refresh
                 </button>
             </div>
@@ -474,12 +516,12 @@ export default {
                         <div class="flex gap-2">
                             <button @click="showAddModal = true"
                                 class="bg-green-600 text-white px-3 py-1.5 text-sm rounded-md hover:bg-green-700 transition flex items-center gap-1">
-                                <span class="material-icons-outlined text-lg">add</span>
+                                <span class="material-icons text-lg">add</span>
                                 Add
                             </button>
                             <button @click="showPositionModal = true"
                                 class="bg-blue-600 text-white px-3 py-1.5 text-sm rounded-md hover:bg-blue-700 transition flex items-center gap-1">
-                                <span class="material-icons-outlined text-lg">work</span>
+                                <span class="material-icons text-lg">work</span>
                                 Positions
                             </button>
                             <select v-model="positionFilter"
@@ -491,7 +533,7 @@ export default {
                         </div>
                     </div>
                     <div v-if="isLoading" class="p-4 text-center text-gray-500 flex justify-center items-center">
-                        <span class="material-icons-outlined animate-spin mr-1 text-lg">autorenew</span>
+                        <span class="material-icons animate-spin mr-1 text-lg">autorenew</span>
                         Loading...
                     </div>
                     <div v-else class="overflow-x-auto">
@@ -511,21 +553,21 @@ export default {
                                     class="hover:bg-gray-50 transition">
                                     <td class="px-4 py-2">{{ employee.empNo || 'N/A' }}</td>
                                     <td class="px-4 py-2">{{ employee.firstName }} {{ employee.lastName }}</td>
-                                    <td class="px-4 py-2">{{ employee.position || 'N/A' }}</td>
+                                    <td class="px-4 py-2">{{ employee.position?.name || 'N/A' }}</td>
                                     <td class="px-4 py-2">₱{{ employee.hourlyRate.toLocaleString() }}</td>
                                     <td class="px-4 py-2">₱{{ calculateNetSalary(employee).toLocaleString() }}</td>
                                     <td class="px-4 py-2 text-right flex justify-end gap-1">
                                         <button @click="viewEmployeeDetails(employee)"
                                             class="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-100">
-                                            <span class="material-icons-outlined text-lg">visibility</span>
+                                            <span class="material-icons text-lg">visibility</span>
                                         </button>
                                         <button @click="editEmployee(employee)"
                                             class="text-yellow-600 hover:text-yellow-800 p-1 rounded-full hover:bg-yellow-100">
-                                            <span class="material-icons-outlined text-lg">edit</span>
+                                            <span class="material-icons text-lg">edit</span>
                                         </button>
                                         <button @click="confirmDelete(employee)"
                                             class="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100">
-                                            <span class="material-icons-outlined text-lg">delete</span>
+                                            <span class="material-icons text-lg">delete</span>
                                         </button>
                                     </td>
                                 </tr>
@@ -551,11 +593,11 @@ export default {
                         <h2 class="text-lg font-semibold text-gray-800">Pending Approvals</h2>
                         <button @click="refreshPendingRequests"
                             class="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-100">
-                            <span class="material-icons-outlined text-lg">refresh</span>
+                            <span class="material-icons text-lg">refresh</span>
                         </button>
                     </div>
                     <div v-if="isLoading" class="p-4 text-center text-gray-500 flex justify-center items-center">
-                        <span class="material-icons-outlined animate-spin mr-1 text-lg">autorenew</span>
+                        <span class="material-icons animate-spin mr-1 text-lg">autorenew</span>
                         Loading...
                     </div>
                     <div v-else class="divide-y divide-gray-100">
@@ -565,7 +607,7 @@ export default {
                                 <div>
                                     <h3 class="text-sm font-medium text-gray-900">{{ request.firstName }} {{
                                         request.lastName }}</h3>
-                                    <p class="text-xs text-gray-500">{{ request.position }}</p>
+                                    <p class="text-xs text-gray-500">{{ request.position?.name }}</p>
                                 </div>
                                 <span
                                     class="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">Pending</span>
@@ -597,18 +639,31 @@ export default {
                         <div>
                             <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
                             <div class="space-y-2">
-                                <p><span class="font-medium text-gray-700">Employee No:</span> {{ selectedEmployee.empNo
-                                    || 'N/A' }}</p>
-                                <p><span class="font-medium text-gray-700">Name:</span> {{ selectedEmployee.firstName }}
-                                    {{ selectedEmployee.lastName }}</p>
-                                <p><span class="font-medium text-gray-700">Position:</span> {{ selectedEmployee.position
-                                    }}</p>
-                                <p><span class="font-medium text-gray-700">Email:</span> {{ selectedEmployee.email }}
+                                <p>
+                                    <span class="font-medium text-gray-700">Employee No:</span>
+                                        {{ selectedEmployee.empNo || 'N/A' }}
                                 </p>
-                                <p><span class="font-medium text-gray-700">Contact:</span> {{
-                                    selectedEmployee.contactInfo }}</p>
-                                <p><span class="font-medium text-gray-700">Hire Date:</span> {{ new
-                                    Date(selectedEmployee.hireDate).toLocaleDateString() }}</p>
+                                <p>
+                                    <span class="font-medium text-gray-700">Name:</span>
+                                        {{ selectedEmployee.firstName }}
+                                        {{ selectedEmployee.lastName }}
+                                </p>
+                                <p>
+                                    <span class="font-medium text-gray-700">Position:</span>
+                                    {{ selectedEmployee.position?.name }}
+                                </p>
+                                <p>
+                                    <span class="font-medium text-gray-700">Email:</span>
+                                    {{ selectedEmployee.email }}
+                                </p>
+                                <p>
+                                    <span class="font-medium text-gray-700">Contact:</span>
+                                    {{ selectedEmployee.contactInfo }}
+                                </p>
+                                <p>
+                                    <span class="font-medium text-gray-700">Hire Date:</span>
+                                    {{ new Date(selectedEmployee.hireDate).toLocaleDateString() }}
+                                </p>
                             </div>
                         </div>
                         <div>

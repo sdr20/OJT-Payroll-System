@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Employee } from '../../../models/employee.model.js';
+import { Position } from '../../../models/position.model.js';
 
 function generateToken(employeeId) {
     return jwt.sign({ employeeId }, process.env.JWT_SECRET, { expiresIn: '1800s' });
@@ -9,80 +10,95 @@ function generateToken(employeeId) {
 
 export const registerEmployee = asyncHandler(async (req, res) => {
     const {
-        firstName, middleName, lastName, username, email, password, empNo,
-        birthday, hireDate, contactInfo, civilStatus, position,
-        salary, sss, philHealth, pagIbig, role
+        empNo, username, password, firstName, middleName, lastName, email,
+        contactInfo, civilStatus, position, salary, sss, philHealth, pagIbig,
+        tin, hireDate, role
     } = req.body;
 
-    // Check required fields per the model
-    if (!firstName || !lastName || !username || !email || !password || !empNo || !salary) {
-        res.status(400).json({ error: 'Required fields are missing' });
-        return;
+    console.log('Register request body:', req.body); // Log incoming data
+
+    if (!empNo || !username || !password || !firstName || !lastName || !email || !salary) {
+        return res.status(400).json({ error: 'Required fields are missing' });
     }
 
-    // Check for existing employee
-    const existingEmployee = await Employee.exists({ 
-        $or: [
-            { username: { $regex: username, $options: 'i' } },
-            { email },
-            { empNo }
-        ]
+    const existingEmployee = await Employee.exists({
+        $or: [{ empNo }, { username: { $regex: username, $options: 'i' } }, { email }],
     });
-    
+
     if (existingEmployee) {
-        res.status(409).json({ error: 'Username, email, or employee ID already in use' });
-        return;
+        return res.status(409).json({ error: 'Employee number, username, or email already in use' });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    console.log('Hashed password:', hashedPassword);
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
-    const employee = await Employee.create({
-        firstName,
-        middleName,
-        lastName,
-        username,
-        email,
-        password: hashedPassword,
-        empNo,
-        birthday: birthday || null,
-        hireDate: hireDate || null,
-        contactInfo: contactInfo || null,
-        civilStatus: civilStatus || null,
-        position: position || null,
-        salary,
-        sss: sss || '',
-        philHealth: philHealth || '',
-        pagIbig: pagIbig || '',
-        tin: '',
-        earnings: {
-            travelExpenses: 0,
-            otherEarnings: 0
-        },
-        payHeads: [],
-        role: role || 'employee',
-        status: 'pending'
-    });
+        let positionId = null;
+        if (position) {
+            const positionDoc = await Position.findOne({ name: position });
+            if (!positionDoc) {
+                return res.status(400).json({ error: `Position '${position}' not found` });
+            }
+            positionId = positionDoc._id;
+        }
 
-    const token = generateToken(employee._id);
-  
-    res.status(201).json({
-        message: 'Registration submitted for approval',
-        employee: {
-            id: employee._id,
-            firstName: employee.firstName,
-            middleName: employee.middleName,
-            lastName: employee.lastName,
-            username: employee.username,
-            email: employee.email,
-            empNo: employee.empNo,
-            position: employee.position,
-            salary: employee.salary,
-            status: employee.status
-        },
-        token
-    });
+        const employeeData = {
+            empNo,
+            username,
+            password: hashedPassword,
+            firstName,
+            middleName: middleName || '',
+            lastName,
+            email,
+            contactInfo: contactInfo || '',
+            civilStatus: civilStatus || 'Single',
+            position: positionId, // Use ObjectId instead of string
+            salary: Number(salary),
+            sss: sss || '',
+            philHealth: philHealth || '',
+            pagIbig: pagIbig || '',
+            tin: tin || '',
+            hireDate: hireDate ? new Date(hireDate) : Date.now(),
+            role: role || 'employee',
+            status: 'pending',
+            earnings: { travelExpenses: 0, otherEarnings: 0 },
+            payHead: [],
+        };
+
+        console.log('Creating employee with data:', employeeData); // Log before creation
+
+        const employee = await Employee.create(employeeData);
+
+        const token = generateToken(employee._id);
+
+        res.status(201).json({
+            message: 'Registration submitted for approval',
+            employee: {
+                id: employee._id,
+                empNo: employee.empNo,
+                username: employee.username,
+                firstName: employee.firstName,
+                middleName: employee.middleName,
+                lastName: employee.lastName,
+                email: employee.email,
+                contactInfo: employee.contactInfo,
+                civilStatus: employee.civilStatus,
+                position: employee.position,
+                salary: employee.salary,
+                sss: employee.sss,
+                philHealth: employee.philHealth,
+                pagIbig: employee.pagIbig,
+                tin: employee.tin,
+                hireDate: employee.hireDate,
+                role: employee.role,
+                status: employee.status,
+            },
+            token,
+        });
+    } catch (error) {
+        console.error('Error in registerEmployee:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
 });
 
 export const loginEmployee = asyncHandler(async (req, res) => {

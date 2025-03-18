@@ -31,9 +31,21 @@ export const getAllEmployees = asyncHandler(async (req, res) => {
 
 export const createEmployee = asyncHandler(async (req, res) => {
     try {
-        const maxIdEmployee = await Employee.findOne().sort({ id: -1 });
-        const newId = maxIdEmployee ? maxIdEmployee.id + 1 : 1;
-        const employee = new Employee({ ...req.body, id: newId });
+        const employeeData = { ...req.body };
+        const existingEmployee = await Employee.findOne({
+            $or: [
+                { empNo: employeeData.empNo },
+                { username: employeeData.username },
+                { email: employeeData.email }
+            ]
+        });
+        if (existingEmployee) {
+            const field = existingEmployee.empNo === employeeData.empNo ? 'empNo' :
+                         existingEmployee.username === employeeData.username ? 'username' : 'email';
+            return res.status(400).json({ error: 'Duplicate key error', message: `${field} already exists` });
+        }
+
+        const employee = new Employee(employeeData);
         await employee.save();
         res.status(201).json(employee);
     } catch (error) {
@@ -208,7 +220,9 @@ export const getTrashedEmployees = asyncHandler(async (req, res) => {
 
 export const getPendingEmployees = asyncHandler(async (req, res) => {
     try {
-        const pending = await Employee.find({ status: 'pending' }).select('-password');
+        const pending = await Employee.find({ status: 'pending' })
+            .select('-password')
+            .populate('position', 'name');
         res.status(200).json(pending);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching pending employees', error: error.message });
@@ -350,6 +364,30 @@ export const getTotalEmployees = asyncHandler(async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: 'Error fetching total employees', error: error.message });
     }
+});
+
+export const approveEmployee = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const employee = await Employee.findById(id);
+    if (!employee) {
+        return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    if (employee.status !== 'pending') {
+        return res.status(400).json({ message: 'Employee is not in pending status' });
+    }
+
+    const updatedEmployee = await Employee.findByIdAndUpdate(
+        id,
+        { status: 'approved' },
+        { new: true }
+    ).select('-password');
+
+    res.status(200).json({
+        message: 'Employee approved successfully',
+        employee: updatedEmployee,
+    });
 });
 
 export const handleError = asyncHandler(async (res, error) => {

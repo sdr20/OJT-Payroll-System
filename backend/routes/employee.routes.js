@@ -2,6 +2,7 @@ import express from 'express';
 import { verifyAuthToken, verifyAdminOnly } from '../middleware/authMiddleware.js';
 import { loginEmployee, registerEmployee } from '../controllers/employee/auth/employeeAuth.controller.js';
 import { 
+    approveEmployee,
     getEmployeeById, 
     updateEmployee, 
     getProfile, 
@@ -52,8 +53,9 @@ router.get('/', getAllEmployees);
 router.post('/login', loginEmployee);
 router.post('/register', registerEmployee);
 router.post('/', verifyAdminOnly, createEmployee);
+router.put('/approve/:id', verifyAdminOnly, approveEmployee);
 
-router.get('/pending', verifyAuthToken, getPendingEmployees); 
+router.get('/pending', verifyAdminOnly, getPendingEmployees); 
 router.get('/trashed', verifyAdminOnly, getTrashedEmployees);
 router.get('/:id/salary', verifyAuthToken, getEmployeeSalarySlip);
 router.get('/profile', verifyAuthToken, getProfile);
