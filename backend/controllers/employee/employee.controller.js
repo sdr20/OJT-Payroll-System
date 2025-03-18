@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import bcrypt from 'bcrypt';
 import { Employee } from '../../models/employee.model.js';
+import { Position } from '../../models/position.model.js';
 import {
     calculateSSSContribution,
     calculatePhilHealthContribution,
@@ -164,7 +165,11 @@ export const updateEmployee = asyncHandler(async (req, res) => {
             updatedEmployee
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Update employee error:', error);
+        res.status(500).json({ 
+            message: 'Failed to update employee', 
+            error: error.message 
+        });
     }
 });
 

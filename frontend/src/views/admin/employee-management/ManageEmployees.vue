@@ -1,5 +1,6 @@
 <script>
 import axios from 'axios';
+import { useAuthStore } from '@/stores/auth.store';
 
 export default {
     data() {
@@ -135,8 +136,15 @@ export default {
 
         async fetchEmployees() {
             this.isLoading = true;
+            const authStore = useAuthStore();
+            const token = authStore.accessToken || localStorage.getItem('token');
             try {
-                const response = await axios.get('http://localhost:7777/api/employee', { headers: { "Content-Type": "application/json" } });
+                const response = await axios.get('http://localhost:7777/api/employee', { 
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 this.employees = response.data.map(emp => ({
                     ...emp,
                     hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
@@ -152,8 +160,9 @@ export default {
 
         async fetchPendingRequests() {
             this.isLoading = true;
+            const authStore = useAuthStore();
+            const token = authStore.accessToken || localStorage.getItem('token');
             try {
-                const token = localStorage.getItem('token');
                 const response = await axios.get('http://localhost:7777/api/employee/pending', {
                     headers: {
                         'Content-Type': 'application/json',
@@ -174,9 +183,14 @@ export default {
         },
 
         async fetchPositions() {
+            const authStore = useAuthStore();
+            const token = authStore.accessToken || localStorage.getItem('token');
             try {
                 const response = await axios.get('http://localhost:7777/api/positions', {
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
                 this.adminPositions = response.data || [];
             } catch (error) {
@@ -292,53 +306,19 @@ export default {
         },
 
         async approveRequest(request) {
-            const requiredFields = ['empNo', 'firstName', 'lastName', 'position', 'salary', 'email', 'contactNumber', 'username', 'password'];
-            const missingFields = requiredFields.filter(field => !request[field]);
-            if (missingFields.length > 0) {
-                this.showErrorMessage(`Missing required fields: ${missingFields.join(', ')}`);
-                return;
-            }
-
-            const newEmployee = {
-                empNo: request.empNo,
-                firstName: request.firstName,
-                lastName: request.lastName,
-                middleName: request.middleName || '',
-                position: request.position,
-                salary: Number(request.salary),
-                hourlyRate: Number(request.hourlyRate || (request.salary / (8 * 22))),
-                email: request.email,
-                contactInfo: request.contactNumber,
-                sss: request.sss || '',
-                philhealth: request.philhealth || '',
-                pagibig: request.pagibig || '',
-                tin: request.tin || '',
-                earnings: {
-                    travelExpenses: Number(request.earnings?.travelExpenses || 0),
-                    otherEarnings: Number(request.earnings?.otherEarnings || 0)
-                },
-                username: request.username,
-                password: request.password,
-                role: 'employee',
-                hireDate: new Date().toISOString().slice(0, 10)
-            };
-
             const token = localStorage.getItem('token');
             try {
-                const response = await axios.post('http://localhost:7777/api/employee', newEmployee, {
+                const response = await axios.put(`http://localhost:7777/api/employee/approve/${request.id}`, {}, {
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                if (response.status === 201) {
-                    this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
-                    await axios.delete(`http://localhost:7777/api/pending/${request.id}`, {
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-                    });
+                if (response.status === 200) {
+                    this.employees.push({ ...response.data.employee, hourlyRate: response.data.employee.salary / (8 * 22) });
                     this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
                     this.showRequestModal = false;
-                    this.showSuccessMessage('Employee approved and added successfully');
+                    this.showSuccessMessage('Employee approved successfully');
                 }
             } catch (error) {
                 console.error('Error approving request:', error.response?.data || error.message);

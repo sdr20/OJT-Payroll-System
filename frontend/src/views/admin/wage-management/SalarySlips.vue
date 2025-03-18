@@ -1,3 +1,419 @@
+<template>
+    <div class="min-h-screen p-1">
+        <div class="max-w-8xl mx-auto">
+            <!-- Header Section -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div class="relative">
+                        <span class="material-icons absolute left-2 top-2 text-gray-400 text-sm">search</span>
+                        <input v-model="searchQuery" type="text" placeholder="Search employee by name..."
+                            class="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
+                    </div>
+                    <button @click="refreshData"
+                        class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-md"
+                        :disabled="isLoading">
+                        <span class="material-icons text-sm">{{ isLoading ? 'sync' : 'refresh' }}</span>
+                        {{ isLoading ? 'Refreshing...' : 'Refresh Data' }}
+                    </button>
+                    <button @click="generateAllPayslips"
+                        class="flex items-center justify-center gap-1 bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-4 rounded-md"
+                        :disabled="isLoading || isGeneratingAll">
+                        <span class="material-icons text-sm">{{ isGeneratingAll ? 'sync' : 'description' }}</span>
+                        {{ isGeneratingAll ? 'Generating...' : 'Generate All' }}
+                    </button>
+                    <button @click="showPrintModal"
+                        class="flex items-center justify-center gap-1 bg-purple-500 hover:bg-purple-600 text-white text-sm py-2 px-4 rounded-md"
+                        :disabled="isLoading">
+                        <span class="material-icons text-sm">print</span>
+                        Print All
+                    </button>
+                    <button @click="showUpdatePositionModal"
+                        class="flex items-center justify-center gap-1 bg-orange-500 hover:bg-orange-600 text-white text-sm py-2 px-4 rounded-md"
+                        :disabled="isLoading">
+                        <span class="material-icons text-sm">edit</span>
+                        Update Position
+                    </button>
+                </div>
+            </div>
+
+            <!-- Employee List -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 mb-4">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
+                                    <div class="flex items-center gap-1">
+                                        <span class="material-icons text-gray-400 text-sm">person</span>
+                                        Name
+                                    </div>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
+                                    <div class="flex items-center gap-1">
+                                        <span class="material-icons text-gray-400 text-sm">badge</span>
+                                        Employee ID
+                                    </div>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
+                                    <div class="flex items-center gap-1">
+                                        <span class="material-icons text-gray-400 text-sm">work</span>
+                                        Position
+                                    </div>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
+                                    <div class="flex items-center gap-1">
+                                        <span class="material-icons text-gray-400 text-sm">payments</span>
+                                        Hourly Rate
+                                    </div>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
+                                    <div class="flex items-center gap-1">
+                                        <span class="material-icons text-gray-400 text-sm">account_balance_wallet</span>
+                                        Basic Salary
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr v-for="employee in paginatedEmployees" :key="employee.id"
+                                class="hover:bg-blue-50 transition-colors cursor-pointer"
+                                @click="showPayslipHistory(employee)">
+                                <td class="px-4 py-3 text-sm text-gray-900">{{ employee.name }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-500">{{ employee.empNo }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-500">
+                                    {{ getPositionName(employee.position) }}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-900">
+                                    ₱{{ getHourlyRate(employee.position).toLocaleString() }}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-blue-600">
+                                    ₱{{ getPositionSalary(employee.position).toLocaleString() }}
+                                </td>
+                            </tr>
+                            <tr v-if="paginatedEmployees.length === 0 && !isLoading">
+                                <td colspan="5" class="px-4 py-8 text-center">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <span class="material-icons text-gray-400 text-3xl">search_off</span>
+                                        <p class="text-sm text-gray-500">No employees found.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr v-if="isLoading">
+                                <td colspan="5" class="px-4 py-8 text-center">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <span class="material-icons text-blue-500 animate-spin text-3xl">sync</span>
+                                        <p class="text-sm text-gray-500">Loading employees...</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex items-center justify-between px-4 py-3 bg-gray-50">
+                    <div class="text-xs text-gray-700">
+                        Showing page {{ currentPage }} of {{ totalPages }}
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="prevPage" :disabled="currentPage === 1 || isLoading"
+                            class="inline-flex items-center px-3 py-1 text-xs bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
+                            <span class="material-icons text-sm mr-1">chevron_left</span>
+                            Previous
+                        </button>
+                        <button @click="nextPage" :disabled="currentPage === totalPages || isLoading"
+                            class="inline-flex items-center px-3 py-1 text-xs bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
+                            Next
+                            <span class="material-icons text-sm ml-1">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payslip History Modal -->
+            <div v-if="showHistoryModal"
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl h-[80vh] flex flex-col">
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
+                            <span class="material-icons text-sm">history</span>
+                            Payslip History - {{ selectedEmployee?.name }}
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <button @click.stop="generatePayslipNow(selectedEmployee)"
+                                class="flex items-center justify-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-2 px-4 rounded-md"
+                                :disabled="isLoading || payslipGenerationStatus.generating">
+                                <span class="material-icons text-sm">play_arrow</span>
+                                {{ payslipGenerationStatus.generating ? 'Generating...' : 'Generate Now' }}
+                            </button>
+                            <button @click="showHistoryModal = false" class="p-1 hover:bg-gray-100 rounded-full">
+                                <span class="material-icons text-sm">close</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-1 overflow-hidden">
+                        <div class="w-1/2 p-4 overflow-y-auto border-r">
+                            <!-- Previous Position Payslips (Initial Position) -->
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">Previous Position Payslips</h3>
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 cursor-pointer"
+                                            @click="sortPreviousPayslips('payDate')">
+                                            Pay Date <span class="material-icons text-xs">{{ sortPreviousField ===
+                                                'payDate' ? (sortPreviousAsc ? 'arrow_upward' : 'arrow_downward') : ''
+                                                }}</span>
+                                        </th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 cursor-pointer"
+                                            @click="sortPreviousPayslips('position')">
+                                            Position <span class="material-icons text-xs">{{ sortPreviousField ===
+                                                'position' ? (sortPreviousAsc ? 'arrow_upward' : 'arrow_downward') : ''
+                                                }}</span>
+                                        </th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Salary</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr v-for="payslip in sortedPreviousPayslips"
+                                        :key="`${payslip.salaryMonth}-${payslip.paydayType}`"
+                                        class="hover:bg-blue-50 cursor-pointer"
+                                        :class="{ 'bg-blue-100': selectedPayslip?.salaryMonth === payslip.salaryMonth && selectedPayslip?.paydayType === payslip.paydayType }"
+                                        @click="selectPayslip(payslip)">
+                                        <td class="px-4 py-2 text-sm text-gray-900">
+                                            {{ payslip.paydayType === 'mid-month' ?
+                                                payslip.expectedPaydays.midMonthPayday :
+                                            payslip.expectedPaydays.endMonthPayday }}
+                                        </td>
+                                        <td class="px-4 py-2 text-sm text-gray-500">
+                                            {{ getPositionName(payslip.position) }}
+                                        </td>
+                                        <td class="px-4 py-2 text-sm text-gray-500">
+                                            ₱{{ payslip.salary.toLocaleString() }}
+                                        </td>
+                                        <td class="px-4 py-2 text-sm text-gray-500">
+                                            {{ payslip.payslipDataUrl ? 'Generated' : 'Pending' }}
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <button v-if="!payslip.payslipDataUrl"
+                                                @click.stop="generatePayslip(payslip)"
+                                                class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                                                :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating">
+                                                <span class="material-icons text-sm">description</span>
+                                                {{
+                                                    payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating
+                                                ? 'Generating...' : 'Generate' }}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="sortedPreviousPayslips.length === 0">
+                                        <td colspan="5" class="px-4 py-4 text-center text-sm text-gray-500">No previous
+                                            payslips available.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <!-- New Position Payslips (Only After Update) -->
+                            <div v-if="hasUpdatedPosition">
+                                <h3 class="text-sm font-medium text-gray-700 mt-6 mb-2">New Position Payslips</h3>
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 cursor-pointer"
+                                                @click="sortNewPayslips('payDate')">
+                                                Pay Date <span class="material-icons text-xs">{{ sortNewField ===
+                                                    'payDate' ? (sortNewAsc ? 'arrow_upward' : 'arrow_downward') : ''
+                                                    }}</span>
+                                            </th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 cursor-pointer"
+                                                @click="sortNewPayslips('position')">
+                                                Position <span class="material-icons text-xs">{{ sortNewField ===
+                                                    'position' ? (sortNewAsc ? 'arrow_upward' : 'arrow_downward') : ''
+                                                    }}</span>
+                                            </th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Salary
+                                            </th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Status
+                                            </th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Action
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200">
+                                        <tr v-for="payslip in sortedNewPayslips"
+                                            :key="`${payslip.salaryMonth}-${payslip.paydayType}`"
+                                            class="hover:bg-blue-50 cursor-pointer"
+                                            :class="{ 'bg-blue-100': selectedPayslip?.salaryMonth === payslip.salaryMonth && selectedPayslip?.paydayType === payslip.paydayType }"
+                                            @click="selectPayslip(payslip)">
+                                            <td class="px-4 py-2 text-sm text-gray-900">
+                                                {{ payslip.paydayType === 'mid-month' ?
+                                                    payslip.expectedPaydays.midMonthPayday :
+                                                payslip.expectedPaydays.endMonthPayday }}
+                                            </td>
+                                            <td class="px-4 py-2 text-sm text-gray-500">
+                                                {{ getPositionName(payslip.position) }}
+                                            </td>
+                                            <td class="px-4 py-2 text-sm text-gray-500">
+                                                ₱{{ payslip.salary.toLocaleString() }}
+                                            </td>
+                                            <td class="px-4 py-2 text-sm text-gray-500">
+                                                {{ payslip.payslipDataUrl ? 'Generated' : 'Pending' }}
+                                            </td>
+                                            <td class="px-4 py-2">
+                                                <button v-if="!payslip.payslipDataUrl"
+                                                    @click.stop="generatePayslip(payslip)"
+                                                    class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                                                    :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating">
+                                                    <span class="material-icons text-sm">description</span>
+                                                    {{
+                                                        payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating
+                                                    ? 'Generating...' : 'Generate' }}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="sortedNewPayslips.length === 0">
+                                            <td colspan="5" class="px-4 py-4 text-center text-sm text-gray-500">No new
+                                                payslips available.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="w-1/2 p-4 overflow-y-auto">
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">Payslip Preview</h3>
+                            <div v-if="selectedPayslip && selectedPayslip.payslipDataUrl" class="flex flex-col h-full">
+                                <div class="mb-4">
+                                    <p class="text-sm text-gray-600">
+                                        Position: {{ getPositionName(selectedPayslip.position) }} |
+                                        Salary: ₱{{ selectedPayslip.salary.toLocaleString() }}
+                                    </p>
+                                </div>
+                                <iframe :src="selectedPayslip.payslipDataUrl"
+                                    class="w-full h-[50vh] rounded border mb-4" @load="onIframeLoad"
+                                    @error="onIframeError"></iframe>
+                                <button @click="downloadPayslip"
+                                    class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-md">
+                                    <span class="material-icons text-sm">download</span>
+                                    Download PDF
+                                </button>
+                                <div v-if="iframeError"
+                                    class="mt-3 p-3 bg-red-50 text-red-700 rounded text-sm flex items-center gap-1">
+                                    <span class="material-icons text-sm">error</span>
+                                    Error loading payslip. Please try again.
+                                </div>
+                            </div>
+                            <div v-else class="text-sm text-gray-500 text-center mt-4">
+                                Select a payslip from the list to preview.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Update Position Modal -->
+            <div v-if="showUpdateModal"
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                    <h2 class="text-base font-medium text-gray-800 mb-4 flex items-center gap-1">
+                        <span class="material-icons text-sm">edit</span>
+                        Update Employee Position
+                    </h2>
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-700 mb-1">Select Employee</label>
+                        <select v-model="selectedEmployeeForUpdate" class="w-full p-2 border rounded text-sm">
+                            <option value="" disabled>Select an employee</option>
+                            <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                                {{ emp.name }} ({{ getPositionName(emp.position) }})
+                            </option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-700 mb-1">New Position</label>
+                        <select v-model="newPosition" class="w-full p-2 border rounded text-sm">
+                            <option value="" disabled>Select a position</option>
+                            <option v-for="pos in positions" :key="pos.name" :value="pos.name">
+                                {{ pos.name }} (₱{{ pos.salary.toLocaleString() }})
+                            </option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button @click="showUpdateModal = false"
+                            class="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button @click="updateEmployeePosition"
+                            class="flex items-center gap-1 px-4 py-2 text-sm text-white bg-orange-500 rounded hover:bg-orange-600"
+                            :disabled="!selectedEmployeeForUpdate || !newPosition || isLoading">
+                            <span class="material-icons text-sm">save</span>
+                            Update
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Print All Modal -->
+            <div v-if="showPrintAllModal"
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
+                            <span class="material-icons text-sm">print</span>
+                            Print Payslips
+                        </h2>
+                        <button @click="showPrintAllModal = false" class="p-1 hover:bg-gray-100 rounded-full">
+                            <span class="material-icons text-sm">close</span>
+                        </button>
+                    </div>
+                    <div class="p-4 overflow-y-auto">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Select Employees to Print</h3>
+                        <div v-if="employeesWithPayslips.length > 0" class="mb-4">
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="selectAll" @change="toggleSelectAll"
+                                    class="large-checkbox mr-2" />
+                                <span class="text-sm text-gray-900 font-medium">Select All</span>
+                            </label>
+                        </div>
+                        <div v-if="employeesWithPayslips.length > 0">
+                            <div v-for="emp in employeesWithPayslips" :key="emp.id"
+                                class="flex items-center py-2 border-b">
+                                <input type="checkbox" v-model="selectedEmployeesForPrint" :value="emp.id"
+                                    class="large-checkbox mr-2" />
+                                <span class="text-sm text-gray-900">{{ emp.name }} - Most Recent: {{
+                                    emp.latestPayslipDate }}</span>
+                            </div>
+                        </div>
+                        <div v-else class="text-sm text-gray-500 text-center py-4">
+                            No employees with generated payslips found in history.
+                        </div>
+                    </div>
+                    <div class="p-4 border-t flex justify-end gap-2">
+                        <button @click="showPrintAllModal = false"
+                            class="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button @click="printSelectedPayslips"
+                            class="flex items-center gap-1 px-4 py-2 text-sm text-white bg-purple-500 rounded hover:bg-purple-600"
+                            :disabled="selectedEmployeesForPrint.length === 0 || isPrinting">
+                            <span class="material-icons text-sm">print</span>
+                            {{ isPrinting ? 'Printing...' : 'Print Selected' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast Messages -->
+            <div v-if="statusMessage" :class="[
+                statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
+                'fixed bottom-4 right-4 p-3 rounded shadow-lg z-50 flex items-center gap-1 animate-fade-in text-sm'
+            ]">
+                <span class="material-icons text-sm">
+                    {{ statusMessage.includes('successfully') ? 'check_circle' : 'error' }}
+                </span>
+                {{ statusMessage }}
+            </div>
+        </div>
+    </div>
+</template>
+
 <script>
 import axios from 'axios';
 import jsPDF from 'jspdf';
@@ -26,25 +442,33 @@ export default {
             payslipHistory: [],
             allPayslipHistories: {},
             iframeError: false,
-            minimumWage: 610,
-            deMinimisLimit: 10000,
-            regularHolidays: [
-                '01/01/2025', '04/09/2025', '04/17/2025', '04/18/2025', '05/01/2025',
-                '06/12/2025', '08/25/2025', '11/30/2025', '12/25/2025', '12/30/2025'
-            ],
-            specialNonWorkingDays: ['02/08/2025', '04/19/2025', '08/26/2025'],
+            config: {
+                minimumWage: 0,
+                deMinimisLimit: 0,
+                regularHolidays: [],
+                specialNonWorkingDays: [],
+            },
             showPrintAllModal: false,
             employeesWithPayslips: [],
             selectedEmployeesForPrint: [],
             isPrinting: false,
-            selectAll: false
+            selectAll: false,
+            showUpdateModal: false,
+            selectedEmployeeForUpdate: '',
+            newPosition: '',
+            sortPreviousField: 'payDate',
+            sortPreviousAsc: true,
+            sortNewField: 'payDate',
+            sortNewAsc: true,
+            currentDate: new Date(), // Dynamic current date based on system time
         };
     },
     computed: {
         filteredEmployees() {
-            return this.employees.filter((employee) =>
-                employee.name.toLowerCase().includes(this.searchQuery.toLowerCase())
-            );
+            return this.employees.filter(employee => {
+                const name = employee?.name || '';
+                return name.toLowerCase().includes(this.searchQuery.toLowerCase());
+            });
         },
         totalPages() {
             return Math.ceil(this.filteredEmployees.length / this.itemsPerPage) || 1;
@@ -52,26 +476,96 @@ export default {
         paginatedEmployees() {
             const start = (this.currentPage - 1) * this.itemsPerPage;
             const end = start + this.itemsPerPage;
-            return this.filteredEmployees.slice(start, end);
+            return this.filteredEmployees.slice(start, end).sort((a, b) => {
+                const posA = a.position?.name || a.position || 'N/A';
+                const posB = b.position?.name || b.position || 'N/A';
+                return posA.localeCompare(posB);
+            });
         },
         sortedPositionHistory() {
-            if (!this.selectedEmployee || !this.selectedEmployee.positionHistory) return [];
-            return [...this.selectedEmployee.positionHistory].sort((a, b) =>
-                new Date(a.startDate) - new Date(b.startDate)
+            if (!this.selectedEmployee || !this.selectedEmployee.positionHistory) {
+                return [];
+            }
+            return [...this.selectedEmployee.positionHistory].sort((a, b) => {
+                return new Date(a.startDate) - new Date(b.startDate);
+            });
+        },
+        initialPosition() {
+            return this.sortedPositionHistory[0] || { position: 'Unknown', salary: 0, startDate: this.currentDate.toISOString().split('T')[0] };
+        },
+        latestPosition() {
+            const history = this.sortedPositionHistory;
+            return history[history.length - 1] || { position: 'Unknown', salary: 0, startDate: this.currentDate.toISOString().split('T')[0] };
+        },
+        hasUpdatedPosition() {
+            return this.sortedPositionHistory.length > 1;
+        },
+        sortedPreviousPayslips() {
+            const previousPayslips = this.payslipHistory.filter(payslip => {
+                const payslipPos = payslip.position || 'Unknown';
+                const initialPos = this.initialPosition.position || 'Unknown';
+                return payslipPos === initialPos;
+            });
+            return previousPayslips.sort((a, b) => {
+                if (this.sortPreviousField === 'payDate') {
+                    const dateA = moment(a.paydayType === 'mid-month' ? a.expectedPaydays.midMonthPayday : a.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
+                    const dateB = moment(b.paydayType === 'mid-month' ? b.expectedPaydays.midMonthPayday : b.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
+                    return this.sortPreviousAsc ? dateA - dateB : dateB - dateA;
+                } else if (this.sortPreviousField === 'position') {
+                    const posA = this.getPositionName(a.position);
+                    const posB = this.getPositionName(b.position);
+                    return this.sortPreviousAsc ? posA.localeCompare(posB) : posB.localeCompare(posA);
+                }
+                return 0;
+            });
+        },
+        sortedNewPayslips() {
+            const newPayslips = this.payslipHistory.filter(payslip =>
+                payslip.position === this.latestPosition.position &&
+                this.hasUpdatedPosition &&
+                moment(payslip.salaryMonth, 'YYYY-MM').isSameOrAfter(moment(this.latestPosition.startDate, 'YYYY-MM-DD'), 'month')
             );
+            return newPayslips.sort((a, b) => {
+                if (this.sortNewField === 'payDate') {
+                    const dateA = moment(a.paydayType === 'mid-month' ? a.expectedPaydays.midMonthPayday : a.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
+                    const dateB = moment(b.paydayType === 'mid-month' ? b.expectedPaydays.midMonthPayday : b.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
+                    return this.sortNewAsc ? dateA - dateB : dateB - dateA;
+                } else if (this.sortNewField === 'position') {
+                    const posA = this.getPositionName(a.position);
+                    const posB = this.getPositionName(b.position);
+                    return this.sortNewAsc ? posA.localeCompare(posB) : posB.localeCompare(posA);
+                }
+                return 0;
+            });
         }
     },
     async created() {
-        const authStore = useAuthStore();
-        authStore.restoreSession(); // Ensure session is restored
-        if (!authStore.isAuthenticated) {
-            this.$router.push('admin/login'); // Redirect if not authenticated
-            return;
-        }
+        await this.fetchConfig();
         await this.fetchPositionsWithRetry();
         await this.fetchEmployees();
     },
     methods: {
+        async fetchConfig() {
+            const authStore = useAuthStore();
+            try {
+                const response = await axios.get('http://localhost:7777/api/config', {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authStore.accessToken}` // Fixed
+                    }
+                });
+                this.config = {
+                    minimumWage: response.data.minimumWage || 610,
+                    deMinimisLimit: response.data.deMinimisLimit || 10000,
+                    regularHolidays: response.data.regularHolidays || [],
+                    specialNonWorkingDays: response.data.specialNonWorkingDays || []
+                };
+            } catch (error) {
+                console.error('Error fetching config:', error);
+                this.showErrorMessage('Failed to load configuration.');
+                this.config = { minimumWage: 610, deMinimisLimit: 10000, regularHolidays: [], specialNonWorkingDays: [] };
+            }
+        },
         async fetchPositionsWithRetry(retries = 3, delay = 1000) {
             const authStore = useAuthStore();
             for (let i = 0; i < retries; i++) {
@@ -79,100 +573,59 @@ export default {
                     const response = await axios.get('http://localhost:7777/api/positions', {
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${authStore.accessToken}`
-                        },
+                            'Authorization': `Bearer ${authStore.accessToken}` // Fixed
+                        }
                     });
                     this.positions = response.data.map(position => ({
-                        name: position.name?.toString() || 'Unknown',
-                        salary: Number(position.salary) || 0
+                        name: position.name,
+                        salary: position.salary
                     }));
                     return;
                 } catch (error) {
-                    console.error(`Attempt ${i + 1} to fetch positions failed:`, error);
-                    if (error.response && error.response.status === 401) {
-                        this.handleUnauthorized();
-                        return;
-                    }
-                    if (i === retries - 1) {
-                        this.showErrorMessage('Failed to load positions after multiple attempts.');
-                    } else {
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    }
+                    if (i === retries - 1) this.showErrorMessage('Failed to load positions.');
+                    await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         },
         getPositionName(position) {
-            if (!position || typeof position !== 'string') {
-                return 'Unknown Position';
+            if (!position) return 'Unknown'; // Handle null/undefined
+            if (typeof position === 'object' && position?.name) {
+                return position.name;
             }
-            const trimmedName = position.trim().toLowerCase();
-            const positionMatch = this.positions.find(p => p.name.trim().toLowerCase() === trimmedName);
-            return positionMatch ? positionMatch.name : position || 'Unknown Position';
+            const pos = this.positions.find(p => p.name.trim().toLowerCase() === position.trim().toLowerCase());
+            return pos ? pos.name : position || 'Unknown';
         },
         getPositionSalary(positionName) {
-            if (!positionName || typeof positionName !== 'string') {
-                return 0;
-            }
-            const trimmedName = positionName.trim().toLowerCase();
-            const position = this.positions.find(p => p.name.trim().toLowerCase() === trimmedName);
+            const position = this.positions.find(p => p.name.trim().toLowerCase() === positionName?.trim().toLowerCase());
             return position ? position.salary : 0;
         },
         getHourlyRate(positionName) {
             const salary = this.getPositionSalary(positionName);
-            return salary > 0 ? salary / (8 * 22) : 0;
+            return salary / (8 * 22);
         },
         async fetchEmployees() {
-            this.isLoading = true;
-            this.statusMessage = '';
             const authStore = useAuthStore();
+            this.isLoading = true;
             try {
                 const response = await axios.get('http://localhost:7777/api/employee', {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authStore.accessToken}`
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authStore.accessToken}`
+                    }
                 });
-                this.employees = response.data.map((employee) => {
-                    const positionData = employee.position && typeof employee.position === 'object'
-                        ? employee.position.name
-                        : employee.position || 'N/A';
-
+                console.log('Employee data from backend:', response.data);
+                this.employees = response.data.map(employee => {
+                    const latestPosition = this.getLatestPosition(employee);
                     return {
-                        id: employee._id,
-                        empNo: employee.empNo || 'N/A',
-                        name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 'N/A',
-                        lastName: employee.lastName || 'N/A',
-                        middleName: employee.middleName || 'N/A',
-                        firstName: employee.firstName || 'N/A',
-                        birthDate: employee.birthDate || 'N/A',
-                        hireDate: employee.hireDate || new Date(),
-                        civilStatus: employee.civilStatus || 'SINGLE',
-                        dependents: employee.dependents || 0,
-                        sss: employee.sss || 'N/A',
-                        philhealth: employee.philhealth || 'N/A',
-                        pagibig: employee.pagibig || 'N/A',
-                        tin: employee.tin || 'N/A',
-                        hourlyRate: employee.hourlyRate || 0,
-                        salary: employee.salary || 0,
-                        position: positionData,
-                        email: employee.email || 'N/A',
-                        contactInfo: employee.contactInfo || 'N/A',
-                        role: employee.role || 'employee',
-                        payheads: employee.payheads || [],
-                        commission: employee.commission || 0,
-                        profitSharing: employee.profitSharing || 0,
-                        fees: employee.fees || 0,
-                        thirteenthMonthPay: employee.thirteenthMonthPay || 0,
-                        hazardPay: employee.hazardPay || 0,
-                        overtimeHours: employee.overtimeHours || { regular: 0, holiday: 0 },
-                        nightShiftDiff: employee.nightShiftDiff || 0,
-                        deMinimis: employee.deMinimis || 0,
-                        otherTaxable: employee.otherTaxable || 0,
-                        paidLeaves: employee.paidLeaves || { days: 0, amount: 0 },
-                        absences: employee.absences || { days: 0, amount: 0 },
-                        earnings: employee.earnings || { travelExpenses: 0, otherEarnings: 0 },
+                        ...employee,
+                        id: employee._id || employee.id,
+                        name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 'Unnamed Employee',
+                        position: latestPosition.position?.name || latestPosition.position || 'N/A', // Extract name
+                        salary: latestPosition.salary || 0,
                         positionHistory: employee.positionHistory || [{
-                            position: positionData,
+                            position: employee.position?.name || employee.position || 'N/A',
                             salary: employee.salary || 0,
-                            startDate: employee.hireDate || new Date(),
+                            startDate: employee.hireDate || this.currentDate.toISOString().split('T')[0],
                             endDate: null
                         }]
                     };
@@ -180,7 +633,7 @@ export default {
                 this.showSuccessMessage('Employees loaded successfully!');
             } catch (error) {
                 console.error('Error fetching employees:', error);
-                this.showErrorMessage(`Failed to load employees: ${error.message}`);
+                this.showErrorMessage('Failed to load employees.');
             } finally {
                 this.isLoading = false;
             }
@@ -188,8 +641,12 @@ export default {
         async refreshData() {
             this.isLoading = true;
             try {
+                await this.fetchConfig();
                 await this.fetchPositionsWithRetry();
                 await this.fetchEmployees();
+                if (this.showHistoryModal && this.selectedEmployee) {
+                    await this.showPayslipHistory(this.selectedEmployee);
+                }
             } catch (error) {
                 console.error('Error refreshing data:', error);
                 this.showErrorMessage(`Failed to refresh data: ${error.message}`);
@@ -198,165 +655,72 @@ export default {
             }
         },
         async showPayslipHistory(employee) {
-            const authStore = useAuthStore();
-            if (!authStore.isAuthenticated) {
-                this.handleUnauthorized();
-                return;
-            }
-
-            if (this.positions.length === 0) {
-                await this.fetchPositionsWithRetry();
-                if (this.positions.length === 0) {
-                    this.showErrorMessage('Positions could not be loaded.');
-                }
-            }
-
-            this.selectedEmployee = { ...employee };
             this.isLoading = true;
-
+            this.selectedEmployee = { ...employee };
             try {
-                const token = localStorage.getItem('token');
                 const response = await axios.get(`http://localhost:7777/api/payslips/${employee.id}`, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authStore.accessToken}`
-                    },
+                    headers: { 'Authorization': `Bearer ${useAuthStore().accessToken}` }
                 });
-                const backendPayslips = response.data || [];
-                console.log('Fetched payslips:', backendPayslips);
-
-                const payslipHistory = [];
-                const today = moment();
-                let currentMonth = moment(employee.hireDate).startOf('month');
-
-                while (currentMonth.isSameOrBefore(today, 'month')) {
-                    const salaryMonth = currentMonth.format('YYYY-MM');
-                    const lastDayOfMonth = currentMonth.clone().endOf('month').date();
-                    const midMonthPayDate = moment(`${salaryMonth}-15`, 'YYYY-MM-DD');
-                    const endMonthPayDate = moment(`${salaryMonth}-${lastDayOfMonth}`, 'YYYY-MM-DD');
-                    const expectedPaydays = this.getExpectedPayday(employee.hireDate, `${salaryMonth}-01`);
-
-                    const historyAtTime = employee.positionHistory.find(h =>
-                        moment(h.startDate).isSameOrBefore(salaryMonth, 'month') &&
-                        (!h.endDate || moment(h.endDate).isSameOrAfter(salaryMonth, 'month'))
-                    ) || { position: employee.position, salary: employee.salary };
-
-                    if (midMonthPayDate.isSameOrAfter(moment(employee.hireDate), 'day') && midMonthPayDate.isSameOrBefore(today, 'day')) {
-                        const midMonthPayslip = backendPayslips.find(p => p.salaryMonth === salaryMonth && p.paydayType === 'mid-month');
-                        const positionAtTime = midMonthPayslip?.position || historyAtTime.position;
-                        const salaryAtTime = midMonthPayslip?.salary || historyAtTime.salary;
-                        payslipHistory.push({
-                            salaryMonth,
-                            paydayType: 'mid-month',
-                            position: positionAtTime,
-                            salary: salaryAtTime,
-                            totalSalary: midMonthPayslip ? this.calculateNetSalary({ ...employee, salary: salaryAtTime, position: positionAtTime, salaryMonth: `${salaryMonth}-15` }) : null,
-                            payslipDataUrl: midMonthPayslip ? midMonthPayslip.payslipDataUrl : null,
-                            employee: { ...employee, position: positionAtTime, salary: salaryAtTime, salaryMonth: `${salaryMonth}-15` },
-                            expectedPaydays,
-                        });
-                    }
-
-                    if (endMonthPayDate.isSameOrAfter(moment(employee.hireDate), 'day') && endMonthPayDate.isSameOrBefore(today, 'day')) {
-                        const endMonthPayslip = backendPayslips.find(p => p.salaryMonth === salaryMonth && p.paydayType === 'end-of-month');
-                        const positionAtTime = endMonthPayslip?.position || historyAtTime.position;
-                        const salaryAtTime = endMonthPayslip?.salary || historyAtTime.salary;
-                        payslipHistory.push({
-                            salaryMonth,
-                            paydayType: 'end-of-month',
-                            position: positionAtTime,
-                            salary: salaryAtTime,
-                            totalSalary: endMonthPayslip ? this.calculateNetSalary({ ...employee, salary: salaryAtTime, position: positionAtTime, salaryMonth: `${salaryMonth}-${lastDayOfMonth}` }) : null,
-                            payslipDataUrl: endMonthPayslip ? endMonthPayslip.payslipDataUrl : null,
-                            employee: { ...employee, position: positionAtTime, salary: salaryAtTime, salaryMonth: `${salaryMonth}-${lastDayOfMonth}` },
-                            expectedPaydays,
-                        });
-                    }
-
-                    currentMonth.add(1, 'month');
-                }
-
-                this.allPayslipHistories[employee.id] = payslipHistory;
-                this.payslipHistory = payslipHistory;
-                this.selectedPayslip = payslipHistory[0] || null;
-                this.showHistoryModal = true;
-
-                if (backendPayslips.length === 0) {
-                    this.showErrorMessage('No payslips found. You can generate new ones.');
-                }
-            } catch (error) {
-                console.error('Error fetching payslips:', error);
-                if (error.response && error.response.status === 401) {
-                    this.handleUnauthorized();
-                } else if (error.response && error.response.status === 404) {
-                    this.showErrorMessage('No payslips found for this employee yet.');
-                    this.allPayslipHistories[employee.id] = this.payslipHistory;
-                    this.showHistoryModal = true;
-                } else {
-                    this.showErrorMessage(`Failed to fetch payslips: ${error.message}`);
-                    this.allPayslipHistories[employee.id] = this.payslipHistory;
-                    this.showHistoryModal = true;
-                }
-            } finally {
-                this.isLoading = false;
-            }
-        },
-        canGeneratePayslip(payslip) {
-            const today = moment();
-            const payDate = moment(payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
-            const oneDayBefore = payDate.clone().subtract(1, 'day');
-            return today.isSameOrAfter(oneDayBefore, 'day') && !payslip.payslipDataUrl;
-        },
-        handleUnauthorized() {
-            const authStore = useAuthStore();
-            this.showErrorMessage('Session expired. Please log in again.');
-            authStore.logout();
-            this.$router.push('/login');
-        },
-        async generatePayslip(payslip) {
-            const authStore = useAuthStore();
-            const employee = payslip.employee;
-            const key = `${payslip.salaryMonth}-${payslip.paydayType}`;
-            this.payslipGenerationStatus[key] = { generating: true };
-            try {
-                const payslipData = this.createPayslipData(employee);
-                const pdfBlob = await this.generatePdf(payslipData);
-                const url = URL.createObjectURL(pdfBlob);
-                const base64Data = await this.blobToBase64(pdfBlob);
-
-                await axios.post('http://localhost:7777/api/payslips/generate', {
-                    employeeId: employee.id,
-                    empNo: employee.empNo,
-                    payslipData: base64Data,
+                this.payslipHistory = response.data.map(payslip => ({
                     salaryMonth: payslip.salaryMonth,
                     paydayType: payslip.paydayType,
                     position: payslip.position,
+                    salary: payslip.salary,
+                    payslipDataUrl: payslip.payslipDataUrl,
+                    expectedPaydays: this.getExpectedPayday(employee.hireDate, payslip.salaryMonth),
+                    employee: { ...employee, salaryMonth: `${payslip.salaryMonth}-${payslip.paydayType === 'mid-month' ? '15' : moment(payslip.salaryMonth).daysInMonth()}` }
+                }));
+                this.selectedPayslip = this.payslipHistory.find(p => p.payslipDataUrl) || this.payslipHistory[0] || null;
+            } catch (error) {
+                this.payslipHistory = []; // Reset history
+                this.selectedPayslip = null;
+                if (error.response?.status === 404) {
+                    this.showErrorMessage('No payslips available yet.');
+                } else {
+                    console.error('Error fetching payslips:', error);
+                    this.showErrorMessage('Failed to load payslip history.');
+                }
+            } finally {
+                this.isLoading = false;
+                this.showHistoryModal = true;
+            }
+        },
+        canGeneratePayslip(payslip) {
+            const today = moment(this.currentDate);
+            const payDate = moment(payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
+            return today.isSameOrAfter(payDate, 'day') && !payslip.payslipDataUrl;
+        },
+        async generatePayslip(payslip) {
+            const authStore = useAuthStore();
+            const key = `${payslip.salaryMonth}-${payslip.paydayType}`;
+            this.payslipGenerationStatus[key] = { generating: true };
+            try {
+                const pdfBlob = await this.generatePdf(this.createPayslipData(payslip.employee));
+                const base64Data = await this.blobToBase64(pdfBlob);
+                const response = await axios.post('http://localhost:7777/api/payslips/generate', {
+                    employeeId: payslip.employee.id,
+                    empNo: payslip.employee.empNo,
+                    payslipData: base64Data,
+                    salaryMonth: payslip.salaryMonth,
+                    paydayType: payslip.paydayType,
+                    position: payslip.position.toLowerCase(),
                     salary: payslip.salary
                 }, {
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authStore.accessToken}`
-                    },
+                    }
                 });
-
-                payslip.payslipDataUrl = url;
-                payslip.totalSalary = this.calculateNetSalary(employee);
+                payslip.payslipDataUrl = URL.createObjectURL(pdfBlob);
                 this.selectedPayslip = payslip;
-
-                const employeeHistory = this.allPayslipHistories[employee.id] || [];
-                const updatedHistory = employeeHistory.map(p =>
+                this.payslipHistory = this.payslipHistory.map(p =>
                     p.salaryMonth === payslip.salaryMonth && p.paydayType === payslip.paydayType ? payslip : p
                 );
-                this.allPayslipHistories[employee.id] = updatedHistory;
-
-                this.showSuccessMessage(`Payslip generated for ${employee.name} - ${payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday}!`);
+                this.allPayslipHistories[payslip.employee.id] = this.payslipHistory;
+                this.showSuccessMessage(`Payslip generated for ${payslip.employee.name}!`);
             } catch (error) {
                 console.error('Error generating payslip:', error);
-                if (error.response && error.response.status === 401) {
-                    this.handleUnauthorized();
-                } else {
-                    this.showErrorMessage(`Failed to generate payslip: ${error.message}`);
-                }
+                this.showErrorMessage('Failed to generate payslip.');
             } finally {
                 this.payslipGenerationStatus[key] = { generating: false };
             }
@@ -399,55 +763,52 @@ export default {
         getLatestPosition(employee) {
             if (!employee.positionHistory || employee.positionHistory.length === 0) {
                 return {
-                    position: employee.position || 'N/A',
-                    salary: employee.salary || 0
+                    position: employee.position?.name || employee.position || 'N/A',
+                    salary: employee.salary || 0,
+                    startDate: employee.hireDate || this.currentDate.toISOString().split('T')[0]
                 };
             }
-
-            const sortedHistory = [...employee.positionHistory].sort((a, b) => {
-                const dateA = new Date(a.startDate);
-                const dateB = new Date(b.startDate);
-                return dateB - dateA;
+            const sortedHistory = [...employee.positionHistory].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+            return sortedHistory.find(h => !h.endDate) || sortedHistory[0];
+        },
+        getActivePositionForDate(positionHistory, date) {
+            if (!positionHistory || positionHistory.length === 0) {
+                return { position: 'N/A', salary: 0, startDate: this.selectedEmployee?.hireDate || this.currentDate.toISOString().split('T')[0] };
+            }
+            const targetDate = moment(date);
+            const activePosition = positionHistory.find(history => {
+                const startDate = moment(history.startDate);
+                const endDate = history.endDate ? moment(history.endDate) : moment(this.currentDate);
+                return targetDate.isSameOrAfter(startDate, 'day') && targetDate.isSameOrBefore(endDate, 'day');
             });
-
-            const today = new Date();
-            const latestPosition = sortedHistory.find(history =>
-                !history.endDate || new Date(history.endDate) >= today
-            );
-
-            return latestPosition || sortedHistory[0] || {
-                position: employee.position || 'N/A',
-                salary: employee.salary || 0
-            };
+            return activePosition || positionHistory[positionHistory.length - 1];
         },
         async generatePayslipNow(employee) {
-            const authStore = useAuthStore();
-            if (!employee || !authStore.isAuthenticated) {
-                this.handleUnauthorized();
-                return;
-            }
-
             this.payslipGenerationStatus.generating = true;
             try {
-                const latestPositionData = this.getLatestPosition(employee);
-                const positionAtTime = latestPositionData.position;
-                const salaryAtTime = latestPositionData.salary;
-
-                const today = moment();
+                const today = moment(this.currentDate);
                 const salaryMonth = today.format('YYYY-MM');
                 const lastDayOfMonth = today.clone().endOf('month').date();
-                const midMonthPayDate = moment(`${salaryMonth}-15`, 'YYYY-MM-DD');
-                const expectedPaydays = this.getExpectedPayday(employee.hireDate, `${salaryMonth}-01`);
+                const payDate = today.isBefore(moment(`${salaryMonth}-15`, 'YYYY-MM-DD').endOf('day'))
+                    ? moment(`${salaryMonth}-15`, 'YYYY-MM-DD')
+                    : moment(`${salaryMonth}-${lastDayOfMonth}`, 'YYYY-MM-DD');
+                const activePosition = this.getActivePositionForDate(employee.positionHistory, payDate);
+                if (!activePosition.position || !activePosition.salary) {
+                    this.showErrorMessage('No valid position for current date.');
+                    return;
+                }
+                const updatedEmployee = { ...employee, position: activePosition.position, salary: activePosition.salary };
+                const expectedPaydays = this.getExpectedPayday(employee.hireDate, salaryMonth);
 
-                const paydayType = today.isBefore(midMonthPayDate.clone().endOf('day')) ? 'mid-month' : 'end-of-month';
+                const paydayType = payDate.date() === 15 ? 'mid-month' : 'end-of-month';
                 const employeeSalaryMonth = `${salaryMonth}-${paydayType === 'mid-month' ? '15' : lastDayOfMonth}`;
 
                 let payslipData = {
-                    salaryMonth: salaryMonth,
-                    paydayType: paydayType,
-                    position: positionAtTime,
-                    salary: salaryAtTime,
-                    employee: { ...employee, position: positionAtTime, salary: salaryAtTime, salaryMonth: employeeSalaryMonth },
+                    salaryMonth,
+                    paydayType,
+                    position: activePosition.position,
+                    salary: activePosition.salary,
+                    employee: { ...updatedEmployee, salaryMonth: employeeSalaryMonth },
                     expectedPaydays,
                 };
 
@@ -456,43 +817,100 @@ export default {
                 const url = URL.createObjectURL(pdfBlob);
                 const base64Data = await this.blobToBase64(pdfBlob);
 
-                await axios.post('http://localhost:7777/api/payslips/generate', {
+                const response = await axios.post('http://localhost:7777/api/payslips/generate', {
                     employeeId: employee.id,
                     empNo: employee.empNo,
                     payslipData: base64Data,
                     salaryMonth: payslipData.salaryMonth,
                     paydayType: payslipData.paydayType,
-                    position: payslipData.position,
-                    salary: payslipData.salary
+                    position: activePosition.position,
+                    salary: activePosition.salary
                 }, {
-                    headers: { 'Content-Type': 'application/json' },
-                    'Authorization': `Bearer ${authStore.accessToken}`
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authStore.accessToken}`
+                    },
                 });
-
-                payslipData.payslipDataUrl = url;
-                payslipData.totalSalary = this.calculateNetSalary(payslipData.employee);
-                let employeeHistory = this.allPayslipHistories[employee.id] || [];
-                if (!employeeHistory.find(p => p.salaryMonth === payslipData.salaryMonth && p.paydayType === payslipData.paydayType)) {
-                    employeeHistory.push(payslipData);
-                } else {
-                    employeeHistory = employeeHistory.map(p =>
-                        p.salaryMonth === payslipData.salaryMonth && p.paydayType === payslipData.paydayType ? payslipData : p
+                if (response.status === 201 || response.status === 200) {
+                    payslipData.payslipDataUrl = url;
+                    payslipData.totalSalary = this.calculateNetSalary(payslipData.employee);
+                    let employeeHistory = this.allPayslipHistories[employee.id] || [];
+                    const existingPayslipIndex = employeeHistory.findIndex(p =>
+                        p.salaryMonth === payslipData.salaryMonth && p.paydayType === payslipData.paydayType
                     );
-                }
-                this.allPayslipHistories[employee.id] = employeeHistory;
-                this.payslipHistory = employeeHistory;
-                this.selectedPayslip = payslipData;
 
-                this.showSuccessMessage(`Payslip generated now for ${employee.name} - ${payslipData.paydayType === 'mid-month' ? expectedPaydays.midMonthPayday : expectedPaydays.endMonthPayday}!`);
+                    if (existingPayslipIndex !== -1) {
+                        employeeHistory[existingPayslipIndex] = payslipData;
+                    } else {
+                        employeeHistory.push(payslipData);
+                    }
+
+                    this.allPayslipHistories[employee.id] = employeeHistory;
+                    this.payslipHistory = employeeHistory;
+                    this.selectedPayslip = payslipData;
+
+                    this.showSuccessMessage(`Payslip generated now for ${employee.name} - ${payslipData.paydayType === 'mid-month' ? expectedPaydays.midMonthPayday : expectedPaydays.endMonthPayday}!`);
+                }
             } catch (error) {
                 console.error('Error generating payslip now:', error);
-                if (error.response && error.response.status === 401) {
-                    this.handleUnauthorized();
-                } else {
-                    this.showErrorMessage(`Failed to generate payslip: ${error.message}`);
-                }
+                this.showErrorMessage(`Failed to generate payslip: ${error.message}`);
             } finally {
                 this.payslipGenerationStatus.generating = false;
+            }
+        },
+        showUpdatePositionModal() {
+            this.selectedEmployeeForUpdate = '';
+            this.newPosition = '';
+            this.showUpdateModal = true;
+        },
+        async updateEmployeePosition() {
+            const authStore = useAuthStore();
+            if (!this.selectedEmployeeForUpdate || !this.newPosition) return;
+            this.isLoading = true;
+            try {
+                const employee = this.employees.find(emp => emp.id === this.selectedEmployeeForUpdate);
+                const newPositionData = this.positions.find(pos => pos.name === this.newPosition);
+                const response = await axios.put(`http://localhost:7777/api/employee/update/${employee.id}`, {
+                    position: newPositionData.name,
+                    salary: newPositionData.salary,
+                    positionHistory: employee.positionHistory.concat({
+                        position: newPositionData.name,
+                        salary: newPositionData.salary,
+                        startDate: moment(this.currentDate).format('YYYY-MM-DD'),
+                        endDate: null
+                    })
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authStore.accessToken}` // Fixed
+                    }
+                });
+                employee.position = newPositionData.name;
+                employee.salary = newPositionData.salary;
+                employee.positionHistory = response.data.updatedEmployee.positionHistory;
+                this.showSuccessMessage(`Position updated for ${employee.name}!`);
+                this.showUpdateModal = false;
+            } catch (error) {
+                console.error('Error updating position:', error);
+                this.showErrorMessage('Failed to update position.');
+            } finally {
+                this.isLoading = false;
+            }
+        },
+        sortPreviousPayslips(field) {
+            if (this.sortPreviousField === field) {
+                this.sortPreviousAsc = !this.sortPreviousAsc;
+            } else {
+                this.sortPreviousField = field;
+                this.sortPreviousAsc = true;
+            }
+        },
+        sortNewPayslips(field) {
+            if (this.sortNewField === field) {
+                this.sortNewAsc = !this.sortNewAsc;
+            } else {
+                this.sortNewField = field;
+                this.sortNewAsc = true;
             }
         },
         showPrintModal() {
@@ -552,8 +970,11 @@ export default {
                     const empData = this.employeesWithPayslips.find(e => e.id === empId);
                     const employee = this.employees.find(e => e.id === empId);
                     const payslip = empData.latestPayslip;
+                    const payDate = moment(`${payslip.salaryMonth}-${payslip.paydayType === 'mid-month' ? '15' : moment(payslip.salaryMonth).daysInMonth()}`, 'YYYY-MM-DD');
+                    const activePosition = this.getActivePositionForDate(employee.positionHistory, payDate);
+                    const updatedEmployee = { ...employee, position: activePosition.position, salary: activePosition.salary };
 
-                    const payslipData = this.createPayslipData({ ...employee, salaryMonth: payslip.salaryMonth, salary: payslip.salary, position: payslip.position });
+                    const payslipData = this.createPayslipData(updatedEmployee);
                     await this.generatePdf(payslipData, doc);
 
                     if (i < this.selectedEmployeesForPrint.length - 1) {
@@ -578,29 +999,25 @@ export default {
         },
         async downloadPayslip() {
             if (!this.selectedPayslip || !this.selectedPayslip.payslipDataUrl) return;
-            const response = await fetch(this.selectedPayslip.payslipDataUrl);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `Payslip_${this.selectedEmployee.name}_${this.selectedPayslip.paydayType === 'mid-month' ? this.selectedPayslip.expectedPaydays.midMonthPayday : this.selectedPayslip.expectedPaydays.endMonthPayday}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        },
-        getPayslipsForPosition(position, startDate, endDate) {
-            return this.payslipHistory.filter(payslip => {
-                const payslipDate = moment(payslip.salaryMonth, 'YYYY-MM');
-                const start = moment(startDate);
-                const end = endDate ? moment(endDate) : moment();
-                return payslip.position === position &&
-                    payslipDate.isSameOrAfter(start, 'month') &&
-                    payslipDate.isSameOrBefore(end, 'month');
-            });
+            try {
+                const response = await fetch(this.selectedPayslip.payslipDataUrl);
+                if (!response.ok) throw new Error('Failed to fetch payslip PDF');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Payslip_${this.selectedEmployee.name}_${this.selectedPayslip.paydayType === 'mid-month' ? this.selectedPayslip.expectedPaydays.midMonthPayday : this.selectedPayslip.expectedPaydays.endMonthPayday}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Error downloading payslip:', error);
+                this.showErrorMessage('Failed to download payslip.');
+            }
         },
         formatDate(date) {
-            return moment(date).format('D MMMM YYYY');
+            return moment(date).isValid() ? moment(date).format('D MMMM YYYY') : 'Invalid Date';
         },
         calculateTotalEarnings(employee) {
             const baseEarnings = (employee.earnings ? employee.earnings.travelExpenses : 0) + (employee.earnings ? employee.earnings.otherEarnings : 0);
@@ -643,14 +1060,14 @@ export default {
             };
         },
         calculateNonTaxableIncome(employee) {
-            const isMWE = (employee.salary / 30) <= this.minimumWage;
+            const isMWE = (employee.salary / 30) <= this.config.minimumWage;
             const basicSalaryMWE = isMWE ? employee.salary : 0;
             const holidayPayMWE = isMWE ? this.calculateHolidayPay(employee) : 0;
             const overtimePayMWE = isMWE ? this.calculateOvertimePay(employee) : 0;
             const nightShiftDiffMWE = isMWE ? (employee.nightShiftDiff || 0) : 0;
             const hazardPayMWE = isMWE ? (employee.hazardPay || 0) : 0;
             const thirteenthMonthExempt = Math.min(employee.thirteenthMonthPay || 0, 90000) || 0;
-            const deMinimis = Math.min(employee.deMinimis || 0, this.deMinimisLimit) || 0;
+            const deMinimis = Math.min(employee.deMinimis || 0, this.config.deMinimisLimit) || 0;
             const sssContribution = this.calculateSSSContribution(employee.salary) || 0;
             const philhealthContribution = this.calculatePhilHealthContribution(employee.salary) || 0;
             const pagibigContribution = this.calculatePagIBIGContribution(employee.salary) || 0;
@@ -677,9 +1094,9 @@ export default {
             const dailyRate = (employee.salary / 30) || 0;
             const salaryMonth = employee.salaryMonth
                 ? employee.salaryMonth.split('-')[0] + '-' + employee.salaryMonth.split('-')[1]
-                : moment().format('YYYY-MM');
-            const regularHolidays = this.regularHolidays || [];
-            const specialNonWorkingDays = this.specialNonWorkingDays || [];
+                : moment(this.currentDate).format('YYYY-MM');
+            const regularHolidays = this.config.regularHolidays || [];
+            const specialNonWorkingDays = this.config.specialNonWorkingDays || [];
             const isRegularHoliday = regularHolidays.some(holiday => moment(holiday, 'MM/DD/YYYY').format('YYYY-MM') === salaryMonth);
             const isSpecialHoliday = specialNonWorkingDays.some(holiday => moment(holiday, 'MM/DD/YYYY').format('YYYY-MM') === salaryMonth);
             if (isRegularHoliday) return dailyRate * 2 || 0;
@@ -720,14 +1137,32 @@ export default {
             return Math.round(408841.80 + (taxableIncome - 666667) * 0.35) || 0;
         },
         getExpectedPayday(hireDate, salaryMonth) {
-            const [year, month] = salaryMonth.split('-');
+            const [year, month] = salaryMonth.split('-').map(part => parseInt(part, 10));
             const lastDay = new Date(year, month, 0).getDate();
             let payday1 = new Date(year, month - 1, 15);
             let payday2 = new Date(year, month - 1, lastDay);
 
+            const hireMoment = moment(hireDate);
+            if (hireMoment.isAfter(moment(`${year}-${month}-15`, 'YYYY-MM-DD'))) {
+                payday1 = hireMoment.toDate();
+            }
+            if (hireMoment.isAfter(moment(`${year}-${month}-${lastDay}`, 'YYYY-MM-DD'))) {
+                payday2 = hireMoment.toDate();
+            }
+
             const isWeekend = (date) => date.getDay() === 0 || date.getDay() === 6;
-            while (isWeekend(payday1)) payday1.setDate(payday1.getDate() + 1);
-            while (isWeekend(payday2)) payday2.setDate(payday2.getDate() - 1);
+            while (isWeekend(payday1)) {
+                const nextDay = new Date(payday1);
+                nextDay.setDate(payday1.getDate() + 1);
+                if (nextDay.getMonth() !== payday1.getMonth()) break;
+                payday1 = nextDay;
+            }
+            while (isWeekend(payday2)) {
+                const prevDay = new Date(payday2);
+                prevDay.setDate(payday2.getDate() - 1);
+                if (prevDay.getMonth() !== payday2.getMonth()) break;
+                payday2 = prevDay;
+            }
 
             return {
                 midMonthPayday: payday1.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
@@ -735,43 +1170,34 @@ export default {
             };
         },
         createPayslipData(employee) {
-            const salaryMonth = employee.salaryMonth.split('-').slice(0, 2).join('-'); // e.g., "2025-03"
-            const paydayType = employee.salaryMonth.includes('15') ? 'mid-month' : 'end-of-month'; // Infer from salaryMonth
-            const monthlySalary = employee.salary || 0;
-            const basicSalary = monthlySalary / 2; // 15-day period (half of monthly salary)
-            const paydays = this.getExpectedPayday(employee.hireDate, salaryMonth);
-            const salaryDate = paydayType === 'mid-month'
-                ? paydays.midMonthPayday
-                : paydays.endMonthPayday;
-
-            // Adjust deductions for 15-day period
+            const salaryDate = moment(employee.salaryMonth, 'YYYY-MM-DD').format('MM/DD/YYYY');
+            const basicSalary = employee.salary || 0;
             const sss = this.calculateSSSContribution(basicSalary) || 0;
             const philhealth = this.calculatePhilHealthContribution(basicSalary) || 0;
             const pagibig = this.calculatePagIBIGContribution(basicSalary) || 0;
-            const withholdingTax = this.calculateWithholdingTax({ ...employee, salary: basicSalary }) || 0;
-            const totalDeductions = sss + philhealth + pagibig + withholdingTax || 0;
-            const netSalary = this.calculateNetSalary({ ...employee, salary: basicSalary }) || 0;
-
+            const totalDeductions = sss + philhealth + pagibig + (this.calculateWithholdingTax(employee) || 0) || 0;
+            const netSalary = this.calculateNetSalary(employee) || 0;
             const paidLeavesDays = employee.paidLeaves ? employee.paidLeaves.days : 0;
             const absencesDays = employee.absences ? employee.absences.days : 0;
-            const paidLeavesAmount = employee.paidLeaves ? employee.paidLeaves.amount / 2 : 0; // Adjust for 15 days
-            const absencesAmount = employee.absences ? -(employee.absences.amount / 2) : 0; // Adjust for 15 days
+            const paidLeavesAmount = employee.paidLeaves ? employee.paidLeaves.amount : 0;
+            const absencesAmount = employee.absences ? -(employee.absences.amount) : 0;
+            const paydays = this.getExpectedPayday(employee.hireDate, employee.salaryMonth.split('-')[0] + '-' + employee.salaryMonth.split('-')[1]);
 
             return {
-                salaryDate: moment(payslipData.salaryDate, 'D MMMM YYYY', true).format('MM/DD/YYYY'),
+                salaryDate: salaryDate,
                 empNo: employee.empNo || 'N/A',
                 lastName: employee.lastName || 'N/A',
                 middleName: employee.middleName || 'N/A',
                 firstName: employee.firstName || 'N/A',
-                birthDate: moment(employee.birthDate, 'YYYY-MM-DD', true).isValid() ? moment(employee.birthDate).format('MM/DD/YYYY') : 'N/A',
-                hireDate: moment(employee.hireDate, 'YYYY-MM-DD', true).isValid() ? moment(employee.hireDate).format('MM/DD/YYYY') : 'N/A',
+                birthDate: moment(employee.birthDate).isValid() ? moment(employee.birthDate).format('MM/DD/YYYY') : 'N/A',
+                hireDate: moment(employee.hireDate).isValid() ? moment(employee.hireDate).format('MM/DD/YYYY') : 'N/A',
                 civilStatus: employee.civilStatus || 'SINGLE',
                 dependents: employee.dependents || 0,
                 sss: employee.sss || 'N/A',
                 tin: employee.tin || 'N/A',
                 philhealth: employee.philhealth || 'N/A',
                 pagibig: employee.pagibig || 'N/A',
-                position: employee.position || 'N/A',
+                position: this.getPositionName(employee.position) || 'N/A',
                 basicSalary: this.formatNumber(basicSalary),
                 totalDeductions: this.formatNumber(totalDeductions),
                 netSalary: this.formatNumber(netSalary),
@@ -782,7 +1208,7 @@ export default {
                 absencesDays: absencesDays,
                 paidLeavesAmount: this.formatNumber(paidLeavesAmount),
                 absencesAmount: this.formatNumber(absencesAmount),
-                withholdingTax: this.formatNumber(withholdingTax),
+                withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0),
                 payheads: employee.payheads || [],
                 expectedPaydays: paydays
             };
@@ -809,7 +1235,8 @@ export default {
 
             function addText(doc, text, x, y, options) {
                 options = options || {};
-                text = String(text || 'N/A').replace('₱', 'P'); // Ensure text is a string
+                text = text || 'N/A';
+                text = text.replace('₱', 'P');
                 doc.setFontSize(options.fontSize || 10);
                 doc.setFont(options.font || 'Helvetica', options.fontStyle || 'normal');
                 doc.setTextColor(
@@ -928,6 +1355,7 @@ export default {
         },
         onIframeError() {
             this.iframeError = true;
+            this.showErrorMessage('Error loading payslip preview.');
         },
         showSuccessMessage(message) {
             this.statusMessage = message;
@@ -940,297 +1368,6 @@ export default {
     }
 };
 </script>
-
-<template>
-    <div class="min-h-screen p-1">
-        <div class="max-w-8xl mx-auto">
-            <!-- Header Section (Unchanged) -->
-            <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="relative">
-                        <span class="material-icons absolute left-2 top-2 text-gray-400 text-sm">search</span>
-                        <input v-model="searchQuery" type="text" placeholder="Search employee by name..."
-                            class="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
-                    </div>
-                    <button @click="refreshData"
-                        class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-md"
-                        :disabled="isLoading">
-                        <span class="material-icons text-sm">{{ isLoading ? 'sync' : 'refresh' }}</span>
-                        {{ isLoading ? 'Refreshing...' : 'Refresh Data' }}
-                    </button>
-                    <button @click="generateAllPayslips"
-                        class="flex items-center justify-center gap-1 bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-4 rounded-md"
-                        :disabled="isLoading || isGeneratingAll">
-                        <span class="material-icons text-sm">{{ isGeneratingAll ? 'sync' : 'description' }}</span>
-                        {{ isGeneratingAll ? 'Generating...' : 'Generate All' }}
-                    </button>
-                    <button @click="showPrintModal"
-                        class="flex items-center justify-center gap-1 bg-purple-500 hover:bg-purple-600 text-white text-sm py-2 px-4 rounded-md"
-                        :disabled="isLoading">
-                        <span class="material-icons text-sm">print</span>
-                        Print All
-                    </button>
-                </div>
-            </div>
-
-            <!-- Employee List (Unchanged) -->
-            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 mb-4">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">person</span>
-                                        Name
-                                    </div>
-                                </th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">badge</span>
-                                        Employee ID
-                                    </div>
-                                </th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">work</span>
-                                        Position
-                                    </div>
-                                </th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">payments</span>
-                                        Hourly Rate
-                                    </div>
-                                </th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">account_balance_wallet</span>
-                                        Basic Salary
-                                    </div>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-for="employee in paginatedEmployees" :key="employee.id"
-                                class="hover:bg-blue-50 transition-colors cursor-pointer"
-                                @click="showPayslipHistory(employee)">
-                                <td class="px-4 py-3 text-sm text-gray-900">{{ employee.name }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-500">{{ employee.empNo }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-500">
-                                    {{ getPositionName(employee.position) }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900">
-                                    ₱{{ getHourlyRate(employee.position).toLocaleString() }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-blue-600">
-                                    ₱{{ getPositionSalary(employee.position).toLocaleString() }}
-                                </td>
-                            </tr>
-                            <tr v-if="paginatedEmployees.length === 0 && !isLoading">
-                                <td colspan="5" class="px-4 py-8 text-center">
-                                    <div class="flex flex-col items-center gap-2">
-                                        <span class="material-icons text-gray-400 text-3xl">search_off</span>
-                                        <p class="text-sm text-gray-500">No employees found.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr v-if="isLoading">
-                                <td colspan="5" class="px-4 py-8 text-center">
-                                    <div class="flex flex-col items-center gap-2">
-                                        <span class="material-icons text-blue-500 animate-spin text-3xl">sync</span>
-                                        <p class="text-sm text-gray-500">Loading employees...</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="flex items-center justify-between px-4 py-3 bg-gray-50">
-                    <div class="text-xs text-gray-700">
-                        Showing page {{ currentPage }} of {{ totalPages }}
-                    </div>
-                    <div class="flex gap-2">
-                        <button @click="prevPage" :disabled="currentPage === 1 || isLoading"
-                            class="inline-flex items-center px-3 py-1 text-xs bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
-                            <span class="material-icons text-sm mr-1">chevron_left</span>
-                            Previous
-                        </button>
-                        <button @click="nextPage" :disabled="currentPage === totalPages || isLoading"
-                            class="inline-flex items-center px-3 py-1 text-xs bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
-                            Next
-                            <span class="material-icons text-sm ml-1">chevron_right</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Updated Payslip History Modal -->
-            <div v-if="showHistoryModal"
-                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl h-[80vh] flex flex-col">
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
-                            <span class="material-icons text-sm">history</span>
-                            Payslip History - {{ selectedEmployee?.name }}
-                        </h2>
-                        <div class="flex items-center gap-2">
-                            <button @click.stop="generatePayslipNow(selectedEmployee)"
-                                class="flex items-center justify-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-2 px-4 rounded-md"
-                                :disabled="isLoading || payslipGenerationStatus.generating">
-                                <span class="material-icons text-sm">play_arrow</span>
-                                {{ payslipGenerationStatus.generating ? 'Generating...' : 'Generate Now' }}
-                            </button>
-                            <button @click="showHistoryModal = false" class="p-1 hover:bg-gray-100 rounded-full">
-                                <span class="material-icons text-sm">close</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="flex flex-1 overflow-hidden">
-                        <div class="w-1/2 p-4 overflow-y-auto border-r">
-                            <!-- Payslip List by Position History -->
-                            <div v-for="(history, index) in sortedPositionHistory" :key="`history-${index}`"
-                                class="mb-6">
-                                <h3 class="text-sm font-medium text-gray-700 mb-2">
-                                    Payslips for {{ getPositionName(history.position) }}
-                                    (Salary: ₱{{ history.salary.toLocaleString() }},
-                                    {{ formatDate(history.startDate) }} -
-                                    {{ history.endDate ? formatDate(history.endDate) : 'Present' }})
-                                </h3>
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50 sticky top-0">
-                                        <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Pay Date
-                                            </th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Action
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-200">
-                                        <tr v-for="payslip in getPayslipsForPosition(history.position, history.startDate, history.endDate)"
-                                            :key="`${payslip.salaryMonth}-${payslip.paydayType}`"
-                                            class="hover:bg-blue-50 cursor-pointer"
-                                            :class="{ 'bg-blue-100': selectedPayslip?.salaryMonth === payslip.salaryMonth && selectedPayslip?.paydayType === payslip.paydayType }"
-                                            @click="selectPayslip(payslip)">
-                                            <td class="px-4 py-2 text-sm text-gray-900">
-                                                {{ payslip.paydayType === 'mid-month' ?
-                                                    payslip.expectedPaydays.midMonthPayday :
-                                                payslip.expectedPaydays.endMonthPayday }}
-                                            </td>
-                                            <td class="px-4 py-2">
-                                                <button @click.stop="generatePayslip(payslip)"
-                                                    class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                                                    :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating">
-                                                    <span class="material-icons text-sm">description</span>
-                                                    {{
-                                                        payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating
-                                                    ? 'Generating...' : 'Generate' }}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr
-                                            v-if="getPayslipsForPosition(history.position, history.startDate, history.endDate).length === 0">
-                                            <td colspan="2" class="px-4 py-4 text-center text-sm text-gray-500">No
-                                                payslips available for this position.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="w-1/2 p-4 overflow-y-auto">
-                            <h3 class="text-sm font-medium text-gray-700 mb-2">Payslip Preview</h3>
-                            <div v-if="selectedPayslip && selectedPayslip.payslipDataUrl" class="flex flex-col h-full">
-                                <div class="mb-4">
-                                    <p class="text-sm text-gray-600">
-                                        Position: {{ getPositionName(selectedPayslip.position) }} |
-                                        Salary: ₱{{ selectedPayslip.salary.toLocaleString() }}
-                                    </p>
-                                </div>
-                                <iframe :src="selectedPayslip.payslipDataUrl"
-                                    class="w-full h-[50vh] rounded border mb-4" @load="onIframeLoad"
-                                    @error="onIframeError"></iframe>
-                                <button @click="downloadPayslip"
-                                    class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-md">
-                                    <span class="material-icons text-sm">download</span>
-                                    Download PDF
-                                </button>
-                                <div v-if="iframeError"
-                                    class="mt-3 p-3 bg-red-50 text-red-700 rounded text-sm flex items-center gap-1">
-                                    <span class="material-icons text-sm">error</span>
-                                    Error loading payslip. Please try again.
-                                </div>
-                            </div>
-                            <div v-else class="text-sm text-gray-500 text-center mt-4">
-                                Select a payslip from the list to preview.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Print All Modal (Unchanged) -->
-            <div v-if="showPrintAllModal"
-                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
-                            <span class="material-icons text-sm">print</span>
-                            Print Payslips
-                        </h2>
-                        <button @click="showPrintAllModal = false" class="p-1 hover:bg-gray-100 rounded-full">
-                            <span class="material-icons text-sm">close</span>
-                        </button>
-                    </div>
-                    <div class="p-4 overflow-y-auto">
-                        <h3 class="text-sm font-medium text-gray-700 mb-2">Select Employees to Print</h3>
-                        <div v-if="employeesWithPayslips.length > 0" class="mb-4">
-                            <label class="flex items-center">
-                                <input type="checkbox" v-model="selectAll" @change="toggleSelectAll"
-                                    class="large-checkbox mr-2" />
-                                <span class="text-sm text-gray-900 font-medium">Select All</span>
-                            </label>
-                        </div>
-                        <div v-if="employeesWithPayslips.length > 0">
-                            <div v-for="emp in employeesWithPayslips" :key="emp.id"
-                                class="flex items-center py-2 border-b">
-                                <input type="checkbox" v-model="selectedEmployeesForPrint" :value="emp.id"
-                                    class="large-checkbox mr-2" />
-                                <span class="text-sm text-gray-900">{{ emp.name }} - Most Recent: {{
-                                    emp.latestPayslipDate }}</span>
-                            </div>
-                        </div>
-                        <div v-else class="text-sm text-gray-500 text-center py-4">
-                            No employees with generated payslips found in history.
-                        </div>
-                    </div>
-                    <div class="p-4 border-t flex justify-end gap-2">
-                        <button @click="showPrintAllModal = false"
-                            class="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
-                            Cancel
-                        </button>
-                        <button @click="printSelectedPayslips"
-                            class="flex items-center gap-1 px-4 py-2 text-sm text-white bg-purple-500 rounded hover:bg-purple-600"
-                            :disabled="selectedEmployeesForPrint.length === 0 || isPrinting">
-                            <span class="material-icons text-sm">print</span>
-                            {{ isPrinting ? 'Printing...' : 'Print Selected' }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Toast Messages (Unchanged) -->
-            <div v-if="statusMessage" :class="[
-                statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
-                'fixed bottom-4 right-4 p-3 rounded shadow-lg z-50 flex items-center gap-1 animate-fade-in text-sm'
-            ]">
-                <span class="material-icons text-sm">
-                    {{ statusMessage.includes('successfully') ? 'check_circle' : 'error' }}
-                </span>
-                {{ statusMessage }}
-            </div>
-        </div>
-    </div>
-</template>
 
 <style scoped>
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined');

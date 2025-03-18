@@ -4,6 +4,7 @@ import express from 'express';
 import connectDB from './config/database.js';
 import { corsOptions } from './config/cors.js';
 import adminRoutes from './routes/admin.routes.js';
+import configRoutes from './routes/config.routes.js';
 import paySlipRoutes from './routes/paySlip.routes.js';
 import payHeadRoutes from './routes/payHead.routes.js';
 import positionRoutes from './routes/position.routes.js';
@@ -22,6 +23,7 @@ app.use(cors(corsOptions));
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/admin', adminRoutes);
+app.use('/api/config', configRoutes);
 app.use('/api/payslips', paySlipRoutes);
 app.use('/api/payheads', payHeadRoutes);
 app.use('/api/employee', employeeRoutes);
