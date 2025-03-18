@@ -102,16 +102,20 @@ router.post('/', isAdmin, async (req, res) => {
     console.log('Received employee data:', req.body);
     const maxIdEmployee = await Employee.findOne().sort({ id: -1 });
     const newId = maxIdEmployee ? maxIdEmployee.id + 1 : 1;
+
+    const hireDate = req.body.hireDate ? new Date(req.body.hireDate) : new Date();
     const employeeData = {
       ...req.body,
       id: newId,
+      hireDate,
       positionHistory: [{
         position: req.body.position,
         salary: req.body.salary,
-        startDate: new Date(),
+        startDate: hireDate, // Use hireDate for initial position
         endDate: null
       }]
     };
+
     const employee = new Employee(employeeData);
     await employee.save();
     console.log('Employee created:', employee.id);
@@ -145,15 +149,15 @@ router.put('/:id', isAdmin, async (req, res) => {
     }
 
     const { position, salary } = req.body;
-    if ((position && position !== employee.position) || (salary && salary !== employee.salary)) {
+    if ((position && position !== employee.position) || (salary !== undefined && salary !== employee.salary)) {
       const currentHistory = employee.positionHistory.find(h => !h.endDate);
       if (currentHistory) {
         currentHistory.endDate = new Date();
       }
       employee.positionHistory.push({
         position: position || employee.position,
-        salary: salary || employee.salary,
-        startDate: new Date(),
+        salary: salary !== undefined ? salary : employee.salary,
+        startDate: new Date(), // New position starts now
         endDate: null
       });
     }

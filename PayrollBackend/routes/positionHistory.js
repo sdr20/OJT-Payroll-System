@@ -29,14 +29,16 @@ router.post('/record', isAdmin, async (req, res) => {
     }
 
     const newStartDate = new Date(startDate);
-    const newStartDateStr = normalizeDate(newStartDate);
+    if (newStartDate < new Date(employee.hireDate)) {
+      return res.status(400).json({ error: `startDate (${newStartDate.toISOString()}) cannot be before hireDate (${employee.hireDate.toISOString()})` });
+    }
 
     const sortedHistory = employee.positionHistory.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
     const currentPosition = sortedHistory.find(p => !p.endDate);
     if (currentPosition) {
       const currentStartDate = new Date(currentPosition.startDate);
       if (newStartDate <= currentStartDate) {
-        return res.status(400).json({ error: `New startDate (${newStartDateStr}) must be after the current position's startDate (${normalizeDate(currentStartDate)})` });
+        return res.status(400).json({ error: `New startDate (${normalizeDate(newStartDate)}) must be after the current position's startDate (${normalizeDate(currentStartDate)})` });
       }
       const endDate = new Date(newStartDate);
       endDate.setDate(endDate.getDate() - 1);
@@ -90,9 +92,11 @@ router.post('/record', isAdmin, async (req, res) => {
 router.get('/:employeeId', isAdmin, async (req, res) => {
   try {
     const employeeId = parseInt(req.params.employeeId);
-    const employee = await Employee.findOne({ id: employeeId }).select('firstName lastName positionHistory position salary');
+    console.log('Fetching position history for employeeId:', employeeId);
+    const employee = await Employee.findOne({ id: employeeId }).select('firstName lastName positionHistory position salary hireDate');
 
     if (!employee) {
+      console.log('Employee not found for ID:', employeeId);
       return res.status(404).json({ error: 'Employee not found' });
     }
 
@@ -105,6 +109,7 @@ router.get('/:employeeId', isAdmin, async (req, res) => {
         name: `${employee.firstName} ${employee.lastName}`,
         position: employee.position,
         salary: employee.salary,
+        hireDate: normalizeDate(employee.hireDate),
         positionHistory: employee.positionHistory.map(history => ({
           position: history.position,
           salary: history.salary,
@@ -144,6 +149,10 @@ router.put('/update/:employeeId', isAdmin, async (req, res) => {
 
     if (!historyEntry) {
       return res.status(404).json({ error: 'Position history entry not found' });
+    }
+
+    if (new Date(historyEntry.startDate) < new Date(employee.hireDate)) {
+      return res.status(400).json({ error: `Position startDate (${historyEntry.startDate.toISOString()}) cannot be before hireDate (${employee.hireDate.toISOString()})` });
     }
 
     if (new Date(historyEntry.startDate) < new Date() && historyEntry.endDate && new Date(historyEntry.endDate) < new Date()) {
@@ -192,6 +201,7 @@ router.put('/update/:employeeId', isAdmin, async (req, res) => {
         name: `${employee.firstName} ${employee.lastName}`,
         position: employee.position,
         salary: employee.salary,
+        hireDate: normalizeDate(employee.hireDate),
         positionHistory: employee.positionHistory.map(history => ({
           position: history.position,
           salary: history.salary,

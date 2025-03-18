@@ -1,16 +1,15 @@
 const mongoose = require('mongoose');
 
 const payslipSchema = new mongoose.Schema({
-  employeeId: { type: Number, ref: 'Employee', required: true },
+  employeeId: { type: Number, required: true },
   empNo: { type: String, required: true },
-  payslipData: { type: String, required: true },
-  salaryMonth: { type: String, required: true },
+  payslipData: { type: String, required: true }, // Base64 encoded PDF
+  salaryMonth: { type: String, required: true }, // Format: YYYY-MM
   paydayType: { type: String, enum: ['mid-month', 'end-of-month'], required: true },
   position: { type: String, required: true },
-  salary: { type: Number, required: true },
-  createdAt: { type: Date, default: Date.now }
-}, {
-  indexes: [{ key: { employeeId: 1, salaryMonth: 1, paydayType: 1 }, unique: true }]
-});
+  salary: { type: Number, required: true }
+}, { timestamps: true });
+
+payslipSchema.index({ employeeId: 1, salaryMonth: 1, paydayType: 1 });
 
 module.exports = mongoose.model('Payslip', payslipSchema);

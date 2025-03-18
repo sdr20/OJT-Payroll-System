@@ -26,7 +26,7 @@ const employeeSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'employee'], default: 'employee' },
-  hireDate: { type: Date, default: Date.now, required: true },
+  hireDate: { type: Date, required: true }, // Removed default to enforce explicit hireDate
   earnings: {
     travelExpenses: { type: Number, default: 0 },
     otherEarnings: { type: Number, default: 0 },
@@ -58,8 +58,8 @@ employeeSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
-  if (this.isModified('salary')) {
-    this.hourlyRate = this.hourlyRate || this.salary / (8 * 22); // Recalculate if salary changes
+  if (this.isModified('salary') || !this.hourlyRate) { // Ensure hourlyRate is set on creation
+    this.hourlyRate = this.salary / (8 * 22);
   }
   next();
 });
