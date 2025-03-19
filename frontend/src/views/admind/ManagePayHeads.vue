@@ -24,6 +24,7 @@
                 v-if="searchQuery" 
                 @click="searchQuery = ''"
                 class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                title="Clear Search"
               >
                 <span class="material-icons text-base">clear</span>
               </button>
@@ -100,10 +101,11 @@
           </p>
           <button 
             @click="resetFilters" 
-            class="mt-2 inline-flex items-center px-3 py-1 border border-gray-300 rounded-sm shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500"
+            class="mt-2 p-1.5 rounded-sm text-gray-700 hover:text-gray-900 bg-white border border-gray-300 shadow-sm 
+                   focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500 transition-all transform hover:scale-105"
+            title="Reset Filters"
           >
-            <span class="material-icons text-xs mr-1">refresh</span>
-            Reset Filters
+            <span class="material-icons text-base">refresh</span>
           </button>
         </div>
       </div>
@@ -169,6 +171,7 @@
               :disabled="currentPage === 1"
               class="p-1 rounded-md hover:bg-blue-100 transition-all disabled:opacity-50 disabled:hover:bg-transparent"
               :class="currentPage === 1 ? 'text-gray-400' : 'text-gray-700'"
+              title="Previous Page"
             >
               <span class="material-icons text-base">chevron_left</span>
             </button>
@@ -192,6 +195,7 @@
               :disabled="currentPage === totalPages"
               class="p-1 rounded-md hover:bg-blue-100 transition-all disabled:opacity-50 disabled:hover:bg-transparent"
               :class="currentPage === totalPages ? 'text-gray-400' : 'text-gray-700'"
+              title="Next Page"
             >
               <span class="material-icons text-base">chevron_right</span>
             </button>
@@ -283,6 +287,7 @@
                 @click="statusMessage = ''"
                 class="ml-2 flex-shrink-0 rounded-sm text-gray-400 hover:text-gray-500 
                       focus:outline-none focus:ring-1 focus:ring-blue-500"
+                title="Close Notification"
               >
                 <span class="material-icons text-base">close</span>
               </button>

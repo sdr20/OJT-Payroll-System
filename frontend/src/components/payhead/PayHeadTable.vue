@@ -17,8 +17,22 @@
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payHead.type }}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payHead.isRecurring ? 'Yes' : 'No' }}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
-            <button @click="$emit('update', payHead)" class="bg-yellow-50 text-yellow-600 font-semibold py-1.5 px-3 rounded-lg hover:bg-yellow-100 transition-all duration-200 flex items-center gap-2 text-xs">Update</button>
-            <button @click="$emit('delete', payHead.id)" class="bg-red-50 text-red-600 font-semibold py-1.5 px-3 rounded-lg hover:bg-red-100 transition-all duration-200 flex items-center gap-2 text-xs">Delete</button>
+            <button 
+              @click="$emit('update', payHead)" 
+              class="p-1.5 text-yellow-600 hover:text-yellow-800 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-all duration-200 transform hover:scale-105 flex items-center gap-1"
+              title="Update Pay Head"
+            >
+              <span class="material-icons-outlined text-base">edit</span>
+              Edit
+            </button>
+            <button 
+              @click="$emit('delete', payHead.id)" 
+              class="p-1.5 text-red-600 hover:text-red-800 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200 transform hover:scale-105 flex items-center gap-1"
+              title="Delete Pay Head"
+            >
+              <span class="material-icons-outlined text-base">delete</span>
+              Delete
+            </button>
           </td>
         </tr>
       </tbody>

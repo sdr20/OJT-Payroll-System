@@ -12,6 +12,7 @@
         <button
           @click="$emit('close')"
           class="text-gray-500 hover:text-gray-700"
+          title="Close Modal"
         >
           <span class="material-icons-outlined">close</span>
         </button>
@@ -50,10 +51,11 @@
           </select>
           <button
             @click="addPayhead"
-            class="mt-2 py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200"
+            class="mt-2 p-1.5 text-gray-700 hover:text-blue-600 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105"
             :disabled="!selectedPayhead || isUpdate"
+            title="Add Payhead"
           >
-            Add Payhead
+            <span class="material-icons-outlined text-base">add</span>
           </button>
         </div>
 
@@ -79,6 +81,7 @@
                 @click="removePayhead(payhead)"
                 class="ml-2 p-1 text-red-500 hover:text-red-700"
                 :disabled="isUpdate"
+                title="Remove Payhead"
               >
                 <span class="material-icons-outlined">delete</span>
               </button>
@@ -91,15 +94,17 @@
       <div class="mt-6 flex justify-end gap-4">
         <button
           @click="$emit('close')"
-          class="py-2 px-4 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition duration-200"
+          class="p-1.5 text-gray-700 hover:text-gray-900 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition duration-200 transform hover:scale-105"
+          title="Cancel"
         >
-          Cancel
+          <span class="material-icons-outlined text-base">close</span>
         </button>
         <button
           @click="$emit('save')"
-          class="py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200"
-          :disabled="isUpdate" 
+          class="py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200 flex items-center gap-1"
+          :disabled="isUpdate"
         >
+          <span class="material-icons-outlined text-base">{{ isUpdate ? 'edit' : 'save' }}</span>
           {{ isUpdate ? 'Update Payheads' : 'Save Payheads' }}
         </button>
       </div>

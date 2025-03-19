@@ -24,7 +24,13 @@
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">P {{ employee.totalEarnings.toLocaleString() }}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">P {{ employee.totalSalary.toLocaleString() }}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
-            <button @click="$emit('addPayhead', employee)" class="bg-blue-50 text-blue-600 font-semibold py-1.5 px-3 rounded-lg hover:bg-blue-100 transition-all duration-200 flex items-center gap-2 text-xs">Add Payhead</button>
+            <button 
+              @click="$emit('addPayhead', employee)" 
+              class="p-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 rounded-lg hover:bg-blue-100 transition-all duration-200 transform hover:scale-105 flex items-center gap-1"
+              title="Add Payhead"
+            >
+              <span class="material-icons-outlined text-base">add</span>
+            Add</button>
           </td>
         </tr>
       </tbody>
