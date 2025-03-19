@@ -1,7 +1,7 @@
 // C:\Users\ASUS\Desktop\Payroll_system\PayrollBackend\routes\payheads.js
 const express = require('express');
 const router = express.Router();
-const PayHead = require('../models/Payhead'); // Use the PayHead model
+const PayHead = require('../models/PayHead'); // Use the PayHead model
 
 const isAdmin = (req, res, next) => {
   console.log('All request headers for payheads:', req.headers); // Log all headers for debugging

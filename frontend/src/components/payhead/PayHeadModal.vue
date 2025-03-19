@@ -18,6 +18,12 @@
           <label for="payHeadAmount" class="block text-gray-700 mb-1 font-medium text-sm">Amount</label>
           <input v-model="localPayHead.amount" type="number" id="payHeadAmount" class="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm" required>
         </div>
+        <div class="mb-4" v-if="localPayHead.type === 'Deductions'">
+          <label for="isRecurring" class="flex items-center text-gray-700 mb-1 font-medium text-sm">
+            <input v-model="localPayHead.isRecurring" type="checkbox" id="isRecurring" class="mr-2">
+            Recurring Deduction
+          </label>
+        </div>
         <div class="flex justify-end gap-3">
           <button type="button" @click="$emit('close')" class="py-2 px-4 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-200">Cancel</button>
           <button type="submit" class="py-2 px-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200">{{ isUpdate ? 'Update' : 'Add' }} Pay Head</button>
@@ -41,13 +47,13 @@ export default {
   },
   data() {
     return {
-      localPayHead: { ...this.payHead } // Create a local copy
+      localPayHead: { ...this.payHead }
     };
   },
   watch: {
     payHead: {
       handler(newVal) {
-        this.localPayHead = { ...newVal }; // Watch for prop changes and update the local copy
+        this.localPayHead = { ...newVal };
       },
       deep: true,
       immediate: true
@@ -55,7 +61,7 @@ export default {
   },
   methods: {
     savePayHead() {
-      this.$emit('save', this.localPayHead); // Emit the updated local data
+      this.$emit('save', this.localPayHead);
     }
   }
 };
