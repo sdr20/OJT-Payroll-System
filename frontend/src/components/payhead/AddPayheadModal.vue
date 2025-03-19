@@ -45,7 +45,7 @@
               :key="payhead.id"
               :value="payhead"
             >
-              {{ payhead.name }} ({{ payhead.type }}, ₱{{ payhead.amount }})
+              {{ payhead.name }} ({{ payhead.type }}, ₱{{ payhead.amount }}{{ payhead.isRecurring ? ', Recurring' : '' }})
             </option>
           </select>
           <button
@@ -65,7 +65,7 @@
             :key="payhead.uniqueId"
             class="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
           >
-            <span>{{ payhead.name }} ({{ payhead.type }}, ₱{{ payhead.amount }})</span>
+            <span>{{ payhead.name }} ({{ payhead.type }}, ₱{{ payhead.amount }}{{ payhead.isRecurring ? ', Recurring' : '' }})</span>
             <div>
               <input
                 v-model.number="payhead.amount"
@@ -121,7 +121,7 @@ export default {
     },
     totalPayableSalary: {
       type: Number,
-      default: 0 // Default to 0 to prevent undefined errors
+      default: 0
     },
     selectedEmployee: {
       type: Object,
@@ -129,7 +129,7 @@ export default {
     },
     isUpdate: {
       type: Boolean,
-      default: false // Default to false if not provided
+      default: false
     }
   },
   data() {

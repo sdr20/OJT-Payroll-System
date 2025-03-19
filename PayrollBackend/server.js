@@ -1,12 +1,11 @@
-// C:\Users\Administrator\Desktop\OJT-Payroll-System\PayrollBackend\server.js
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const connectDB = require('./config/database');
+const Employee = require('./models/Employee'); // Use the existing Employee model
 
-// Import routes
 const employeeRoutes = require('./routes/employees');
 const pendingRequestRoutes = require('./routes/pendingRequests');
 const leaveRequestRoutes = require('./routes/leaveRequests');
@@ -14,12 +13,11 @@ const payslipRoutes = require('./routes/payslips');
 const attendanceRoutes = require('./routes/attendance');
 const payheadRoutes = require('./routes/payheads');
 const authRoutes = require('./routes/auth');
-const positionRoutes = require('./routes/positions'); // Existing position routes
-const positionHistoryRoutes = require('./routes/positionHistory'); // New position history routes
+const positionRoutes = require('./routes/positions');
+const positionHistoryRoutes = require('./routes/positionHistory');
 
 const app = express();
 
-// Middleware
 const corsOptions = {
   origin: ['http://localhost:8080', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -30,44 +28,19 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
 
-// Log environment variables
 console.log('Environment Variables:');
 console.log('PORT:', process.env.PORT || 7777);
 console.log('EMAIL_USER:', process.env.EMAIL_USER);
 console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'Not set');
 console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
 
-// Connect to MongoDB and seed admin
 async function seedAdminIfNeeded() {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-
-    const EmployeeSchema = new mongoose.Schema({
-      id: Number,
-      empNo: String,
-      firstName: String,
-      middleName: String,
-      lastName: String,
-      position: String,
-      salary: Number,
-      hourlyRate: Number,
-      email: String,
-      contactInfo: String,
-      username: String,
-      password: String,
-      role: String
-    });
-    const Employee = mongoose.model('Employee', EmployeeSchema, 'employees');
-
     const existingAdmin = await Employee.findOne({ username: 'admin' });
     if (!existingAdmin) {
       const hashedPassword = bcrypt.hashSync('admin123', 10);
@@ -78,7 +51,7 @@ async function seedAdminIfNeeded() {
         lastName: "User",
         position: "Manager",
         salary: 50000,
-        hourlyRate: 284.0909090909091,
+        hourlyRate: 284.09,
         email: "admin@example.com",
         contactInfo: "09123456789",
         username: "admin",
@@ -95,11 +68,10 @@ async function seedAdminIfNeeded() {
   }
 }
 
-connectDB().then(() => {
-  seedAdminIfNeeded();
-});
+connectDB()
+  .then(seedAdminIfNeeded)
+  .catch(err => console.error("Database Connection Error:", err));
 
-// Routes
 app.use('/api/employees', employeeRoutes);
 app.use('/api/pending-requests', pendingRequestRoutes);
 app.use('/api/leaves', leaveRequestRoutes);
@@ -107,26 +79,22 @@ app.use('/api/payslips', payslipRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/payheads', payheadRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/positions', positionRoutes); // Existing position routes
-app.use('/api/positionHistory', positionHistoryRoutes); // New position history routes
+app.use('/api/positions', positionRoutes);
+app.use('/api/positionHistory', positionHistoryRoutes);
 
-// Health Check Route
 app.get('/health', (req, res) => {
   res.status(200).json({ message: 'Server is running', uptime: process.uptime() });
 });
 
-// Default Route (404)
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Server Error:', err.stack);
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-// Start Server
 const PORT = process.env.PORT || 7777;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
