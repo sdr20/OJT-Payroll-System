@@ -15,6 +15,7 @@ const payheadRoutes = require('./routes/payheads');
 const authRoutes = require('./routes/auth');
 const positionRoutes = require('./routes/positions');
 const positionHistoryRoutes = require('./routes/positionHistory');
+const contributionRoutes = require('./routes/contributions'); // Add the contributions routes
 
 const app = express();
 
@@ -72,6 +73,7 @@ connectDB()
   .then(seedAdminIfNeeded)
   .catch(err => console.error("Database Connection Error:", err));
 
+// Routes
 app.use('/api/employees', employeeRoutes);
 app.use('/api/pending-requests', pendingRequestRoutes);
 app.use('/api/leaves', leaveRequestRoutes);
@@ -81,6 +83,7 @@ app.use('/api/payheads', payheadRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/positions', positionRoutes);
 app.use('/api/positionHistory', positionHistoryRoutes);
+app.use('/api/employee-contributions', contributionRoutes); // Add the contributions routes
 
 app.get('/health', (req, res) => {
   res.status(200).json({ message: 'Server is running', uptime: process.uptime() });

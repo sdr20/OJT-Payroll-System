@@ -289,7 +289,7 @@
                       focus:outline-none focus:ring-1 focus:ring-blue-500"
                 title="Close Notification"
               >
-                <span class="material-icons text-base">close</span>
+                <span class="material-icons text-base">close</span> 
               </button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col ">
+  <div class="min-h-screen bg-gray-50 flex flex-col">
     <!-- Header -->
     <header class="bg-white shadow-sm p-3 flex justify-between items-center sticky top-0 z-40 rounded-lg">
       <h1 class="text-lg font-bold text-gray-800">Employee Management</h1>
@@ -167,6 +167,21 @@
               <p><span class="font-medium text-gray-700">PhilHealth:</span> ₱{{ calculatePhilHealthContribution(selectedEmployee.salary).toLocaleString() }}</p>
               <p><span class="font-medium text-gray-700">Pag-IBIG:</span> ₱{{ calculatePagIBIGContribution(selectedEmployee.salary).toLocaleString() }}</p>
               <p><span class="font-medium text-gray-700">Withholding Tax:</span> ₱{{ calculateWithholdingTax(selectedEmployee.salary).toLocaleString() }}</p>
+            </div>
+          </div>
+          <!-- New Position History Section -->
+          <div class="mt-4 p-3 bg-gray-50 rounded-md">
+            <h3 class="text-base font-semibold text-gray-800 mb-2">Position History</h3>
+            <div v-if="sortedPositionHistory.length === 0" class="text-gray-500 text-sm">
+              No position history available.
+            </div>
+            <div v-else class="space-y-2">
+              <div v-for="history in sortedPositionHistory" :key="history.startDate" class="p-2 bg-white rounded-md shadow-sm">
+                <p><span class="font-medium text-gray-700">Position:</span> {{ history.position }}</p>
+                <p><span class="font-medium text-gray-700">Salary:</span> ₱{{ history.salary.toLocaleString() }}</p>
+                <p><span class="font-medium text-gray-700">Start Date:</span> {{ new Date(history.startDate).toLocaleDateString() }}</p>
+                <p><span class="font-medium text-gray-700">End Date:</span> {{ history.endDate ? new Date(history.endDate).toLocaleDateString() : 'Present' }}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -536,7 +551,6 @@
     </div>
   </div>
 </template>
-
 <script>
 import axios from 'axios';
 
@@ -587,10 +601,11 @@ export default {
         hireDate: new Date().toISOString().slice(0, 10),
         earnings: { travelExpenses: 0, otherEarnings: 0 },
         username: '',
-        password: ''
+        password: '',
+        positionHistory: [], // Initialize positionHistory
       },
       newPosition: { name: '', salary: 0 },
-      editPositionData: { id: null, name: '', salary: 0 }
+      editPositionData: { id: null, name: '', salary: 0 },
     };
   },
   computed: {
@@ -606,12 +621,23 @@ export default {
     },
     totalPages() {
       return Math.ceil(this.filteredEmployees.length / this.itemsPerPage);
-    }
+    },
+    sortedPositionHistory() {
+      if (!this.selectedEmployee?.positionHistory || this.selectedEmployee.positionHistory.length === 0) {
+        return [{
+          position: this.selectedEmployee.position || 'N/A',
+          salary: this.selectedEmployee.salary || 0,
+          startDate: this.selectedEmployee.hireDate || new Date().toISOString().slice(0, 10),
+          endDate: null,
+        }];
+      }
+      return [...this.selectedEmployee.positionHistory].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    },
   },
   watch: {
     'selectedEmployee.salary'(newSalary) { this.selectedEmployee.hourlyRate = newSalary / (8 * 22); },
     'selectedRequest.salary'(newSalary) { this.selectedRequest.hourlyRate = newSalary / (8 * 22); },
-    'newEmployee.salary'(newSalary) { this.newEmployee.hourlyRate = newSalary ? newSalary / (8 * 22) : 0; }
+    'newEmployee.salary'(newSalary) { this.newEmployee.hourlyRate = newSalary ? newSalary / (8 * 22) : 0; },
   },
   mounted() {
     this.fetchEmployees();
@@ -678,7 +704,13 @@ export default {
         this.employees = response.data.map(emp => ({
           ...emp,
           hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
-          empNo: emp.empNo || `EMP-${String(emp.id).padStart(4, '0')}`
+          empNo: emp.empNo || `EMP-${String(emp.id).padStart(4, '0')}`,
+          positionHistory: Array.isArray(emp.positionHistory) ? emp.positionHistory : [{
+            position: emp.position || 'N/A',
+            salary: emp.salary || 0,
+            startDate: emp.hireDate || new Date().toISOString().slice(0, 10),
+            endDate: null,
+          }],
         })) || [];
       } catch (error) {
         console.error('Error fetching employees:', error);
@@ -732,7 +764,13 @@ export default {
         earnings: { 
           travelExpenses: employee.earnings?.travelExpenses || 0, 
           otherEarnings: employee.earnings?.otherEarnings || 0 
-        } 
+        },
+        positionHistory: Array.isArray(employee.positionHistory) ? employee.positionHistory : [{
+          position: employee.position || 'N/A',
+          salary: employee.salary || 0,
+          startDate: employee.hireDate || new Date().toISOString().slice(0, 10),
+          endDate: null,
+        }],
       };
       this.showDetailsModal = false;
       this.showEditModal = true;
@@ -746,6 +784,30 @@ export default {
       }
       this.isUpdating = true;
       try {
+        // Find the original employee data to compare position
+        const originalEmployee = this.employees.find(emp => emp.id === this.selectedEmployee.id);
+        const positionChanged = originalEmployee.position !== this.selectedEmployee.position;
+
+        if (positionChanged) {
+          // End the current position by setting its endDate to today
+          const updatedPositionHistory = this.selectedEmployee.positionHistory.map(history => {
+            if (!history.endDate) {
+              return { ...history, endDate: new Date().toISOString().slice(0, 10) };
+            }
+            return history;
+          });
+
+          // Add the new position to the history
+          updatedPositionHistory.push({
+            position: this.selectedEmployee.position,
+            salary: this.selectedEmployee.salary,
+            startDate: new Date().toISOString().slice(0, 10),
+            endDate: null,
+          });
+
+          this.selectedEmployee.positionHistory = updatedPositionHistory;
+        }
+
         const response = await axios.put(
           `http://localhost:7777/api/employees/${this.selectedEmployee.id}`, 
           this.selectedEmployee, 
@@ -823,11 +885,31 @@ export default {
       }
       try {
         const newEmployee = {
-          empNo: request.empNo, firstName: request.firstName, lastName: request.lastName, middleName: request.middleName || '',
-          position: request.position, salary: Number(request.salary), hourlyRate: Number(request.hourlyRate || (request.salary / (8 * 22))),
-          email: request.email, contactInfo: request.contactNumber, sss: request.sss || '', philhealth: request.philhealth || '',
-          pagibig: request.pagibig || '', tin: request.tin || '', earnings: { travelExpenses: Number(request.earnings?.travelExpenses || 0), otherEarnings: Number(request.earnings?.otherEarnings || 0) },
-          payheads: request.payheads || [], username: request.username, password: request.password, role: 'employee', hireDate: new Date()
+          empNo: request.empNo,
+          firstName: request.firstName,
+          lastName: request.lastName,
+          middleName: request.middleName || '',
+          position: request.position,
+          salary: Number(request.salary),
+          hourlyRate: Number(request.hourlyRate || (request.salary / (8 * 22))),
+          email: request.email,
+          contactInfo: request.contactNumber,
+          sss: request.sss || '',
+          philhealth: request.philhealth || '',
+          pagibig: request.pagibig || '',
+          tin: request.tin || '',
+          earnings: { travelExpenses: Number(request.earnings?.travelExpenses || 0), otherEarnings: Number(request.earnings?.otherEarnings || 0) },
+          payheads: request.payheads || [],
+          username: request.username,
+          password: request.password,
+          role: 'employee',
+          hireDate: new Date().toISOString().slice(0, 10),
+          positionHistory: [{
+            position: request.position,
+            salary: Number(request.salary),
+            startDate: new Date().toISOString().slice(0, 10),
+            endDate: null,
+          }],
         };
         const response = await axios.post('http://localhost:7777/api/employees', newEmployee, { headers: { 'user-role': 'admin' } });
         if (response.status === 201) {
@@ -864,7 +946,17 @@ export default {
       }
       this.isAdding = true;
       try {
-        const employeeData = { ...this.newEmployee, hourlyRate: this.newEmployee.hourlyRate, role: 'employee' };
+        const employeeData = {
+          ...this.newEmployee,
+          hourlyRate: this.newEmployee.hourlyRate,
+          role: 'employee',
+          positionHistory: [{
+            position: this.newEmployee.position,
+            salary: this.newEmployee.salary,
+            startDate: this.newEmployee.hireDate,
+            endDate: null,
+          }],
+        };
         const response = await axios.post('http://localhost:7777/api/employees', employeeData, { headers: { 'user-role': 'admin' } });
         if (response.status === 201) {
           this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
@@ -967,7 +1059,26 @@ export default {
     },
 
     resetNewEmployee() {
-      this.newEmployee = { empNo: '', firstName: '', middleName: '', lastName: '', position: '', salary: 0, hourlyRate: 0, email: '', contactInfo: '', sss: '', philhealth: '', pagibig: '', tin: '', hireDate: new Date().toISOString().slice(0, 10), earnings: { travelExpenses: 0, otherEarnings: 0 }, username: '', password: '' };
+      this.newEmployee = {
+        empNo: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        position: '',
+        salary: 0,
+        hourlyRate: 0,
+        email: '',
+        contactInfo: '',
+        sss: '',
+        philhealth: '',
+        pagibig: '',
+        tin: '',
+        hireDate: new Date().toISOString().slice(0, 10),
+        earnings: { travelExpenses: 0, otherEarnings: 0 },
+        username: '',
+        password: '',
+        positionHistory: [],
+      };
     },
 
     resetNewPosition() {
@@ -982,8 +1093,8 @@ export default {
     showErrorMessage(message) {
       this.statusMessage = message;
       setTimeout(() => (this.statusMessage = ''), 3000);
-    }
-  }
+    },
+  },
 };
 </script>
 
