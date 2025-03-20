@@ -12,6 +12,7 @@
               <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
               <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
+              <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Salary</th> <!-- New Column -->
               <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Hire Date</th>
               <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
             </tr>
@@ -26,6 +27,7 @@
               <td class="border px-4 py-2 text-sm text-gray-900">{{ emp.id }}</td>
               <td class="border px-4 py-2 text-sm text-gray-900">{{ emp.name }}</td>
               <td class="border px-4 py-2 text-sm text-gray-900">{{ emp.position }}</td>
+              <td class="border px-4 py-2 text-sm text-gray-900">₱{{ emp.salary.toLocaleString() }}</td> <!-- Display Salary -->
               <td class="border px-4 py-2 text-sm text-gray-900">{{ formatDate(emp.hireDate) }}</td>
               <td class="border px-4 py-2 text-sm text-gray-900">{{ emp.salaryMonth }}</td>
             </tr>
@@ -40,7 +42,7 @@
         <!-- Tax Contributions Modal -->
         <transition name="modal-fade">
           <div v-if="showTaxModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div class="bg-white p-5 rounded-xl shadow-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+            <div class="bg-white p-5 rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-y-auto">
               <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-gray-800">
                   Tax Contributions - {{ currentEmployee?.name }}
@@ -71,6 +73,7 @@
                     <tr>
                       <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pay Date</th>
                       <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
+                      <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Salary</th> <!-- New Column -->
                       <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">SSS</th>
                       <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PhilHealth</th>
                       <th class="border px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">HDMF</th>
@@ -82,6 +85,7 @@
                     <tr v-for="entry in filteredTaxContributions" :key="entry.payDate" class="hover:bg-gray-50">
                       <td class="border px-4 py-2 text-sm text-gray-900">{{ formatDate(entry.payDate) }}</td>
                       <td class="border px-4 py-2 text-sm text-gray-900">{{ entry.position }}</td>
+                      <td class="border px-4 py-2 text-sm text-gray-900">₱{{ entry.salary.toLocaleString() }}</td> <!-- Display Salary -->
                       <td class="border px-4 py-2 text-sm text-gray-900">₱{{ entry.sss.toLocaleString() }}</td>
                       <td class="border px-4 py-2 text-sm text-gray-900">₱{{ entry.philhealth.toLocaleString() }}</td>
                       <td class="border px-4 py-2 text-sm text-gray-900">₱{{ entry.hdmf.toLocaleString() }}</td>
@@ -107,12 +111,6 @@
                   Generate CSV
                 </button>
                 <button
-                  @click="saveTaxContributions"
-                  class="py-1 px-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
-                >
-                  Save
-                </button>
-                <button
                   @click="showTaxModal = false"
                   class="py-1 px-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition duration-200"
                 >
@@ -122,8 +120,6 @@
             </div>
           </div>
         </transition>
-
-    
 
         <!-- Status Message -->
         <div
@@ -293,6 +289,7 @@ export default {
         return {
           payDate,
           position: positionAtDate.position,
+          salary: salary, // Add salary to the entry
           sss: existing.sss || this.calculateSSSContribution(salary),
           philhealth: existing.philhealth || this.calculatePhilHealthContribution(salary),
           hdmf: existing.hdmf || this.calculatePagIBIGContribution(salary),
@@ -329,6 +326,7 @@ export default {
           hdmf: Number(contribution.hdmf),
           withholdingTax: Number(contribution.withholdingTax),
           position: contribution.position,
+          salary: Number(contribution.salary), // Include salary in the payload
           salaryMonth: contribution.salaryMonth
         }));
 
@@ -351,10 +349,11 @@ export default {
         return;
       }
 
-      const headers = ['Pay Date', 'Position', 'SSS', 'PhilHealth', 'HDMF', 'Withholding Tax', 'Total'];
+      const headers = ['Pay Date', 'Position', 'Salary', 'SSS', 'PhilHealth', 'HDMF', 'Withholding Tax', 'Total'];
       const rows = this.filteredTaxContributions.map(entry => [
         moment(entry.payDate).format('YYYY-MM-DD'),
         entry.position,
+        entry.salary,
         entry.sss,
         entry.philhealth,
         entry.hdmf,
