@@ -504,10 +504,10 @@ export default {
       selectedEmployeeForUpdate: '',
       newPosition: '',
       sortPreviousField: 'payDate',
-      sortPreviousAsc: true, // Ensure ascending order (oldest to newest)
+      sortPreviousAsc: true,
       sortNewField: 'payDate',
-      sortNewAsc: true, // Ensure ascending order (oldest to newest)
-      currentDate: new Date('2025-03-17'), // Matches initial context
+      sortNewAsc: true,
+      currentDate: new Date('2025-03-17'),
     };
   },
   computed: {
@@ -581,7 +581,6 @@ export default {
     sortPayslips(payslips, field, ascending) {
       return payslips.sort((a, b) => {
         if (field === 'payDate') {
-          // Use the actual payDate for sorting, not the formatted expectedPaydays
           const dateA = moment(a.payDate, 'YYYY-MM-DD');
           const dateB = moment(b.payDate, 'YYYY-MM-DD');
           return ascending ? dateA - dateB : dateB - dateA;
@@ -676,6 +675,7 @@ export default {
                   startDate: employee.hireDate || this.currentDate.toISOString().split('T')[0],
                   endDate: null,
                 }],
+            payheads: employee.payheads || [], // Ensure payheads is an array
             createdAt: employee.createdAt || employee.hireDate,
             updatedAt: employee.updatedAt,
           };
@@ -726,6 +726,7 @@ export default {
               startDate: employee.hireDate || this.currentDate.toISOString().split('T')[0],
               endDate: null,
             }],
+        payheads: employee.payheads || [], // Ensure payheads is included
       };
 
       const today = moment(this.currentDate);
@@ -836,9 +837,9 @@ export default {
       const today = moment(this.currentDate);
       const payDate = moment(
         payslip.paydayType === 'mid-month'
-          ? payslip.expectedPaydays.midMonthPayday
-          : payslip.expectedPaydays.endMonthPayday,
-        'D MMMM YYYY'
+          ? `${payslip.salaryMonth}-15`
+          : `${payslip.salaryMonth}-${moment(payslip.salaryMonth).daysInMonth()}`,
+        'YYYY-MM-DD'
       );
       return today.isSameOrAfter(payDate, 'day') && !payslip.payslipDataUrl;
     },
@@ -917,9 +918,7 @@ export default {
 
           this.showSuccessMessage(
             `Payslip generated for ${employee.name} - ${
-              payslip.paydayType === 'mid-month'
-                ? payslip.expectedPaydays.midMonthPayday
-                : payslip.expectedPaydays.endMonthPayday
+              payslip.paydayType === 'mid-month' ? 'Mid-Month' : 'End-of-Month'
             }!`
           );
         }
@@ -1069,9 +1068,7 @@ export default {
 
           this.showSuccessMessage(
             `Payslip generated now for ${employee.name} - ${
-              payslipData.paydayType === 'mid-month'
-                ? expectedPaydays.midMonthPayday
-                : expectedPaydays.endMonthPayday
+              payslipData.paydayType === 'mid-month' ? 'Mid-Month' : 'End-of-Month'
             }!`
           );
         }
@@ -1152,7 +1149,7 @@ export default {
         this.sortPreviousAsc = !this.sortPreviousAsc;
       } else {
         this.sortPreviousField = field;
-        this.sortPreviousAsc = true; // Default to ascending (oldest to newest)
+        this.sortPreviousAsc = true;
       }
     },
     sortNewPayslips(field) {
@@ -1160,7 +1157,7 @@ export default {
         this.sortNewAsc = !this.sortNewAsc;
       } else {
         this.sortNewField = field;
-        this.sortNewAsc = true; // Default to ascending (oldest to newest)
+        this.sortNewAsc = true;
       }
     },
     showPrintModal() {
@@ -1185,9 +1182,7 @@ export default {
             return currentDate.isAfter(latestDate) ? current : latest;
           });
           const latestDateStr =
-            latestPayslip.paydayType === 'mid-month'
-              ? latestPayslip.expectedPaydays.midMonthPayday
-              : latestPayslip.expectedPaydays.endMonthPayday;
+            latestPayslip.paydayType === 'mid-month' ? 'Mid-Month' : 'End-of-Month';
 
           this.employeesWithPayslips.push({
             id: employee.id,
@@ -1267,9 +1262,7 @@ export default {
         const link = document.createElement('a');
         link.href = url;
         link.download = `Payslip_${this.selectedEmployee.name}_${
-          this.selectedPayslip.paydayType === 'mid-month'
-            ? this.selectedPayslip.expectedPaydays.midMonthPayday
-            : this.selectedPayslip.expectedPaydays.endMonthPayday
+          this.selectedPayslip.paydayType === 'mid-month' ? 'Mid-Month' : 'End-of-Month'
         }.pdf`;
         document.body.appendChild(link);
         link.click();
@@ -1453,16 +1446,34 @@ export default {
       const sss = this.calculateSSSContribution(basicSalary) || 0;
       const philhealth = this.calculatePhilHealthContribution(basicSalary) || 0;
       const pagibig = this.calculatePagIBIGContribution(basicSalary) || 0;
-      const totalDeductions = sss + philhealth + pagibig + (this.calculateWithholdingTax(employee) || 0) || 0;
+      const totalDeductions = sss + philhealth + pagibig + (this.calculateWithholdingTax(employee) || 0) + (this.calculatePayheadDeductions(employee.payheads) || 0);
       const netSalary = this.calculateNetSalary(employee) || 0;
       const paidLeavesDays = employee.paidLeaves?.days || 0;
       const absencesDays = employee.absences?.days || 0;
       const paidLeavesAmount = employee.paidLeaves?.amount || 0;
       const absencesAmount = employee.absences ? -(employee.absences.amount || 0) : 0;
-      const paydays = this.getExpectedPayday(
-        employee.hireDate,
-        employee.salaryMonth.split('-')[0] + '-' + employee.salaryMonth.split('-')[1]
-      );
+
+      // Categorize payheads from the employee object
+      const earnings = (employee.payheads || [])
+        .filter((ph) => ph.type === 'Earnings')
+        .map((ph) => ({
+          name: ph.name,
+          amount: this.formatNumber(ph.amount),
+        }));
+
+      const deductions = (employee.payheads || [])
+        .filter((ph) => ph.type === 'Deductions' && !ph.isRecurring)
+        .map((ph) => ({
+          name: ph.name,
+          amount: this.formatNumber(ph.amount),
+        }));
+
+      const recurringDeductions = (employee.payheads || [])
+        .filter((ph) => ph.type === 'Deductions' && ph.isRecurring)
+        .map((ph) => ({
+          name: ph.name,
+          amount: this.formatNumber(ph.amount),
+        }));
 
       return {
         salaryDate,
@@ -1491,7 +1502,9 @@ export default {
         absencesAmount: this.formatNumber(absencesAmount),
         withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0),
         payheads: employee.payheads || [],
-        expectedPaydays: paydays,
+        earnings, // Employee-specific earnings
+        deductions, // Employee-specific non-recurring deductions
+        recurringDeductions, // Employee-specific recurring deductions
       };
     },
     formatNumber(value) {
@@ -1574,16 +1587,7 @@ export default {
 
       y = Math.max(y + leftPersonalInfo.length * lineHeight, yRight + rightPersonalInfo.length * lineHeight) + 10;
 
-      addText(pdfDoc, 'Expected Paydays', margin, y, { fontSize: 11, fontStyle: 'bold' });
-      y += lineHeight;
-      addText(pdfDoc, 'Mid-Month:', margin, y);
-      addText(pdfDoc, payslipData.expectedPaydays.midMonthPayday, margin + 35, y, { maxWidth: columnWidth - 35 });
-      addText(pdfDoc, 'End-of-Month:', margin + columnWidth + 10, y);
-      addText(pdfDoc, payslipData.expectedPaydays.endMonthPayday, margin + columnWidth + 45, y, {
-        maxWidth: columnWidth - 35,
-      });
-      y += 2 * lineHeight + 10;
-
+      // Deductions Section (Mandatory Taxes Only)
       addText(pdfDoc, 'Deductions', margin, y, { fontSize: 11, fontStyle: 'bold' });
       y += lineHeight;
       const leftDeductions = [
@@ -1591,24 +1595,119 @@ export default {
         ['Philhealth', `P${payslipData.philhealthDeduction}`],
         ['PAG-IBIG', `P${payslipData.pagibigDeduction}`],
       ];
+      const rightDeductions = [['Withholding Tax', `P${payslipData.withholdingTax}`]];
       leftDeductions.forEach(([label, value], index) => {
         addLabelValue(pdfDoc, label, value, margin, y + index * lineHeight);
       });
-
-      const rightDeductions = [['Withholding Tax', `P${payslipData.withholdingTax}`]];
       rightDeductions.forEach(([label, value], index) => {
         addLabelValue(pdfDoc, label, value, margin + columnWidth + 10, y + index * lineHeight);
       });
-      y += Math.max(leftDeductions.length, rightDeductions.length) * lineHeight + 10;
+      y += Math.max(leftDeductions.length, rightDeductions.length) * lineHeight + 5;
 
+      // Leaves and Absences
+      const leavesAndAbsences = [
+        ['Paid Leaves', `${payslipData.paidLeavesDays} days`, `P${payslipData.paidLeavesAmount}`],
+        ['Absences', `${payslipData.absencesDays} days`, `P${payslipData.absencesAmount}`],
+      ];
+      addText(pdfDoc, 'Leaves & Absences', margin, y, { fontSize: 11, fontStyle: 'bold' });
+      y += lineHeight;
+      leavesAndAbsences.forEach(([label, days, amount], index) => {
+        addText(pdfDoc, label, margin, y + index * lineHeight, { fontSize: 9, fontStyle: 'bold' });
+        addText(pdfDoc, days, margin + 35, y + index * lineHeight, { fontSize: 9 });
+        addText(pdfDoc, amount, margin + columnWidth + 10, y + index * lineHeight, { fontSize: 9 });
+      });
+      y += leavesAndAbsences.length * lineHeight + 10;
+
+      // Summary
       addText(pdfDoc, 'Summary', margin, y, { fontSize: 11, fontStyle: 'bold' });
       y += lineHeight;
       addText(pdfDoc, 'Total Deductions:', margin, y, { fontSize: 9, fontStyle: 'bold' });
       addText(pdfDoc, `(P${payslipData.totalDeductions})`, margin + 35, y, { fontSize: 9 });
       addText(pdfDoc, 'Net Salary:', margin + columnWidth + 10, y, { fontSize: 9, fontStyle: 'bold' });
       addText(pdfDoc, `P${payslipData.netSalary}`, margin + columnWidth + 45, y, { fontSize: 9 });
+      y += lineHeight + 10;
 
+      // Earnings Table
+      addText(pdfDoc, 'Earnings', margin, y, { fontSize: 11, fontStyle: 'bold' });
+      y += lineHeight;
+      if (payslipData.earnings.length > 0) {
+        const earningsTableData = payslipData.earnings.map((earning) => [
+          earning.name,
+          `P${earning.amount}`,
+        ]);
+        pdfDoc.autoTable({
+          startY: y,
+          head: [['Description', 'Amount']],
+          body: earningsTableData,
+          margin: { left: margin, right: margin },
+          styles: { fontSize: 9, cellPadding: 1.5 },
+          headStyles: { fillColor: [0, 128, 0], textColor: [255, 255, 255] },
+          columnStyles: {
+            0: { cellWidth: contentWidth * 0.7 },
+            1: { cellWidth: contentWidth * 0.3, halign: 'right' },
+          },
+        });
+        y = pdfDoc.lastAutoTable.finalY + 5;
+      } else {
+        addText(pdfDoc, 'None', margin, y, { fontSize: 9 });
+        y += lineHeight + 5;
+      }
+
+      // Deductions Table (Non-Recurring, Excluding Taxes)
+      addText(pdfDoc, 'Other Deductions', margin, y, { fontSize: 11, fontStyle: 'bold' });
+      y += lineHeight;
+      if (payslipData.deductions.length > 0) {
+        const deductionsTableData = payslipData.deductions.map((deduction) => [
+          deduction.name,
+          `P${deduction.amount}`,
+        ]);
+        pdfDoc.autoTable({
+          startY: y,
+          head: [['Description', 'Amount']],
+          body: deductionsTableData,
+          margin: { left: margin, right: margin },
+          styles: { fontSize: 9, cellPadding: 1.5 },
+          headStyles: { fillColor: [0, 128, 0], textColor: [255, 255, 255] },
+          columnStyles: {
+            0: { cellWidth: contentWidth * 0.7 },
+            1: { cellWidth: contentWidth * 0.3, halign: 'right' },
+          },
+        });
+        y = pdfDoc.lastAutoTable.finalY + 5;
+      } else {
+        addText(pdfDoc, 'None', margin, y, { fontSize: 9 });
+        y += lineHeight + 5;
+      }
+
+      // Recurring Deductions Table
+      if (payslipData.recurringDeductions.length > 0) {
+        addText(pdfDoc, 'Recurring Deductions', margin, y, { fontSize: 11, fontStyle: 'bold' });
+        y += lineHeight;
+        const recurringDeductionsTableData = payslipData.recurringDeductions.map((deduction) => [
+          deduction.name,
+          `P${deduction.amount}`,
+        ]);
+        pdfDoc.autoTable({
+          startY: y,
+          head: [['Description', 'Amount']],
+          body: recurringDeductionsTableData,
+          margin: { left: margin, right: margin },
+          styles: { fontSize: 9, cellPadding: 1.5 },
+          headStyles: { fillColor: [0, 128, 0], textColor: [255, 255, 255] },
+          columnStyles: {
+            0: { cellWidth: contentWidth * 0.7 },
+            1: { cellWidth: contentWidth * 0.3, halign: 'right' },
+          },
+        });
+        y = pdfDoc.lastAutoTable.finalY + 5;
+      }
+
+      // Footer
       const footerY = pageHeight - margin - 5;
+      if (y > footerY - 10) {
+        pdfDoc.addPage();
+        y = margin;
+      }
       addText(pdfDoc, 'This is a computer-generated payslip; no signature required.', margin + contentWidth / 2, footerY, {
         fontSize: 8,
         align: 'center',

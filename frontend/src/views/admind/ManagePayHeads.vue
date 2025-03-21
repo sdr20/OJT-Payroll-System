@@ -466,16 +466,18 @@ export default {
         const response = await axios.get('http://localhost:7777/api/employees', {
           headers: { 'user-role': 'admin' },
         });
+
         this.employees = response.data.map(emp => ({
           ...emp,
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
           position: emp.position || 'N/A',
-          payheads: emp.payheads ? emp.payheads.map(ph => ({
+          payheads: (emp.payheads || []).map(ph => ({
             ...ph,
             amount: Number(ph.amount),
             isRecurring: ph.isRecurring || false,
             appliedThisCycle: ph.appliedThisCycle || false,
-          })) : [],
+            uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          })),
           totalEarnings: this.calculateEarnings(emp.payheads || []),
           totalDeduction: this.calculateDeductions(emp.payheads || []),
           totalRecurringDeduction: this.calculateRecurringDeductions(emp.payheads || []),
@@ -614,6 +616,7 @@ export default {
       try {
         this.isLoading = true;
         const payheadsToSave = this.selectedEmployeePayheads.map(ph => ({
+          _id: ph._id,
           id: ph.id,
           name: ph.name,
           amount: Number(ph.amount),
@@ -622,9 +625,11 @@ export default {
           appliedThisCycle: ph.isRecurring ? ph.appliedThisCycle || false : undefined,
         }));
 
+        const payheadsForBackend = payheadsToSave.map(ph => ph._id);
+
         const updatedEmployee = {
           ...this.selectedEmployee,
-          payheads: payheadsToSave,
+          payheads: payheadsForBackend,
           totalEarnings: this.calculateEarnings(payheadsToSave),
           totalDeduction: this.calculateDeductions(payheadsToSave),
           totalRecurringDeduction: this.calculateRecurringDeductions(payheadsToSave),
@@ -644,7 +649,10 @@ export default {
           e => e.id === this.selectedEmployee.id
         );
         if (employeeIndex !== -1) {
-          this.employees.splice(employeeIndex, 1, updatedEmployee);
+          this.employees.splice(employeeIndex, 1, {
+            ...updatedEmployee,
+            payheads: payheadsToSave,
+          });
         }
 
         this.showAddPayheadModal = false;
@@ -663,21 +671,39 @@ export default {
         for (const employee of selectedEmployees) {
           const existingPayheads = this.employees.find(e => e.id === employee.id).payheads || [];
           const updatedPayheads = [...existingPayheads];
-          
-          selectedDeductions.forEach(deduction => {
+
+          for (const deduction of selectedDeductions) {
             if (!updatedPayheads.some(ph => ph.id === deduction.id && ph.isRecurring)) {
+              const payheadResponse = await axios.get(`http://localhost:7777/api/payheads`, {
+                headers: { 'user-role': 'admin' },
+                params: { id: deduction.id }
+              });
+
+              const payhead = payheadResponse.data.find(ph => ph.id === deduction.id);
+              if (!payhead) {
+                throw new Error(`Payhead with id ${deduction.id} not found`);
+              }
+
+              const payheadObjectId = payhead._id;
+
               updatedPayheads.push({
-                ...deduction,
-                uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                _id: payheadObjectId,
+                id: deduction.id,
+                name: deduction.name,
+                amount: Number(deduction.amount),
+                type: deduction.type,
                 isRecurring: true,
                 appliedThisCycle: false,
+                uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               });
             }
-          });
+          }
+
+          const payheadsForBackend = updatedPayheads.map(ph => ph._id);
 
           const updatedEmployee = {
             ...employee,
-            payheads: updatedPayheads,
+            payheads: payheadsForBackend,
             totalEarnings: this.calculateEarnings(updatedPayheads),
             totalDeduction: this.calculateDeductions(updatedPayheads),
             totalRecurringDeduction: this.calculateRecurringDeductions(updatedPayheads),
@@ -695,7 +721,10 @@ export default {
 
           const employeeIndex = this.employees.findIndex(e => e.id === employee.id);
           if (employeeIndex !== -1) {
-            this.employees.splice(employeeIndex, 1, updatedEmployee);
+            this.employees.splice(employeeIndex, 1, {
+              ...updatedEmployee,
+              payheads: updatedPayheads,
+            });
           }
         }
         this.showRecurringDeductionModal = false;
@@ -771,12 +800,10 @@ export default {
   created() {
     this.fetchPayHeads();
     this.fetchEmployees();
-    // Simulate payroll cycle reset (could be triggered by a cron job or manual action)
-    setInterval(() => this.resetPayheadsCycle(), 24 * 60 * 60 * 1000); // Reset daily for demo
+    setInterval(() => this.resetPayheadsCycle(), 24 * 60 * 60 * 1000);
   },
 };
 </script>
-
 <style scoped>
 /* Modal animation */
 .modal-fade-enter-active, .modal-fade-leave-active {

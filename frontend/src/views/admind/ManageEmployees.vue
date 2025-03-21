@@ -143,12 +143,14 @@
             <div>
               <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
               <div class="space-y-2">
+                <p><span class="font-medium text-gray-700">ID:</span> {{ selectedEmployee.id || 'N/A' }}</p>
                 <p><span class="font-medium text-gray-700">Employee No:</span> {{ selectedEmployee.empNo || 'N/A' }}</p>
                 <p><span class="font-medium text-gray-700">Name:</span> {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}</p>
                 <p><span class="font-medium text-gray-700">Position:</span> {{ selectedEmployee.position }}</p>
                 <p><span class="font-medium text-gray-700">Email:</span> {{ selectedEmployee.email }}</p>
                 <p><span class="font-medium text-gray-700">Contact:</span> {{ selectedEmployee.contactInfo }}</p>
                 <p><span class="font-medium text-gray-700">Hire Date:</span> {{ new Date(selectedEmployee.hireDate).toLocaleDateString() }}</p>
+                <p><span class="font-medium text-gray-700">Civil Status:</span> {{ selectedEmployee.civilStatus || 'N/A' }}</p>
               </div>
             </div>
             <div>
@@ -169,7 +171,7 @@
               <p><span class="font-medium text-gray-700">Withholding Tax:</span> ₱{{ calculateWithholdingTax(selectedEmployee.salary).toLocaleString() }}</p>
             </div>
           </div>
-          <!-- New Position History Section -->
+          <!-- Position History Section -->
           <div class="mt-4 p-3 bg-gray-50 rounded-md">
             <h3 class="text-base font-semibold text-gray-800 mb-2">Position History</h3>
             <div v-if="sortedPositionHistory.length === 0" class="text-gray-500 text-sm">
@@ -203,6 +205,10 @@
               <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">ID *</label>
+                  <input v-model.number="newEmployee.id" type="number" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required min="1" />
+                </div>
+                <div class="space-y-1">
                   <label class="text-xs font-medium text-gray-600">Employee Number *</label>
                   <input v-model="newEmployee.empNo" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required />
                 </div>
@@ -225,6 +231,15 @@
                 <div class="space-y-1">
                   <label class="text-xs font-medium text-gray-600">Contact Number *</label>
                   <input v-model="newEmployee.contactInfo" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required pattern="\d{11}" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Civil Status *</label>
+                  <select v-model="newEmployee.civilStatus" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widowed">Widowed</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -284,6 +299,14 @@
                   <input :value="newEmployee.hourlyRate.toLocaleString()" type="text" class="w-full p-1.5 text-sm border rounded-md bg-gray-100" disabled />
                 </div>
                 <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Travel Expenses</label>
+                  <input v-model.number="newEmployee.earnings.travelExpenses" type="number" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" min="0" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Other Earnings</label>
+                  <input v-model.number="newEmployee.earnings.otherEarnings" type="number" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" min="0" />
+                </div>
+                <div class="space-y-1">
                   <label class="text-xs font-medium text-gray-600">SSS Contribution</label>
                   <input :value="calculateSSSContribution(newEmployee.salary).toLocaleString()" class="w-full p-1.5 text-sm border rounded-md bg-gray-100" disabled />
                 </div>
@@ -330,6 +353,10 @@
               <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">ID *</label>
+                  <input v-model.number="selectedEmployee.id" type="number" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required min="1" />
+                </div>
+                <div class="space-y-1">
                   <label class="text-xs font-medium text-gray-600">Employee Number *</label>
                   <input v-model="selectedEmployee.empNo" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required />
                 </div>
@@ -352,6 +379,15 @@
                 <div class="space-y-1">
                   <label class="text-xs font-medium text-gray-600">Contact Number *</label>
                   <input v-model="selectedEmployee.contactInfo" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required pattern="\d{11}" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-gray-600">Civil Status *</label>
+                  <select v-model="selectedEmployee.civilStatus" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widowed">Widowed</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -551,6 +587,7 @@
     </div>
   </div>
 </template>
+
 <script>
 import axios from 'axios';
 
@@ -585,6 +622,7 @@ export default {
       itemsPerPage: 10,
       statusMessage: '',
       newEmployee: {
+        id: null,
         empNo: '',
         firstName: '',
         middleName: '',
@@ -598,11 +636,12 @@ export default {
         philhealth: '',
         pagibig: '',
         tin: '',
+        civilStatus: 'Single',
         hireDate: new Date().toISOString().slice(0, 10),
         earnings: { travelExpenses: 0, otherEarnings: 0 },
         username: '',
         password: '',
-        positionHistory: [], // Initialize positionHistory
+        positionHistory: [],
       },
       newPosition: { name: '', salary: 0 },
       editPositionData: { id: null, name: '', salary: 0 },
@@ -646,8 +685,7 @@ export default {
   },
   methods: {
     calculateTotalEarnings(employee) {
-      const baseEarnings = (employee.earnings?.travelExpenses || 0) + (employee.earnings?.otherEarnings || 0);
-      return employee.salary + baseEarnings;
+      return employee.salary + (employee.earnings?.travelExpenses || 0) + (employee.earnings?.otherEarnings || 0);
     },
     calculateTotalDeductions(employee) {
       return this.calculateSSSContribution(employee.salary) + 
@@ -660,15 +698,23 @@ export default {
     },
     calculateRequestNetSalary(request) {
       if (!request || !request.salary) return 0;
-      const totalEarnings = (request.earnings?.travelExpenses || 0) + (request.earnings?.otherEarnings || 0) + (request.salary || 0);
-      return totalEarnings - (this.calculateSSSContribution(request.salary) + this.calculatePhilHealthContribution(request.salary) + 
-                             this.calculatePagIBIGContribution(request.salary) + this.calculateWithholdingTax(request.salary));
+      const totalEarnings = (request.salary || 0) + 
+                           (request.earnings?.travelExpenses || 0) + 
+                           (request.earnings?.otherEarnings || 0);
+      return totalEarnings - (this.calculateSSSContribution(request.salary) + 
+                             this.calculatePhilHealthContribution(request.salary) + 
+                             this.calculatePagIBIGContribution(request.salary) + 
+                             this.calculateWithholdingTax(request.salary));
     },
     calculateNewEmployeeNetSalary() {
       if (!this.newEmployee.salary) return 0;
-      const totalEarnings = this.newEmployee.salary + (this.newEmployee.earnings.travelExpenses || 0) + (this.newEmployee.earnings.otherEarnings || 0);
-      return totalEarnings - (this.calculateSSSContribution(this.newEmployee.salary) + this.calculatePhilHealthContribution(this.newEmployee.salary) + 
-                             this.calculatePagIBIGContribution(this.newEmployee.salary) + this.calculateWithholdingTax(this.newEmployee.salary));
+      const totalEarnings = this.newEmployee.salary + 
+                           (this.newEmployee.earnings.travelExpenses || 0) + 
+                           (this.newEmployee.earnings.otherEarnings || 0);
+      return totalEarnings - (this.calculateSSSContribution(this.newEmployee.salary) + 
+                             this.calculatePhilHealthContribution(this.newEmployee.salary) + 
+                             this.calculatePagIBIGContribution(this.newEmployee.salary) + 
+                             this.calculateWithholdingTax(this.newEmployee.salary));
     },
     calculateSSSContribution(salary) {
       const monthlySalary = Math.max(salary || 0, 0);
@@ -777,19 +823,17 @@ export default {
     },
 
     async updateEmployee() {
-      if (!this.selectedEmployee.firstName || !this.selectedEmployee.lastName || !this.selectedEmployee.email || 
+      if (!this.selectedEmployee.id || !this.selectedEmployee.firstName || !this.selectedEmployee.lastName || !this.selectedEmployee.email || 
           !this.selectedEmployee.contactInfo || this.selectedEmployee.salary < 0) {
         this.showErrorMessage('Required fields missing or invalid salary');
         return;
       }
       this.isUpdating = true;
       try {
-        // Find the original employee data to compare position
         const originalEmployee = this.employees.find(emp => emp.id === this.selectedEmployee.id);
         const positionChanged = originalEmployee.position !== this.selectedEmployee.position;
 
         if (positionChanged) {
-          // End the current position by setting its endDate to today
           const updatedPositionHistory = this.selectedEmployee.positionHistory.map(history => {
             if (!history.endDate) {
               return { ...history, endDate: new Date().toISOString().slice(0, 10) };
@@ -797,7 +841,6 @@ export default {
             return history;
           });
 
-          // Add the new position to the history
           updatedPositionHistory.push({
             position: this.selectedEmployee.position,
             salary: this.selectedEmployee.salary,
@@ -850,19 +893,32 @@ export default {
     },
 
     viewRequestInfo(request) {
-      this.selectedRequest = { ...request, earnings: { travelExpenses: request.earnings?.travelExpenses || 0, otherEarnings: request.earnings?.otherEarnings || 0 } };
+      this.selectedRequest = { 
+        ...request, 
+        earnings: { 
+          travelExpenses: request.earnings?.travelExpenses || 0, 
+          otherEarnings: request.earnings?.otherEarnings || 0 
+        },
+      };
       this.showRequestModal = true;
       this.isEditingRequest = false;
     },
 
     async saveRequestChanges() {
-      if (!`${this.selectedRequest.firstName} ${this.selectedRequest.middleName} ${this.selectedRequest.lastName}`.trim() || !this.selectedRequest.email || !this.selectedRequest.contactNumber || this.selectedRequest.salary < 0) {
+      if (!`${this.selectedRequest.firstName} ${this.selectedRequest.middleName} ${this.selectedRequest.lastName}`.trim() || 
+          !this.selectedRequest.email || 
+          !this.selectedRequest.contactNumber || 
+          this.selectedRequest.salary < 0) {
         this.showErrorMessage('Required fields missing or invalid salary');
         return;
       }
       this.isUpdating = true;
       try {
-        const response = await axios.put(`http://localhost:7777/api/pending-requests/${this.selectedRequest.id}`, this.selectedRequest, { headers: { 'user-role': 'admin' } });
+        const response = await axios.put(
+          `http://localhost:7777/api/pending-requests/${this.selectedRequest.id}`, 
+          this.selectedRequest, 
+          { headers: { 'user-role': 'admin' } }
+        );
         if (response.status === 200) {
           const index = this.pendingRequests.findIndex(req => req.id === this.selectedRequest.id);
           if (index !== -1) this.pendingRequests[index] = { ...this.selectedRequest };
@@ -878,13 +934,14 @@ export default {
     },
 
     async approveRequest(request) {
-      const requiredFields = ['empNo', 'firstName', 'lastName', 'position', 'salary', 'email', 'contactNumber', 'username', 'password'];
+      const requiredFields = ['id', 'empNo', 'firstName', 'lastName', 'position', 'salary', 'email', 'contactNumber', 'username', 'password'];
       if (requiredFields.some(field => !request[field])) {
         this.showErrorMessage(`Missing required fields: ${requiredFields.filter(field => !request[field]).join(', ')}`);
         return;
       }
       try {
         const newEmployee = {
+          id: request.id || Date.now(),
           empNo: request.empNo,
           firstName: request.firstName,
           lastName: request.lastName,
@@ -898,7 +955,11 @@ export default {
           philhealth: request.philhealth || '',
           pagibig: request.pagibig || '',
           tin: request.tin || '',
-          earnings: { travelExpenses: Number(request.earnings?.travelExpenses || 0), otherEarnings: Number(request.earnings?.otherEarnings || 0) },
+          civilStatus: request.civilStatus || 'Single',
+          earnings: { 
+            travelExpenses: Number(request.earnings?.travelExpenses || 0), 
+            otherEarnings: Number(request.earnings?.otherEarnings || 0) 
+          },
           payheads: request.payheads || [],
           username: request.username,
           password: request.password,
@@ -916,12 +977,11 @@ export default {
           this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
           await axios.delete(`http://localhost:7777/api/pending-requests/${request.id}`, { headers: { 'user-role': 'admin' } });
           this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
-          this.showRequestModal = false;
-          this.showSuccessMessage('Employee approved and added successfully');
+          this.showSuccessMessage('Request approved and employee added successfully');
         }
       } catch (error) {
         console.error('Error approving request:', error);
-        this.showErrorMessage('Failed to approve employee');
+        this.showErrorMessage('Failed to approve request');
       }
     },
 
@@ -930,36 +990,44 @@ export default {
         const response = await axios.delete(`http://localhost:7777/api/pending-requests/${id}`, { headers: { 'user-role': 'admin' } });
         if (response.status === 200 || response.status === 204) {
           this.pendingRequests = this.pendingRequests.filter(req => req.id !== id);
-          this.showRequestModal = false;
-          this.showSuccessMessage('Application rejected successfully');
+          this.showSuccessMessage('Request rejected successfully');
         }
       } catch (error) {
         console.error('Error rejecting request:', error);
-        this.showErrorMessage('Failed to reject application');
+        this.showErrorMessage('Failed to reject request');
       }
     },
 
     async addEmployee() {
-      if (!this.newEmployee.firstName || !this.newEmployee.lastName || !this.newEmployee.empNo || !this.newEmployee.email || !this.newEmployee.contactInfo || !this.newEmployee.username || !this.newEmployee.password || this.newEmployee.salary < 0) {
-        this.showErrorMessage('Required fields missing or invalid salary');
+      const requiredFields = ['id', 'empNo', 'firstName', 'lastName', 'position', 'salary', 'email', 'contactInfo', 'username', 'password'];
+      if (requiredFields.some(field => !this.newEmployee[field])) {
+        this.showErrorMessage(`Missing required fields: ${requiredFields.filter(field => !this.newEmployee[field]).join(', ')}`);
+        return;
+      }
+      if (this.newEmployee.salary < 0) {
+        this.showErrorMessage('Salary cannot be negative');
         return;
       }
       this.isAdding = true;
       try {
         const employeeData = {
           ...this.newEmployee,
-          hourlyRate: this.newEmployee.hourlyRate,
+          contactInfo: this.newEmployee.contactInfo,
+          earnings: {
+            travelExpenses: Number(this.newEmployee.earnings.travelExpenses || 0),
+            otherEarnings: Number(this.newEmployee.earnings.otherEarnings || 0),
+          },
           role: 'employee',
           positionHistory: [{
             position: this.newEmployee.position,
-            salary: this.newEmployee.salary,
+            salary: Number(this.newEmployee.salary),
             startDate: this.newEmployee.hireDate,
             endDate: null,
           }],
         };
         const response = await axios.post('http://localhost:7777/api/employees', employeeData, { headers: { 'user-role': 'admin' } });
         if (response.status === 201) {
-          this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
+          this.employees.push({ ...response.data, hourlyRate: response.data.salary / (8 * 22) });
           this.showAddModal = false;
           this.resetNewEmployee();
           this.showSuccessMessage('Employee added successfully');
@@ -972,9 +1040,34 @@ export default {
       }
     },
 
+    resetNewEmployee() {
+      this.newEmployee = {
+        id: null,
+        empNo: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        position: '',
+        salary: 0,
+        hourlyRate: 0,
+        email: '',
+        contactInfo: '',
+        sss: '',
+        philhealth: '',
+        pagibig: '',
+        tin: '',
+        civilStatus: 'Single',
+        hireDate: new Date().toISOString().slice(0, 10),
+        earnings: { travelExpenses: 0, otherEarnings: 0 },
+        username: '',
+        password: '',
+        positionHistory: [],
+      };
+    },
+
     async createPosition() {
       if (!this.newPosition.name || this.newPosition.salary < 0) {
-        this.showErrorMessage('Position Name and a non-negative Salary are required');
+        this.showErrorMessage('Position name and a non-negative salary are required');
         return;
       }
       this.isAddingPosition = true;
@@ -982,7 +1075,7 @@ export default {
         const response = await axios.post('http://localhost:7777/api/positions', this.newPosition, { headers: { 'user-role': 'admin' } });
         if (response.status === 201) {
           this.adminPositions.push(response.data);
-          this.resetNewPosition();
+          this.newPosition = { name: '', salary: 0 };
           this.showSuccessMessage('Position created successfully');
         }
       } catch (error) {
@@ -1000,12 +1093,16 @@ export default {
 
     async updatePosition() {
       if (!this.editPositionData.name || this.editPositionData.salary < 0) {
-        this.showErrorMessage('Position Name and a non-negative Salary are required');
+        this.showErrorMessage('Position name and a non-negative salary are required');
         return;
       }
       this.isUpdatingPosition = true;
       try {
-        const response = await axios.put(`http://localhost:7777/api/positions/${this.editPositionData.id}`, this.editPositionData, { headers: { 'user-role': 'admin' } });
+        const response = await axios.put(
+          `http://localhost:7777/api/positions/${this.editPositionData.id}`,
+          this.editPositionData,
+          { headers: { 'user-role': 'admin' } }
+        );
         if (response.status === 200) {
           const index = this.adminPositions.findIndex(pos => pos.id === this.editPositionData.id);
           if (index !== -1) this.adminPositions[index] = { ...this.editPositionData };
@@ -1043,69 +1140,41 @@ export default {
     },
 
     updateSalaryFromPosition() {
-      const selectedPosition = this.adminPositions.find(pos => pos.name === this.newEmployee.position);
-      if (selectedPosition) {
-        this.newEmployee.salary = selectedPosition.salary;
-        this.newEmployee.hourlyRate = selectedPosition.salary / (8 * 22);
+      const selectedPos = this.adminPositions.find(pos => pos.name === this.newEmployee.position);
+      if (selectedPos) {
+        this.newEmployee.salary = selectedPos.salary;
+        this.newEmployee.hourlyRate = selectedPos.salary / (8 * 22);
       }
     },
 
     updateSalaryFromPositionEdit() {
-      const selectedPosition = this.adminPositions.find(pos => pos.name === this.selectedEmployee.position);
-      if (selectedPosition) {
-        this.selectedEmployee.salary = selectedPosition.salary;
-        this.selectedEmployee.hourlyRate = selectedPosition.salary / (8 * 22);
+      const selectedPos = this.adminPositions.find(pos => pos.name === this.selectedEmployee.position);
+      if (selectedPos) {
+        this.selectedEmployee.salary = selectedPos.salary;
+        this.selectedEmployee.hourlyRate = selectedPos.salary / (8 * 22);
       }
-    },
-
-    resetNewEmployee() {
-      this.newEmployee = {
-        empNo: '',
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        position: '',
-        salary: 0,
-        hourlyRate: 0,
-        email: '',
-        contactInfo: '',
-        sss: '',
-        philhealth: '',
-        pagibig: '',
-        tin: '',
-        hireDate: new Date().toISOString().slice(0, 10),
-        earnings: { travelExpenses: 0, otherEarnings: 0 },
-        username: '',
-        password: '',
-        positionHistory: [],
-      };
-    },
-
-    resetNewPosition() {
-      this.newPosition = { name: '', salary: 0 };
     },
 
     showSuccessMessage(message) {
       this.statusMessage = message;
-      setTimeout(() => (this.statusMessage = ''), 3000);
+      setTimeout(() => this.statusMessage = '', 3000);
     },
 
     showErrorMessage(message) {
       this.statusMessage = message;
-      setTimeout(() => (this.statusMessage = ''), 3000);
+      setTimeout(() => this.statusMessage = '', 3000);
     },
-  },
+  }
 };
 </script>
 
 <style scoped>
-.animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.animate-spin { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-button:disabled { opacity: 0.6; cursor: not-allowed; }
-.material-icons-outlined { font-size: 18px; }
-input:focus:invalid, select:focus:invalid { border-color: #ef4444; outline: 1px solid #ef4444; }
-.hover\:bg-gray-50:hover { background-color: #f9fafb; }
-.transition { transition: all 0.2s ease-in-out; }
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 </style>

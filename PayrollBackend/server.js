@@ -4,7 +4,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const connectDB = require('./config/database');
-const Employee = require('./models/Employee'); // Use the existing Employee model
+const Employee = require('./models/Employee');
 
 const employeeRoutes = require('./routes/employees');
 const pendingRequestRoutes = require('./routes/pendingRequests');
@@ -15,14 +15,15 @@ const payheadRoutes = require('./routes/payheads');
 const authRoutes = require('./routes/auth');
 const positionRoutes = require('./routes/positions');
 const positionHistoryRoutes = require('./routes/positionHistory');
-const contributionRoutes = require('./routes/contributions'); // Add the contributions routes
+const contributionRoutes = require('./routes/contributions');
+const employeeRecordsRoutes = require('./routes/employeeRecords');
 
 const app = express();
 
 const corsOptions = {
   origin: ['http://localhost:8080', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'user-role', 'authorization'],
+  allowedHeaders: ['Content-Type', 'user-role', 'user-id', 'authorization'],
   credentials: true
 };
 app.use(cors(corsOptions));
@@ -40,8 +41,9 @@ console.log('EMAIL_USER:', process.env.EMAIL_USER);
 console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'Not set');
 console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
 
-async function seedAdminIfNeeded() {
+async function seedUsers() {
   try {
+    // Seed Admin User
     const existingAdmin = await Employee.findOne({ username: 'admin' });
     if (!existingAdmin) {
       const hashedPassword = bcrypt.hashSync('admin123', 10);
@@ -57,20 +59,46 @@ async function seedAdminIfNeeded() {
         contactInfo: "09123456789",
         username: "admin",
         password: hashedPassword,
-        role: "admin"
+        role: "admin",
+        hireDate: new Date('2023-01-01')
       });
       await admin.save();
       console.log('Admin user created successfully');
     } else {
       console.log('Admin user already exists');
     }
+
+    // Seed Test Employee
+    const existingEmployee = await Employee.findOne({ username: 'janedoe' });
+    if (!existingEmployee) {
+      const hashedPassword = bcrypt.hashSync('janedoe123', 10);
+      const employee = new Employee({
+        id: 2,
+        empNo: "EMP002",
+        firstName: "Jane",
+        lastName: "Doe",
+        position: "Analyst",
+        salary: 35000,
+        hourlyRate: 35000 / (8 * 22),
+        email: "jane.doe@example.com",
+        contactInfo: "09123456789",
+        username: "janedoe",
+        password: hashedPassword,
+        role: "employee",
+        hireDate: new Date('2024-01-01')
+      });
+      await employee.save();
+      console.log('Test employee created successfully');
+    } else {
+      console.log('Test employee already exists');
+    }
   } catch (error) {
-    console.error('Error seeding admin user:', error);
+    console.error('Error seeding users:', error);
   }
 }
 
 connectDB()
-  .then(seedAdminIfNeeded)
+  .then(seedUsers)
   .catch(err => console.error("Database Connection Error:", err));
 
 // Routes
@@ -83,7 +111,8 @@ app.use('/api/payheads', payheadRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/positions', positionRoutes);
 app.use('/api/positionHistory', positionHistoryRoutes);
-app.use('/api/employee-contributions', contributionRoutes); // Add the contributions routes
+app.use('/api/employee-contributions', contributionRoutes);
+app.use('/api/employee-records', employeeRecordsRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ message: 'Server is running', uptime: process.uptime() });
