@@ -1,201 +1,159 @@
-<script>
-import { ref, onMounted, computed } from 'vue';
+<script setup>
+import { ref, onMounted, computed } from 'vue'; // Added computed
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth.store';
 import { useAttendanceStore } from '@/stores/attendance.store.js';
 import { BASE_API_URL } from '@/utils/constants.js';
-import EmployeeAttendanceDetails from './employee-management/partials/EmployeeAttendanceDetails.vue';
+import EmployeeAttendanceDetails from './partials/attendances/EmployeeAttendanceDetails.vue';
 
-export default {
-    name: 'AttendanceDashboard',
-    components: {
-        EmployeeAttendanceDetails,
-    },
-    setup() {
-        const router = useRouter();
-        const attendanceStore = useAttendanceStore();
-        const authStore = useAuthStore();
-        const totalEmployees = ref(0);
-        const isLoading = ref(false);
-        const isProcessingPayroll = ref(false);
-        const showModals = ref({});
+const router = useRouter();
+const attendanceStore = useAttendanceStore();
+const totalEmployees = ref(0);
+const isLoading = ref(false);
+const isProcessingPayroll = ref(false);
+const showModals = ref({});
 
-        const fetchTotalEmployees = async () => {
-            try {
-                const response = await fetch(`${BASE_API_URL}/api/employee/total`, {
-                    method: 'GET',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authStore.accessToken}`,
-                    },
-                });
-                if (!response.ok) throw new Error('Failed to fetch total employees');
-                const data = await response.json();
-                totalEmployees.value = data.total;
-            } catch (error) {
-                console.error('Failed to fetch total employees:', error);
-            }
-        };
-
-        const formatTime = (time) => {
-            if (!time) return '--';
-            const [hours, minutes] = time.split(':');
-            const period = hours >= 12 ? 'PM' : 'AM';
-            const displayHours = hours % 12 || 12;
-            return `${displayHours}:${minutes} ${period}`;
-        };
-
-        const refreshAttendance = async () => {
-            isLoading.value = true;
-            try {
-                await attendanceStore.fetchAttendance();
-                console.log('Fetched attendance records:', attendanceStore.attendanceRecords); // Debug log
-            } catch (error) {
-                console.error('Failed to refresh attendance:', error);
-            } finally {
-                isLoading.value = false;
-            }
-        };
-
-        const exportAttendance = () => {
-            const currentDate = new Date().toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-            });
-
-            const csvContent = [
-                ['Date', 'Employee ID', 'Name', 'Position', 'Sign In Time', 'Sign Out Time', 'Status'],
-                ...attendanceStore.attendanceRecords.map((record) => [
-                    currentDate,
-                    record.employeeId?.empNo || 'N/A',
-                    `${record.employeeId?.firstName} ${record.employeeId?.lastName}`,
-                    record.employeeId?.position || 'N/A',
-                    formatTime(record.morningTimeIn), // Changed from timeIn to morningTimeIn
-                    formatTime(record.morningTimeOut || record.afternoonTimeOut), // Changed to use model fields
-                    record.status || 'N/A',
-                ]),
-            ]
-                .map((row) => row.join(','))
-                .join('\n');
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `attendance_${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
-
-        const processPayroll = async () => {
-            isProcessingPayroll.value = true;
-            try {
-                console.log('Processing payroll...');
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-            } finally {
-                isProcessingPayroll.value = false;
-            }
-        };
-
-        const deleteAttendance = async (id) => {
-            if (confirm('Are you sure you want to delete this attendance record?')) {
-                try {
-                    const response = await fetch(`${BASE_API_URL}/api/attendance/${id}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${authStore.accessToken}`, // Add token
-                        },
-                    });
-                    if (!response.ok) throw new Error('Failed to delete attendance');
-                    await attendanceStore.fetchAttendance();
-                } catch (error) {
-                    console.error('Failed to delete attendance:', error);
-                }
-            }
-        };
-
-        const logout = () => {
-            localStorage.removeItem('userId');
-            localStorage.removeItem('userRole');
-            router.push('/admin/login');
-        };
-
-        const openModal = (recordId) => {
-            showModals.value[recordId] = true;
-        };
-
-        const closeModal = (recordId) => {
-            showModals.value[recordId] = false;
-        };
-
-        const today = new Date().toISOString().split('T')[0];
-
-        const todayRecords = computed(() => {
-            return attendanceStore.attendanceRecords.filter(r => r.date === today);
+// Fetch total employees
+const fetchTotalEmployees = async () => {
+    try {
+        const response = await fetch(`${BASE_API_URL}/api/employees/total`, {
+            method: 'GET',
+            headers: { 
+                'Content-Type': 'application/json' 
+            },
         });
-
-        const presentCount = computed(() => {
-            return todayRecords.value.filter(r => r.morningTimeIn).length; // Changed to morningTimeIn
-        });
-
-        const lateCount = computed(() => {
-            const OFFICE_START = "08:00:00";
-            return todayRecords.value.filter(r => r.morningTimeIn && r.morningTimeIn > OFFICE_START).length; // Changed to morningTimeIn
-        });
-
-        const absentCount = computed(() => {
-            const presentEmployeeIds = todayRecords.value
-                .filter(r => r.morningTimeIn) // Changed to morningTimeIn
-                .map(r => r.employeeId._id.toString());
-            const absentEmployees = totalEmployees.value - new Set(presentEmployeeIds).size;
-            return absentEmployees < 0 ? 0 : absentEmployees;
-        });
-
-        onMounted(() => {
-            fetchTotalEmployees();
-            refreshAttendance();
-        });
-
-        return {
-            totalEmployees,
-            isLoading,
-            isProcessingPayroll,
-            showModals,
-            formatTime,
-            refreshAttendance,
-            exportAttendance,
-            processPayroll,
-            deleteAttendance,
-            logout,
-            openModal,
-            closeModal,
-            absentCount,
-            presentCount,
-            lateCount,
-            todayRecords,
-            today,
-            attendanceStore,
-        };
-    },
-    methods: {
-        getStatusClass(status) {
-            return {
-                'text-red-500': status === 'Absent',
-                'text-green-500': status === 'On Time' || status === 'Present',
-                'text-yellow-500': status === 'Late',
-                'text-orange-500': status === 'Early Departure',
-            };
-        },
-    },
+        if (!response.ok) throw new Error('Failed to fetch total employees');
+        const data = await response.json();
+        totalEmployees.value = data.total;
+    } catch (error) {
+        console.error('Failed to fetch total employees:', error);
+    }
 };
+
+// Format time
+const formatTime = (time) => {
+    if (!time) return '--';
+    const [hours, minutes] = time.split(':');
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes} ${period}`;
+};
+
+// Refresh attendance
+const refreshAttendance = async () => {
+    isLoading.value = true;
+    try {
+        await attendanceStore.fetchAttendance();
+    } catch (error) {
+        console.error('Failed to refresh attendance:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+// Export attendance
+const exportAttendance = () => {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+
+    const csvContent = [
+        // Header
+        ['Date', 'Employee ID', 'Name', 'Position', 'Sign In Time', 'Sign Out Time', 'Status'],
+        ...attendanceStore.attendanceRecords.map(record => [
+            currentDate,
+            record.employeeId?.employeeIdNumber || 'N/A',
+            `${record.employeeId?.firstName} ${record.employeeId?.lastName}`,
+            record.employeeId?.position || 'N/A',
+            formatTime(record.timeIn),
+            formatTime(record.timeOut),
+            record.status || 'N/A',
+        ]),
+    ]
+        .map(row => row.join(','))
+        .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `attendance_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+// Process payroll
+const processPayroll = async () => {
+    isProcessingPayroll.value = true;
+    try {
+        console.log('Processing payroll...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    } finally {
+        isProcessingPayroll.value = false;
+    }
+};
+
+// Delete attendance
+const deleteAttendance = async (id) => {
+    if (confirm('Are you sure you want to delete this attendance record?')) {
+        try {
+            const response = await fetch(`${BASE_API_URL}/api/attendance/${id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!response.ok) throw new Error('Failed to delete attendance');
+            await attendanceStore.fetchAttendance();
+        } catch (error) {
+            console.error('Failed to delete attendance:', error);
+        }
+    }
+};
+
+// Logout
+const logout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
+    router.push('/login');
+};
+
+// Modal controls
+const openModal = (recordId) => {
+    showModals.value[recordId] = true;
+};
+
+const closeModal = (recordId) => {
+    showModals.value[recordId] = false;
+};
+
+// Computed property to dynamically determine absent count
+const absentCount = computed(() => {
+    const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const CUTOFF_TIME = "13:00:00";
+
+    if (currentTime > CUTOFF_TIME) {
+        // After cutoff, count employees without time-in as absent
+        const presentEmployeeIds = attendanceStore.attendanceRecords
+            .filter(record => record.timeIn && record.status !== "Absent")
+            .map(record => record.employeeId._id.toString());
+        const totalIds = attendanceStore.attendanceRecords.map(record => record.employeeId._id.toString());
+        const uniqueAbsentIds = [...new Set(totalIds.filter(id => !presentEmployeeIds.includes(id)))];
+
+        return uniqueAbsentIds.length;
+    }
+    return attendanceStore.attendanceRecords.filter(r => r.status === "Absent").length;
+});
+
+onMounted(() => {
+    fetchTotalEmployees();
+    attendanceStore.fetchAttendance();
+});
 </script>
 
 <template>
     <div class="min-h-screen bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Stats Overview (unchanged) -->
+            <!-- Stats Overview -->
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div
                     class="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
@@ -220,7 +178,7 @@ export default {
                         <div>
                             <p class="text-sm font-medium text-gray-600">Present Today</p>
                             <h3 class="text-2xl font-bold text-gray-900">
-                                {{ presentCount }}
+                                {{attendanceStore.attendanceRecords.filter(r => r.status === 'On Time').length}}
                             </h3>
                         </div>
                     </div>
@@ -235,7 +193,7 @@ export default {
                             <div class="ml-5">
                                 <p class="text-sm font-medium text-gray-600">Late Today</p>
                                 <h3 class="text-2xl font-bold text-gray-900">
-                                    {{ lateCount }}
+                                    {{attendanceStore.attendanceRecords.filter(r => r.status === 'Late').length}}
                                 </h3>
                             </div>
                         </div>
@@ -259,7 +217,6 @@ export default {
                 </div>
             </div>
 
-            <!-- Buttons (unchanged) -->
             <div class="mt-8 flex space-x-4">
                 <button @click="refreshAttendance"
                     class="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
@@ -312,28 +269,14 @@ export default {
                                     class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <div class="flex items-center space-x-2">
                                         <span class="material-icons text-gray-400">login</span>
-                                        <span>Morning In</span>
+                                        <span>Sign In</span>
                                     </div>
                                 </th>
                                 <th
                                     class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <div class="flex items-center space-x-2">
                                         <span class="material-icons text-gray-400">logout</span>
-                                        <span>Morning Out</span>
-                                    </div>
-                                </th>
-                                <th
-                                    class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    <div class="flex items-center space-x-2">
-                                        <span class="material-icons text-gray-400">login</span>
-                                        <span>Afternoon In</span>
-                                    </div>
-                                </th>
-                                <th
-                                    class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    <div class="flex items-center space-x-2">
-                                        <span class="material-icons text-gray-400">logout</span>
-                                        <span>Afternoon Out</span>
+                                        <span>Sign Out</span>
                                     </div>
                                 </th>
                                 <th
@@ -355,35 +298,33 @@ export default {
                         <tbody class="divide-y divide-gray-200">
                             <template v-if="isLoading">
                                 <tr v-for="n in 5" :key="n" class="animate-pulse">
-                                    <td v-for="m in 8" :key="m" class="px-6 py-4">
+                                    <td v-for="m in 6" :key="m" class="px-6 py-4">
                                         <div class="h-4 bg-gray-200 rounded"></div>
                                     </td>
                                 </tr>
                             </template>
                             <template v-else>
-                                <tr v-for="record in todayRecords" :key="record._id" class="hover:bg-gray-50">
+                                <tr v-for="record in attendanceStore.attendanceRecords" :key="record._id"
+                                    class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ record.employeeId?.firstName }} {{ record.employeeId?.lastName }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ record.employeeId?.position?.name || 'N/A' }}
+                                        {{ record.employeeId?.position || 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ formatTime(record.morningTimeIn) }}
+                                        {{ formatTime(record.timeIn) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ formatTime(record.morningTimeOut) }}
+                                        {{ formatTime(record.timeOut) }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ formatTime(record.afternoonTimeIn) }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ formatTime(record.afternoonTimeOut) }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium"
-                                        :class="getStatusClass(record.status)">
-                                        {{ record.morningTimeIn ? (record.status === 'Late' ? 'Late' : 'Present') :
-                                            (record.status || 'N/A') }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium" :class="{
+                                        'text-red-500': record.status === 'Absent',
+                                        'text-green-500': record.status === 'On Time',
+                                        'text-yellow-500': record.status === 'Late',
+                                        'text-orange-500': record.status === 'Early Departure',
+                                    }">
+                                        {{ record.status || 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 text-sm">
                                         <div class="flex space-x-2">

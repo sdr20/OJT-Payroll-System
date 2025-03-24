@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 const { Schema, model } = mongoose;
 
 const USERNAME_INVALID_CHARACTERS = ' ?;:,.`\'"(){}[]|\\/';
@@ -44,4 +44,4 @@ const adminSchema = new Schema({
     },
 });
 
-export const Admin = model('Admin', adminSchema);
+module.exports = model('Admin', adminSchema);

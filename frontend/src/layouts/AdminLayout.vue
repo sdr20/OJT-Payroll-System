@@ -9,30 +9,23 @@ const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
-const currentDateTime = ref('2025-03-03 05:34:37');
 const navigationLinks = ref([
     { path: '/admin/dashboard', name: 'Dashboard' },
-    { path: '/admin/employee/attendance', name: 'Employee Attendance' },
-    { path: '/admin/employee/manage', name: 'Manage Employees' },
-    { path: '/admin/employee/salary-slips', name: 'Salary Slips' },
-    { path: '/admin/employee/manage-pay-heads', name: 'Manage Pay Heads' },
-    { path: '/admin/employee/leave-management', name: 'Leave Management' },
-    { path: '/admin/employee/records', name: 'Employee Records' },
+    { path: '/admin/employee-attendance', name: 'Employee Attendance' },
+    { path: '/admin/manage-employees', name: 'Manage Employees' },
+    { path: '/admin/salary-slips', name: 'Salary Slips' },
+    { path: '/admin/manage-pay-heads', name: 'Manage Pay Heads' },
+    { path: '/admin/employee-leave-management', name: 'Leave Management' },
+    { path: '/admin/employee-records', name: 'Records' },
 ]);
 
 // Computed properties
 const username = computed(() => authStore.admin?.username || 'Admin');
 const adminInitial = computed(() => username.value.charAt(0).toUpperCase());
 
-// Methods
-const updateDateTime = () => {
-    const now = new Date();
-    currentDateTime.value = now.toISOString().slice(0, 19).replace('T', ' ');
-};
-
 const logout = () => {
     authStore.logout();
-    router.push('/admin/login');
+    router.push('/admin-login');
 };
 
 const getLinkIcon = (name) => {
@@ -45,20 +38,6 @@ const getLinkIcon = (name) => {
         'Leave Management': 'event_available'
     }[name] || 'widgets';
 };
-
-// Lifecycle hooks
-let intervalId = null;
-
-onMounted(() => {
-    updateDateTime();
-    intervalId = setInterval(updateDateTime, 1000);
-});
-
-onBeforeUnmount(() => {
-    if (intervalId) {
-        clearInterval(intervalId);
-    }
-});
 </script>
 
 <template>
@@ -76,7 +55,7 @@ onBeforeUnmount(() => {
                     <Dropdown align="right" width="56">
                         <template #trigger>
                             <div
-                                class="flex items-center bg-white/5 rounded-lg p-1 sm:p-2 hover:bg-white/10 transition-all cursor-pointer">
+                                class="flex items-center bg-white/5 rounded-lg p-1 sm:p-2 hover:bg-white/10 transition-all">
                                 <div
                                     class="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 flex items-center justify-center shadow-inner">
                                     <span class="text-base sm:text-lg font-semibold">{{ adminInitial }}</span>
@@ -89,10 +68,10 @@ onBeforeUnmount(() => {
                         </template>
 
                         <template #content>
-                            <DropdownLink :href="'/admin/settings'">
+                            <DropdownLink :href="'/admin/settings'" as="router-link">
                                 Settings
                             </DropdownLink>
-                            <DropdownLink :href="'/employee/login'" @click.prevent="logout" as="button">
+                            <DropdownLink :href="'/admin-login'" @click.prevent="logout" as="button">
                                 Logout
                             </DropdownLink>
                         </template>
@@ -127,7 +106,7 @@ onBeforeUnmount(() => {
 
                     <!-- Special Holiday Section -->
                     <div class="mt-6 pt-6 border-t border-gray-100">
-                        <router-link :to="{ name: 'admin-holiday-selection' }"
+                        <router-link :to="{ name: 'ListHolidays' }"
                             class="flex items-center px-3 py-3 rounded-xl text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-all group"
                             active-class="bg-blue-50">
                             <span class="material-icons text-xl md:text-lg text-gray-400 

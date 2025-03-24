@@ -1,13 +1,13 @@
-import asyncHandler from 'express-async-handler';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { Admin } from '../../../models/admin.model.js';
+const asyncHandler = require('express-async-handler');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const Admin = require('../../../models/admin.model.js');
 
 function generateAdminToken(adminId) {
     return jwt.sign({ adminId }, process.env.JWT_SECRET, { expiresIn: '1800s' });
 }
 
-export const loginAdmin = asyncHandler(async (req, res) => {
+const loginAdmin = asyncHandler(async (req, res) => {
     const { username, password } = req.body;
 
     const admin = await Admin.findOne({ username });
@@ -31,3 +31,6 @@ export const loginAdmin = asyncHandler(async (req, res) => {
         token,
     });
 });
+
+module.exports = { loginAdmin };
+

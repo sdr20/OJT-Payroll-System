@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { BASE_API_URL } from '../utils/constants.js';
+import { useAuthStore } from './auth.store.js';
 
 export const useAttendanceStore = defineStore("attendance", {
     state: () => ({
@@ -54,10 +55,14 @@ export const useAttendanceStore = defineStore("attendance", {
         async fetchAttendance() {
             this.loading = true;
             this.error = null;
+            const authStore = useAuthStore();
             try {
-                const response = await fetch(`${BASE_API_URL}/api/attendance`, {
+                const response = await fetch(`${BASE_API_URL}/api/attendance?date=${new Date().toISOString().split('T')[0]}`, {
                     method: "GET",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${authStore.accessToken}`
+                    },
                 });
 
                 if (!response.ok) {
@@ -65,13 +70,7 @@ export const useAttendanceStore = defineStore("attendance", {
                 }
 
                 const data = await response.json();
-                // Filter for today's records (assuming date is a Date string or timestamp)
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                this.attendanceRecords = data.filter(record => {
-                    const recordDate = new Date(record.date);
-                    return recordDate >= today && recordDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
-                });
+                this.attendanceRecords = data; // No need to filter if date query is used
             } catch (err) {
                 this.error = err.message || "Failed to fetch attendance records";
                 console.error(this.error);

@@ -1,5 +1,4 @@
-import mongoose from 'mongoose';
-const { Schema, model } = mongoose;
+const mongoose = require('mongoose');
 
 const USERNAME_INVALID_CHARACTERS = ' ?;:,.`\'"(){}[]|\\/';
 
@@ -12,46 +11,13 @@ function usernameValidator(value) {
     return true;
 }
 
-const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-
-const employeeSchema = new Schema({
-    empNo: { 
-        type: String, 
-        required: [true, 'Employee ID is required'],
-        unique: true,
-        trim: true,
-    },
+const employeeSchema = new mongoose.Schema({
+    id: { type: Number, required: true, unique: true },
+    empNo: { type: String, required: true, unique: true },
     firstName: { type: String, required: true },
     middleName: { type: String, default: '' },
     lastName: { type: String, required: true },
-    username: { 
-        type: String, 
-        required: true, 
-        unique: true,
-        trim: true,
-        minLength: [4, 'Username must be at least 4 characters long'],
-        validate: [usernameValidator, 'Username contains invalid characters'],
-    },
-    email: { 
-        type: String, 
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true,
-        match: [emailRegex, 'Please enter a valid email address'],
-    },
-    password: { 
-        type: String, 
-        required: true,
-        minLength: [8, 'Password must be at least 8 characters long'],
-    },
-    profilePicture: { type: String, default: null },
-    birthday: { type: Date, required: false, default: null },
-    position: { 
-        type: Schema.Types.ObjectId, 
-        ref: 'Position', 
-        required: true
-    },
+    position: { type: String, required: true },
     positionHistory: [{
         position: { type: String, required: true },
         salary: { type: Number, required: true },
@@ -60,36 +26,29 @@ const employeeSchema = new Schema({
     }],
     salary: { type: Number, required: true, min: 0 },
     hourlyRate: { type: Number, default: 0 },
-    contactInfo: { type: String, required: false },
+    email: { type: String, required: true, unique: true },
+    contactInfo: { type: String, required: true },
     sss: { type: String, default: '' },
     philhealth: { type: String, default: '' },
     pagibig: { type: String, default: '' },
     tin: { type: String, default: '' },
-    civilStatus: { 
+    civilStatus: { type: String, enum: ['Single', 'Married', 'Divorced', 'Widowed'], default: 'Single' },
+    username: { 
         type: String, 
-        enum: ['Single', 'Married', 'Separated', 'Widowed'], 
-        default: 'Single' 
+        required: true, 
+        unique: true,
+        trim: true,
+        minLength: [4, 'Username must be at least 4 characters long'],
+        validate: [usernameValidator, 'Invalid username'],
     },
-    role: { 
-        type: String, 
-        enum: ['admin', 'employee'], 
-        default: 'employee' 
-    },
-    hireDate: { 
-        type: Date, 
-        default: Date.now, 
-        required: true 
-    },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['admin', 'employee'], default: 'employee' },
+    hireDate: { type: Date, required: true },
     earnings: {
         travelExpenses: { type: Number, default: 0 },
         otherEarnings: { type: Number, default: 0 },
     },
-    payHead: [
-        { 
-            type: Schema.Types.ObjectId, 
-            ref: 'PayHead' 
-        }
-    ],
+    payheads: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Payhead' }],
     commission: { type: Number, default: 0 },
     profitSharing: { type: Number, default: 0 },
     fees: { type: Number, default: 0 },
@@ -106,22 +65,18 @@ const employeeSchema = new Schema({
         days: { type: Number, default: 0 },
         amount: { type: Number, default: 0 },
     },
-    status: { 
-        type: String, 
-        enum: ['pending', 'approved', 'rejected'], 
-        default: 'pending' 
-    },
     absences: {
         days: { type: Number, default: 0 },
         amount: { type: Number, default: 0 },
-    },  
-    trashedAt: {
-        type: Date
-    }
+    },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
 }, { timestamps: true });
 
-employeeSchema.methods.comparePassword = async function (candidatePassword) {
-    return bcrypt.compare(candidatePassword, this.password);
-};
+employeeSchema.pre('save', function(next) {
+    if (this.salary && !this.hourlyRate) {
+        this.hourlyRate = this.salary / (8 * 22); 
+    }
+    next();
+});
 
-export const Employee = model('Employee', employeeSchema);
+module.exports = mongoose.model('Employee', employeeSchema);

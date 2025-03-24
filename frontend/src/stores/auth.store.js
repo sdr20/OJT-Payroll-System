@@ -1,78 +1,65 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { BASE_API_URL } from '../utils/constants.js';
 
 export const useAuthStore = defineStore('auth', () => {
+    // State
     const admin = ref(JSON.parse(localStorage.getItem('admin') || 'null'));
     const employee = ref(JSON.parse(localStorage.getItem('employee') || 'null'));
     const accessToken = ref(localStorage.getItem('token') || null);
 
+    // Restore session immediately on store initialization
     restoreSession();
 
+    // Restore session from localStorage
     function restoreSession() {
         const storedAdmin = JSON.parse(localStorage.getItem('admin') || 'null');
         const storedEmployee = JSON.parse(localStorage.getItem('employee') || 'null');
         const storedToken = localStorage.getItem('token') || null;
 
-        if (storedAdmin) admin.value = storedAdmin;
-        if (storedEmployee) employee.value = storedEmployee;
-        if (storedToken) accessToken.value = storedToken;
+        admin.value = storedAdmin;
+        employee.value = storedEmployee;
+        accessToken.value = storedToken;
+
+        console.log('Session restored:', { admin: admin.value, employee: employee.value, token: accessToken.value });
     }
 
-    async function fetchEmployeeDetails(id) {
-        try {
-            const response = await fetch(`${BASE_API_URL}/api/employee/${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken.value}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-            if (!response.ok) throw new Error('Failed to fetch employee details');
-            const employeeData = await response.json();
-            if (employeeData.status === 'pending') {
-                throw new Error('Account is pending approval');
-            }
-            employee.value = { ...employee.value, ...employeeData };
-            saveEmployee();
-        } catch (error) {
-            console.error('Error fetching employee details:', error);
-            throw error;
-        }
-    }
-
-    function saveAdmin() {
-        console.log('Saving admin:', admin.value);
-        localStorage.setItem('admin', JSON.stringify(admin.value));
-    }
-
-    function saveEmployee() {
-        if (employee.value) {
-            localStorage.setItem('employee', JSON.stringify(employee.value));
-        }
-    }
-
-    function saveAccessToken() {
-        if (accessToken.value) {
-            localStorage.setItem('token', accessToken.value);
-        }
-    }
-
-    function setAdmin(newAdmin) {
+    // Save state to localStorage
+    function saveAdmin(newAdmin) {
         admin.value = newAdmin;
-        saveAdmin();
+        localStorage.setItem('admin', JSON.stringify(admin.value));
+        console.log('Admin saved:', admin.value);
+    }
+
+    function saveEmployee(newEmployee) {
+        employee.value = newEmployee;
+        localStorage.setItem('employee', JSON.stringify(employee.value));
+        console.log('Employee saved:', employee.value);
+    }
+
+    function saveAccessToken(newToken) {
+        accessToken.value = newToken;
+        localStorage.setItem('token', newToken);
+        console.log('Access token saved:', accessToken.value);
+    }
+
+    // Setters
+    function setAdmin(newAdmin) {
+        saveAdmin(newAdmin);
+        employee.value = null;
+        localStorage.removeItem('employee');
     }
 
     function setEmployee(newEmployee) {
-        employee.value = newEmployee;
-        saveEmployee();
+        saveEmployee(newEmployee);
+        admin.value = null; 
+        localStorage.removeItem('admin');
     }
 
     function setAccessToken(newToken) {
-        console.log(`access token ${newToken}`);
-        accessToken.value = newToken;
-        saveAccessToken();
+        saveAccessToken(newToken);
     }
 
+    // Logout
     function logout() {
         admin.value = null;
         employee.value = null;
@@ -80,29 +67,33 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem('admin');
         localStorage.removeItem('employee');
         localStorage.removeItem('token');
+        console.log('Logged out');
     }
 
-    const isAuthenticated = computed(() => !!admin.value || !!employee.value);
+    // Computed properties
+    const isAuthenticated = computed(() => !!accessToken.value && (!!admin.value || !!employee.value));
     const userRole = computed(() => {
         if (admin.value) return 'admin';
         if (employee.value) return 'employee';
         return null;
     });
 
-    return { 
+    const isAdmin = computed(() => userRole.value === 'admin');
+
+    return {
         admin,
-        employee, 
-        accessToken, 
-        setEmployee, 
-        setAccessToken, 
-        logout, 
-        fetchEmployeeDetails,
+        employee,
+        accessToken,
         setAdmin,
+        setEmployee,
+        setAccessToken,
+        logout,
+        restoreSession,
+        isAuthenticated,
+        userRole,
+        isAdmin,
         saveAdmin,
         saveEmployee,
         saveAccessToken,
-        restoreSession,
-        isAuthenticated,
-        userRole
     };
 });

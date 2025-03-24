@@ -11,7 +11,7 @@
                 </div>
 
                 <div class="space-y-3 sm:space-y-4">
-                    <router-link :to="{ name: 'admin-login' }" class="group block">
+                    <router-link to="/admin-login" class="group block">
                         <div
                             class="p-3 sm:p-4 border border-gray-200 rounded-xl hover:border-blue-500 transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-105 bg-white/90 backdrop-blur-sm">
                             <h2
@@ -23,7 +23,7 @@
                         </div>
                     </router-link>
 
-                    <router-link :to="{ name: 'employee-login' }" class="group block">
+                    <router-link to="/employee-login" class="group block">
                         <div
                             class="p-3 sm:p-4 border border-gray-200 rounded-xl hover:border-blue-500 transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-105 bg-white/90 backdrop-blur-sm">
                             <h2
