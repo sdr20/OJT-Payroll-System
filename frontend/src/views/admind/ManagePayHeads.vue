@@ -351,33 +351,36 @@ export default {
       activeTab: 'payheads',
       currentPage: 1,
       itemsPerPage: 10,
-      isLoading: false,
+      isLoading: true, // Start with loading true to show loading state initially
     };
   },
 
   computed: {
     filteredPayHeads() {
-      let filtered = [...this.payHeads];
+      let filtered = [...this.payHeads || []]; // Fallback to empty array
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         filtered = filtered.filter(p => 
-          p.name.toLowerCase().includes(query) || 
-          (p.description && p.description.toLowerCase().includes(query))
+          (p.name || '').toLowerCase().includes(query) || 
+          (p.description || '').toLowerCase().includes(query)
         );
       }
       if (this.filterType) {
-        filtered = filtered.filter(p => p.type === this.filterType || (this.filterType === 'Recurring Deductions' && p.isRecurring));
+        filtered = filtered.filter(p => 
+          p.type === this.filterType || 
+          (this.filterType === 'Recurring Deductions' && p.isRecurring)
+        );
       }
       return filtered;
     },
 
     filteredEmployees() {
-      let filtered = [...this.employees];
+      let filtered = [...this.employees || []]; // Fallback to empty array
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         filtered = filtered.filter(e => 
-          e.name.toLowerCase().includes(query) || 
-          (e.position && e.position.toLowerCase().includes(query))
+          (e.name || '').toLowerCase().includes(query) || 
+          (e.position || '').toLowerCase().includes(query)
         );
       }
       if (this.filterType) {
@@ -444,16 +447,17 @@ export default {
         const response = await axios.get('http://localhost:7777/api/payheads', {
           headers: { 'user-role': 'admin' },
         });
-        this.payHeads = response.data.map(item => ({
+        this.payHeads = (response.data || []).map(item => ({
           ...item,
-          amount: Number(item.amount),
+          amount: Number(item.amount || 0),
           isRecurring: item.isRecurring || false,
           appliedThisCycle: item.appliedThisCycle || false,
-        })) || [];
+        }));
         this.showSuccessMessage('Pay heads loaded successfully!');
       } catch (error) {
         console.error('Error fetching pay heads:', error);
         this.showErrorMessage('Failed to load pay heads. Please try again.');
+        this.payHeads = []; // Reset to empty array on error
       } finally {
         this.isLoading = false;
       }
@@ -467,21 +471,22 @@ export default {
           headers: { 'user-role': 'admin' },
         });
 
-        this.employees = response.data.map(emp => ({
+        this.employees = (response.data || []).map(emp => ({
           ...emp,
-          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Unknown Employee',
           position: emp.position || 'N/A',
+          salary: Number(emp.salary || 0),
           payheads: (emp.payheads || []).map(ph => ({
             ...ph,
-            amount: Number(ph.amount),
+            amount: Number(ph.amount || 0),
             isRecurring: ph.isRecurring || false,
             appliedThisCycle: ph.appliedThisCycle || false,
-            uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            uniqueId: ph.uniqueId || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           })),
           totalEarnings: this.calculateEarnings(emp.payheads || []),
           totalDeduction: this.calculateDeductions(emp.payheads || []),
           totalRecurringDeduction: this.calculateRecurringDeductions(emp.payheads || []),
-          totalSalary: (emp.salary || 0) + 
+          totalSalary: (Number(emp.salary || 0)) + 
                        this.calculateEarnings(emp.payheads || []) - 
                        this.calculateDeductions(emp.payheads || []) - 
                        this.calculateRecurringDeductions(emp.payheads || []),
@@ -490,6 +495,18 @@ export default {
       } catch (error) {
         console.error('Error fetching employees:', error);
         this.showErrorMessage('Failed to load employees. Please try again.');
+        this.employees = []; // Reset to empty array on error
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async initializeData() {
+      this.isLoading = true;
+      try {
+        await Promise.all([this.fetchPayHeads(), this.fetchEmployees()]);
+      } catch (error) {
+        console.error('Error initializing data:', error);
       } finally {
         this.isLoading = false;
       }
@@ -500,17 +517,17 @@ export default {
         this.isLoading = true;
         const payload = { 
           ...payHead, 
-          amount: Number(payHead.amount),
+          amount: Number(payHead.amount || 0),
           isRecurring: payHead.isRecurring || false,
           appliedThisCycle: false,
         };
         const response = await axios.post('http://localhost:7777/api/payheads', payload, {
           headers: { 'user-role': 'admin' },
         });
-        this.payHeads.push({ ...response.data, amount: Number(response.data.amount) });
+        this.payHeads.push({ ...response.data, amount: Number(response.data.amount || 0) });
         this.showAddModal = false;
         this.showSuccessMessage('Pay head added successfully!');
-        await this.fetchEmployees();
+        await this.fetchEmployees(); // Refresh employees to reflect changes
       } catch (error) {
         console.error('Error adding pay head:', error);
         this.showErrorMessage('Failed to add pay head.');
@@ -520,7 +537,7 @@ export default {
     },
 
     showUpdatePayHeadModal(payHead) {
-      this.selectedPayHead = { ...payHead, amount: Number(payHead.amount) };
+      this.selectedPayHead = { ...payHead, amount: Number(payHead.amount || 0) };
       this.showUpdateModal = true;
     },
 
@@ -529,7 +546,7 @@ export default {
         this.isLoading = true;
         const payload = { 
           ...updatedPayHead, 
-          amount: Number(updatedPayHead.amount),
+          amount: Number(updatedPayHead.amount || 0),
           isRecurring: updatedPayHead.isRecurring || false,
           appliedThisCycle: updatedPayHead.appliedThisCycle || false,
         };
@@ -540,10 +557,10 @@ export default {
         );
         const index = this.payHeads.findIndex(ph => ph.id === updatedPayHead.id);
         if (index !== -1) {
-          this.payHeads.splice(index, 1, { ...response.data, amount: Number(response.data.amount) });
+          this.payHeads.splice(index, 1, { ...response.data, amount: Number(response.data.amount || 0) });
           this.showUpdateModal = false;
           this.showSuccessMessage('Pay head updated successfully!');
-          await this.fetchEmployees();
+          await this.fetchEmployees(); // Refresh employees to reflect changes
         }
       } catch (error) {
         console.error('Error updating pay head:', error);
@@ -567,7 +584,7 @@ export default {
         });
         this.payHeads = this.payHeads.filter(payHead => payHead.id !== id);
         this.showSuccessMessage('Pay head deleted successfully!');
-        await this.fetchEmployees();
+        await this.fetchEmployees(); // Refresh employees to reflect changes
       } catch (error) {
         console.error('Error deleting pay head:', error);
         this.showErrorMessage('Failed to delete pay head.');
@@ -577,7 +594,7 @@ export default {
     },
 
     openAddPayheadModal(employee) {
-      this.selectedEmployee = { ...employee, salary: employee.salary || 0 };
+      this.selectedEmployee = { ...employee, salary: Number(employee.salary || 0) };
       this.selectedEmployeePayheads = [...(employee.payheads || [])];
       this.availablePayheads = [...this.payHeads];
       this.showAddPayheadModal = true;
@@ -586,7 +603,7 @@ export default {
     addPayheadToEmployee(payhead) {
       const newPayhead = { 
         ...payhead, 
-        amount: Number(payhead.amount),
+        amount: Number(payhead.amount || 0),
         uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         appliedThisCycle: payhead.isRecurring ? false : undefined,
       };
@@ -606,7 +623,7 @@ export default {
       if (index !== -1) {
         this.selectedEmployeePayheads.splice(index, 1, { 
           ...updatedPayhead, 
-          amount: Number(updatedPayhead.amount),
+          amount: Number(updatedPayhead.amount || 0),
           appliedThisCycle: updatedPayhead.isRecurring ? updatedPayhead.appliedThisCycle : undefined,
         });
       }
@@ -619,13 +636,13 @@ export default {
           _id: ph._id,
           id: ph.id,
           name: ph.name,
-          amount: Number(ph.amount),
+          amount: Number(ph.amount || 0),
           type: ph.type,
           isRecurring: ph.isRecurring || false,
           appliedThisCycle: ph.isRecurring ? ph.appliedThisCycle || false : undefined,
         }));
 
-        const payheadsForBackend = payheadsToSave.map(ph => ph._id);
+        const payheadsForBackend = payheadsToSave.map(ph => ph._id).filter(id => id); // Only send valid _ids
 
         const updatedEmployee = {
           ...this.selectedEmployee,
@@ -633,7 +650,7 @@ export default {
           totalEarnings: this.calculateEarnings(payheadsToSave),
           totalDeduction: this.calculateDeductions(payheadsToSave),
           totalRecurringDeduction: this.calculateRecurringDeductions(payheadsToSave),
-          totalSalary: (this.selectedEmployee.salary || 0) + 
+          totalSalary: (Number(this.selectedEmployee.salary || 0)) + 
                       this.calculateEarnings(payheadsToSave) - 
                       this.calculateDeductions(payheadsToSave) - 
                       this.calculateRecurringDeductions(payheadsToSave),
@@ -669,7 +686,7 @@ export default {
       try {
         this.isLoading = true;
         for (const employee of selectedEmployees) {
-          const existingPayheads = this.employees.find(e => e.id === employee.id).payheads || [];
+          const existingPayheads = this.employees.find(e => e.id === employee.id)?.payheads || [];
           const updatedPayheads = [...existingPayheads];
 
           for (const deduction of selectedDeductions) {
@@ -684,13 +701,11 @@ export default {
                 throw new Error(`Payhead with id ${deduction.id} not found`);
               }
 
-              const payheadObjectId = payhead._id;
-
               updatedPayheads.push({
-                _id: payheadObjectId,
+                _id: payhead._id,
                 id: deduction.id,
                 name: deduction.name,
-                amount: Number(deduction.amount),
+                amount: Number(deduction.amount || 0),
                 type: deduction.type,
                 isRecurring: true,
                 appliedThisCycle: false,
@@ -699,7 +714,7 @@ export default {
             }
           }
 
-          const payheadsForBackend = updatedPayheads.map(ph => ph._id);
+          const payheadsForBackend = updatedPayheads.map(ph => ph._id).filter(id => id);
 
           const updatedEmployee = {
             ...employee,
@@ -707,7 +722,7 @@ export default {
             totalEarnings: this.calculateEarnings(updatedPayheads),
             totalDeduction: this.calculateDeductions(updatedPayheads),
             totalRecurringDeduction: this.calculateRecurringDeductions(updatedPayheads),
-            totalSalary: (employee.salary || 0) + 
+            totalSalary: (Number(employee.salary || 0)) + 
                         this.calculateEarnings(updatedPayheads) - 
                         this.calculateDeductions(updatedPayheads) - 
                         this.calculateRecurringDeductions(updatedPayheads),
@@ -789,7 +804,7 @@ export default {
       }));
       this.employees = this.employees.map(emp => ({
         ...emp,
-        payheads: emp.payheads.map(ph => ({
+        payheads: (emp.payheads || []).map(ph => ({
           ...ph,
           appliedThisCycle: ph.isRecurring ? false : ph.appliedThisCycle,
         })),
@@ -798,8 +813,7 @@ export default {
   },
 
   created() {
-    this.fetchPayHeads();
-    this.fetchEmployees();
+    this.initializeData(); // Use a single method to handle both fetches
     setInterval(() => this.resetPayheadsCycle(), 24 * 60 * 60 * 1000);
   },
 };

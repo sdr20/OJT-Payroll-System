@@ -11,11 +11,20 @@
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
-        <tr v-for="payHead in payHeads" :key="payHead.id">
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payHead.name }}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">P {{ payHead.amount.toLocaleString() }}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payHead.type }}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payHead.isRecurring ? 'Yes' : 'No' }}</td>
+        <tr v-if="!payHeads || payHeads.length === 0">
+          <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+            No pay heads available.
+          </td>
+        </tr>
+        <tr v-for="payHead in payHeads" :key="payHead.id || payHead.uniqueId" v-else>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payHead.name || 'Unnamed' }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            P {{ Number(payHead.amount || 0).toLocaleString() }}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payHead.type || 'N/A' }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {{ payHead.isRecurring ? 'Yes' : 'No' }}
+          </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
             <button 
               @click="$emit('update', payHead)" 
@@ -42,10 +51,12 @@
 
 <script>
 export default {
+  name: 'PayHeadTable',
   props: {
     payHeads: {
       type: Array,
-      required: true
+      required: true,
+      default: () => [] // Fallback to empty array
     }
   }
 };

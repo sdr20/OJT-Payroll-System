@@ -1484,7 +1484,7 @@ export default {
         birthDate: moment(employee.birthDate).isValid() ? moment(employee.birthDate).format('MM/DD/YYYY') : 'N/A',
         hireDate: moment(employee.hireDate).isValid() ? moment(employee.hireDate).format('MM/DD/YYYY') : 'N/A',
         civilStatus: employee.civilStatus || 'SINGLE',
-        dependents: employee.dependents || 0,
+        // dependents: employee.dependents || 0,
         sss: employee.sss || 'N/A',
         tin: employee.tin || 'N/A',
         philhealth: employee.philhealth || 'N/A',
@@ -1575,7 +1575,7 @@ export default {
       yRight += lineHeight;
       const rightPersonalInfo = [
         ['Civil Status', payslipData.civilStatus],
-        ['Dependents', payslipData.dependents.toString()],
+        // ['Dependents', payslipData.dependents.toString()],
         ['SSS', payslipData.sss],
         ['TIN', payslipData.tin],
         ['Philhealth', payslipData.philhealth],
@@ -1603,20 +1603,6 @@ export default {
         addLabelValue(pdfDoc, label, value, margin + columnWidth + 10, y + index * lineHeight);
       });
       y += Math.max(leftDeductions.length, rightDeductions.length) * lineHeight + 5;
-
-      // Leaves and Absences
-      const leavesAndAbsences = [
-        ['Paid Leaves', `${payslipData.paidLeavesDays} days`, `P${payslipData.paidLeavesAmount}`],
-        ['Absences', `${payslipData.absencesDays} days`, `P${payslipData.absencesAmount}`],
-      ];
-      addText(pdfDoc, 'Leaves & Absences', margin, y, { fontSize: 11, fontStyle: 'bold' });
-      y += lineHeight;
-      leavesAndAbsences.forEach(([label, days, amount], index) => {
-        addText(pdfDoc, label, margin, y + index * lineHeight, { fontSize: 9, fontStyle: 'bold' });
-        addText(pdfDoc, days, margin + 35, y + index * lineHeight, { fontSize: 9 });
-        addText(pdfDoc, amount, margin + columnWidth + 10, y + index * lineHeight, { fontSize: 9 });
-      });
-      y += leavesAndAbsences.length * lineHeight + 10;
 
       // Summary
       addText(pdfDoc, 'Summary', margin, y, { fontSize: 11, fontStyle: 'bold' });

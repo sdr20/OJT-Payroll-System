@@ -103,17 +103,6 @@
             <h3 class="text-base font-semibold text-gray-800 mb-3">Basic Information</h3>
             <div class="grid grid-cols-3 gap-4">
               <div class="space-y-1">
-                <label for="empNo" class="text-sm font-medium text-gray-700">Employee Number</label>
-                <input
-                  v-model="newRequest.empNo"
-                  type="text"
-                  id="empNo"
-                  class="block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out hover:border-blue-300"
-                  placeholder="Enter your employee number"
-                  required
-                />
-              </div>
-              <div class="space-y-1">
                 <label for="firstName" class="text-sm font-medium text-gray-700">First Name</label>
                 <input
                   v-model="newRequest.firstName"
@@ -414,7 +403,6 @@ export default {
       statusMessage: '',
       adminPositions: [], // Positions from backend
       newRequest: {
-        empNo: '',
         username: '',
         password: '',
         firstName: '',
@@ -607,6 +595,7 @@ export default {
         const requestData = {
           ...this.newRequest,
           id: newId,
+          empNo: 'pending', // Placeholder value for empNo
           earnings: { travelExpenses: 0, otherEarnings: 0 }
         };
 
@@ -626,7 +615,6 @@ export default {
     },
     resetNewRequest() {
       this.newRequest = {
-        empNo: '',
         username: '',
         password: '',
         firstName: '',
@@ -690,7 +678,7 @@ export default {
       return Math.round(408841.80 + (taxableIncome - 666667) * 0.35);
     },
     forgotPassword() {
-  this.loginError = 'Forgot Password feature not implemented yet. Contact your admin.';
+      this.loginError = 'Forgot Password feature not implemented yet. Contact your admin.';
     }
   }
 };
