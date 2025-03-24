@@ -66,10 +66,10 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-end">
-            <button type="button" @click="forgotPassword" class="text-sm text-indigo-600 hover:text-indigo-700 transition-colors duration-300 hover:underline">
-              Forgot password?
-            </button>
+          <div class="text-right">
+             <router-link to="/forgot-password" class="text-sm text-blue-500 hover:underline transition-colors duration-300 hover:text-blue-700">
+               Forgot Password?
+             </router-link>
           </div>
 
           <button
