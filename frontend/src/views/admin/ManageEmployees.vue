@@ -1,3 +1,648 @@
+<script>
+import axios from 'axios';
+import { useAuthStore } from '@/stores/auth.store.js';
+import { BASE_API_URL } from '@/utils/constants.js';
+
+export default {
+    data() {
+        return {
+            employees: [],
+            pendingRequests: [],
+            adminPositions: [],
+            selectedEmployee: {},
+            selectedRequest: {},
+            selectedPosition: {},
+            showRequestModal: false,
+            showEditModal: false,
+            showDetailsModal: false,
+            showDeleteModal: false,
+            showAddModal: false,
+            showPositionModal: false,
+            showEditPositionModal: false,
+            showDeletePositionModal: false,
+            isEditingRequest: false,
+            isLoading: false,
+            isUpdating: false,
+            isDeleting: false,
+            isAdding: false,
+            isAddingPosition: false,
+            isUpdatingPosition: false,
+            isDeletingPosition: false,
+            searchQuery: '',
+            positionFilter: '',
+            currentPage: 1,
+            itemsPerPage: 10,
+            statusMessage: '',
+            newEmployee: {
+                empNo: '',
+                firstName: '',
+                middleName: '',
+                lastName: '',
+                position: '',
+                salary: 0,
+                hourlyRate: 0,
+                email: '',
+                contactInfo: '',
+                sss: '',
+                philhealth: '',
+                pagibig: '',
+                tin: '',
+                hireDate: new Date().toISOString().slice(0, 10),
+                earnings: { travelExpenses: 0, otherEarnings: 0 },
+                username: '',
+                password: '',
+                positionHistory: [],
+            },
+            newPosition: { name: '', salary: 0 },
+            editPositionData: { id: null, name: '', salary: 0 },
+        };
+    },
+    setup() {
+        const authStore = useAuthStore();
+        return { authStore };
+    },
+    computed: {
+        filteredEmployees() {
+            return this.employees.filter(emp =>
+                `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
+                (this.positionFilter ? emp.position === this.positionFilter : true)
+            );
+        },
+        paginatedEmployees() {
+            const start = (this.currentPage - 1) * this.itemsPerPage;
+            return this.filteredEmployees.slice(start, start + this.itemsPerPage);
+        },
+        totalPages() {
+            return Math.ceil(this.filteredEmployees.length / this.itemsPerPage);
+        },
+        sortedPositionHistory() {
+            if (!this.selectedEmployee?.positionHistory || this.selectedEmployee.positionHistory.length === 0) {
+                return [{
+                    position: this.selectedEmployee.position || 'N/A',
+                    salary: this.selectedEmployee.salary || 0,
+                    startDate: this.selectedEmployee.hireDate || new Date().toISOString().slice(0, 10),
+                    endDate: null,
+                }];
+            }
+            return [...this.selectedEmployee.positionHistory].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+        },
+    },
+    watch: {
+        'selectedEmployee.salary'(newSalary) { this.selectedEmployee.hourlyRate = newSalary / (8 * 22); },
+        'selectedRequest.salary'(newSalary) { this.selectedRequest.hourlyRate = newSalary / (8 * 22); },
+        'newEmployee.salary'(newSalary) { this.newEmployee.hourlyRate = newSalary ? newSalary / (8 * 22) : 0; },
+    },
+    mounted() {
+        this.fetchEmployees();
+        this.fetchPendingRequests();
+        this.fetchPositions();
+    },
+    methods: {
+        calculateTotalEarnings(employee) {
+            const baseEarnings = (employee.earnings?.travelExpenses || 0) + (employee.earnings?.otherEarnings || 0);
+            return employee.salary + baseEarnings;
+        },
+        calculateTotalDeductions(employee) {
+            return this.calculateSSSContribution(employee.salary) +
+                this.calculatePhilHealthContribution(employee.salary) +
+                this.calculatePagIBIGContribution(employee.salary) +
+                this.calculateWithholdingTax(employee.salary);
+        },
+        calculateNetSalary(employee) {
+            return employee && employee.salary ? this.calculateTotalEarnings(employee) - this.calculateTotalDeductions(employee) : 0;
+        },
+        calculateRequestNetSalary(request) {
+            if (!request || !request.salary) return 0;
+            const totalEarnings = (request.earnings?.travelExpenses || 0) + (request.earnings?.otherEarnings || 0) + (request.salary || 0);
+            return totalEarnings - (this.calculateSSSContribution(request.salary) + this.calculatePhilHealthContribution(request.salary) +
+                this.calculatePagIBIGContribution(request.salary) + this.calculateWithholdingTax(request.salary));
+        },
+        calculateNewEmployeeNetSalary() {
+            if (!this.newEmployee.salary) return 0;
+            const totalEarnings = this.newEmployee.salary + (this.newEmployee.earnings.travelExpenses || 0) + (this.newEmployee.earnings.otherEarnings || 0);
+            return totalEarnings - (this.calculateSSSContribution(this.newEmployee.salary) + this.calculatePhilHealthContribution(this.newEmployee.salary) +
+                this.calculatePagIBIGContribution(this.newEmployee.salary) + this.calculateWithholdingTax(this.newEmployee.salary));
+        },
+        calculateSSSContribution(salary) {
+            const monthlySalary = Math.max(salary || 0, 0);
+            if (monthlySalary < 5000) return 250;
+            const salaryCredit = Math.min(Math.max(monthlySalary, 5000), 35000);
+            const regularSSContribution = Math.round(salaryCredit * 0.05);
+            let mpfContribution = salaryCredit > 20000 ? Math.round((Math.min(salaryCredit, 35000) - 20000) * 0.025) : 0;
+            return salaryCredit > 34750 ? 1750 : regularSSContribution + mpfContribution;
+        },
+        calculatePhilHealthContribution(salary) {
+            const monthlySalary = Math.max(salary || 0, 0);
+            return Math.round(Math.min(Math.max(monthlySalary, 10000), 100000) * 0.025);
+        },
+        calculatePagIBIGContribution(salary) {
+            const monthlySalary = Math.max(salary || 0, 0);
+            const cappedSalary = Math.min(monthlySalary, 5000);
+            return Math.round(cappedSalary * (cappedSalary <= 1500 ? 0.01 : 0.02));
+        },
+        calculateWithholdingTax(salary) {
+            const taxableIncome = salary || 0;
+            if (taxableIncome <= 20833) return 0;
+            if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15);
+            if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20);
+            if (taxableIncome <= 166667) return Math.round(13541.80 + (taxableIncome - 66667) * 0.25);
+            if (taxableIncome <= 666667) return Math.round(90841.80 + (taxableIncome - 166667) * 0.30);
+            return Math.round(408841.80 + (taxableIncome - 666667) * 0.35);
+        },
+
+        async fetchEmployees() {
+            this.isLoading = true;
+            try {
+                const response = await axios.get(`${BASE_API_URL}/api/employees`, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                this.employees = (response.data || [])
+                    .filter(emp => emp.status === 'approved') // Only include approved employees
+                    .map(emp => ({
+                        ...emp,
+                        id: emp.id, // Use custom id field (Number)
+                        hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
+                        empNo: emp.empNo || `EMP-${String(emp.id).padStart(4, '0')}`,
+                        positionHistory: Array.isArray(emp.positionHistory) ? emp.positionHistory : [{
+                            position: emp.position || 'N/A',
+                            salary: emp.salary || 0,
+                            startDate: emp.hireDate || new Date().toISOString().slice(0, 10),
+                            endDate: null,
+                        }],
+                    }));
+            } catch (error) {
+                console.error('Error fetching employees:', error);
+                this.showErrorMessage('Failed to load employees');
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async fetchPendingRequests() {
+            this.isLoading = true;
+            try {
+                const response = await axios.get(`${BASE_API_URL}/api/employees/pending-requests`, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                this.pendingRequests = (response.data || []).map(req => ({
+                    ...req,
+                    id: req.id,
+                    _id: req._id,
+                }));
+            } catch (error) {
+                console.error('Error fetching pending requests:', error);
+                this.showErrorMessage('Failed to load pending requests');
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async fetchPositions() {
+            try {
+                const response = await axios.get(`${BASE_API_URL}/api/positions`, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                this.adminPositions = response.data || [];
+            } catch (error) {
+                console.error('Error fetching positions:', error);
+                this.showErrorMessage('Failed to load positions');
+            }
+        },
+
+        async refreshAll() {
+            await Promise.all([this.fetchEmployees(), this.fetchPendingRequests(), this.fetchPositions()]);
+            this.showSuccessMessage('Data refreshed successfully');
+        },
+
+        async refreshPendingRequests() {
+            await this.fetchPendingRequests();
+            this.showSuccessMessage('Pending requests refreshed successfully');
+        },
+
+        viewEmployeeDetails(employee) {
+            this.selectedEmployee = { ...employee };
+            this.showDetailsModal = true;
+        },
+
+        editEmployee(employee) {
+            this.selectedEmployee = {
+                ...employee,
+                earnings: {
+                    travelExpenses: employee.earnings?.travelExpenses || 0,
+                    otherEarnings: employee.earnings?.otherEarnings || 0
+                },
+                positionHistory: Array.isArray(employee.positionHistory) ? employee.positionHistory : [{
+                    position: employee.position || 'N/A',
+                    salary: employee.salary || 0,
+                    startDate: employee.hireDate || new Date().toISOString().slice(0, 10),
+                    endDate: null,
+                }],
+            };
+            this.showDetailsModal = false;
+            this.showEditModal = true;
+        },
+
+        async updateEmployee() {
+            if (!this.selectedEmployee.firstName || !this.selectedEmployee.lastName || !this.selectedEmployee.email ||
+                !this.selectedEmployee.contactInfo || this.selectedEmployee.salary < 0) {
+                this.showErrorMessage('Required fields missing or invalid salary');
+                return;
+            }
+            this.isUpdating = true;
+            try {
+                const originalEmployee = this.employees.find(emp => emp.id === this.selectedEmployee.id);
+                const positionChanged = originalEmployee.position !== this.selectedEmployee.position;
+
+                if (positionChanged) {
+                    const updatedPositionHistory = this.selectedEmployee.positionHistory.map(history => {
+                        if (!history.endDate) {
+                            return { ...history, endDate: new Date().toISOString().slice(0, 10) };
+                        }
+                        return history;
+                    });
+
+                    updatedPositionHistory.push({
+                        position: this.selectedEmployee.position,
+                        salary: this.selectedEmployee.salary,
+                        startDate: new Date().toISOString().slice(0, 10),
+                        endDate: null,
+                    });
+
+                    this.selectedEmployee.positionHistory = updatedPositionHistory;
+                }
+
+                const response = await axios.put(
+                    `${BASE_API_URL}/api/employees/${this.selectedEmployee.id}`,
+                    this.selectedEmployee,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${this.authStore.accessToken}`,
+                            'user-role': this.authStore.userRole,
+                        },
+                    }
+                );
+                if (response.status === 200) {
+                    const index = this.employees.findIndex(emp => emp.id === this.selectedEmployee.id);
+                    if (index !== -1) this.employees[index] = { ...this.selectedEmployee };
+                    this.showEditModal = false;
+                    this.showSuccessMessage('Employee updated successfully');
+                }
+            } catch (error) {
+                console.error('Error updating employee:', error);
+                this.showErrorMessage('Failed to update employee');
+            } finally {
+                this.isUpdating = false;
+            }
+        },
+
+        confirmMoveToTrash(employee) {
+            this.selectedEmployee = employee;
+            this.showDeleteModal = true;
+        },
+
+        async moveToTrash(id) {
+            this.isDeleting = true;
+            try {
+                const response = await axios.delete(`${BASE_API_URL}/api/employees/${id}`, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                if (response.status === 200 || response.status === 204) {
+                    this.employees = this.employees.filter(emp => emp.id !== id); // Filter by custom id
+                    this.showDeleteModal = false;
+                    this.showSuccessMessage('Employee moved to trash successfully');
+                }
+            } catch (error) {
+                console.error('Error moving employee to trash:', error);
+                this.showErrorMessage('Failed to move employee to trash');
+            } finally {
+                this.isDeleting = false;
+            }
+        },
+
+        viewRequestInfo(request) {
+            this.selectedRequest = { ...request, earnings: { travelExpenses: request.earnings?.travelExpenses || 0, otherEarnings: request.earnings?.otherEarnings || 0 } };
+            this.showRequestModal = true;
+            this.isEditingRequest = false;
+        },
+
+        async saveRequestChanges() {
+            if (!`${this.selectedRequest.firstName} ${this.selectedRequest.middleName} ${this.selectedRequest.lastName}`.trim() || !this.selectedRequest.email || !this.selectedRequest.contactNumber || this.selectedRequest.salary < 0) {
+                this.showErrorMessage('Required fields missing or invalid salary');
+                return;
+            }
+            this.isUpdating = true;
+            try {
+                const response = await axios.put(`${BASE_API_URL}/api/pending-requests/${this.selectedRequest.id}`, this.selectedRequest, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                if (response.status === 200) {
+                    const index = this.pendingRequests.findIndex(req => req.id === this.selectedRequest.id);
+                    if (index !== -1) this.pendingRequests[index] = { ...this.selectedRequest };
+                    this.showSuccessMessage('Request updated successfully');
+                    this.isEditingRequest = false;
+                }
+            } catch (error) {
+                console.error('Error saving request changes:', error);
+                this.showErrorMessage('Failed to save request changes');
+            } finally {
+                this.isUpdating = false;
+            }
+        },
+
+        async approveRequest(request) {
+            // Validate required fields
+            const requiredFields = ['empNo', 'firstName', 'lastName', 'position', 'salary', 'email', 'contactInfo', 'username', 'password'];
+
+            const missingFields = requiredFields.filter(field => {
+                const value = request[field];
+                if (value === undefined || value === null) return true;
+                if (['empNo', 'firstName', 'lastName', 'position', 'email', 'contactInfo', 'username', 'password'].includes(field)) {
+                    return typeof value !== 'string' || value.trim() === '';
+                }
+                if (field === 'salary') {
+                    return typeof value !== 'number' || value <= 0;
+                }
+                return !value;
+            });
+
+            if (missingFields.length > 0) {
+                this.showErrorMessage(`Missing or invalid required fields: ${missingFields.join(', ')}`);
+                return;
+            }
+
+            try {
+                const updatedEmployee = {
+                    empNo: request.empNo,
+                    firstName: request.firstName,
+                    lastName: request.lastName,
+                    middleName: request.middleName || '',
+                    position: request.position,
+                    salary: Number(request.salary),
+                    hourlyRate: Number(request.hourlyRate || (request.salary / (8 * 22))),
+                    email: request.email,
+                    contactInfo: request.contactInfo,
+                    sss: request.sss || '',
+                    philhealth: request.philhealth || '',
+                    pagibig: request.pagibig || '',
+                    tin: request.tin || '',
+                    civilStatus: request.civilStatus || 'Single',
+                    earnings: {
+                        travelExpenses: Number(request.earnings?.travelExpenses || 0),
+                        otherEarnings: Number(request.earnings?.otherEarnings || 0),
+                    },
+                    payheads: request.payheads || [],
+                    username: request.username,
+                    password: request.password,
+                    role: 'employee',
+                    status: 'approved', // Update status to 'approved'
+                    hireDate: new Date().toISOString().slice(0, 10),
+                    positionHistory: [{
+                        position: request.position,
+                        salary: Number(request.salary),
+                        startDate: new Date().toISOString().slice(0, 10),
+                        endDate: null,
+                    }],
+                };
+
+                console.log('Updating employee data:', updatedEmployee);
+
+                // Update the employee (approve the request)
+                const response = await axios.put(`${BASE_API_URL}/api/employees/${request._id}`, updatedEmployee, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+
+                if (response.status === 200) {
+                    this.employees.push({
+                        ...response.data,
+                        hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)),
+                    });
+                    // Remove the request from pendingRequests (no DELETE request needed)
+                    this.pendingRequests = this.pendingRequests.filter(req => req._id !== request._id);
+                    this.showRequestModal = false;
+                    this.showSuccessMessage('Employee approved and updated successfully');
+                }
+            } catch (error) {
+                console.error('Error approving request:', error.response?.data || error.message);
+                this.showErrorMessage(error.response?.data?.error || 'Failed to approve employee');
+            }
+        },
+
+        async rejectRequest(id) {
+            try {
+                const response = await axios.delete(`${BASE_API_URL}/api/pending-requests/${id}`, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                if (response.status === 200 || response.status === 204) {
+                    this.pendingRequests = this.pendingRequests.filter(req => req.id !== id);
+                    this.showRequestModal = false;
+                    this.showSuccessMessage('Application rejected successfully');
+                }
+            } catch (error) {
+                console.error('Error rejecting request:', error);
+                this.showErrorMessage('Failed to reject application');
+            }
+        },
+
+        async addEmployee() {
+            if (!this.newEmployee.firstName || !this.newEmployee.lastName || !this.newEmployee.empNo || !this.newEmployee.email || !this.newEmployee.contactInfo || !this.newEmployee.username || !this.newEmployee.password || this.newEmployee.salary < 0) {
+                this.showErrorMessage('Required fields missing or invalid salary');
+                return;
+            }
+            this.isAdding = true;
+            try {
+                const employeeData = {
+                    ...this.newEmployee,
+                    hourlyRate: this.newEmployee.hourlyRate,
+                    role: 'employee',
+                    positionHistory: [{
+                        position: this.newEmployee.position,
+                        salary: this.newEmployee.salary,
+                        startDate: this.newEmployee.hireDate,
+                        endDate: null,
+                    }],
+                };
+                const response = await axios.post(`${BASE_API_URL}/api/employees`, employeeData, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                if (response.status === 201) {
+                    this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
+                    this.showAddModal = false;
+                    this.resetNewEmployee();
+                    this.showSuccessMessage('Employee added successfully');
+                }
+            } catch (error) {
+                console.error('Error adding employee:', error);
+                this.showErrorMessage('Failed to add employee');
+            } finally {
+                this.isAdding = false;
+            }
+        },
+
+        async createPosition() {
+            if (!this.newPosition.name || this.newPosition.salary < 0) {
+                this.showErrorMessage('Position Name and a non-negative Salary are required');
+                return;
+            }
+            this.isAddingPosition = true;
+            try {
+                const response = await axios.post(`${BASE_API_URL}/api/positions`, this.newPosition, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                if (response.status === 201) {
+                    this.adminPositions.push(response.data);
+                    this.resetNewPosition();
+                    this.showSuccessMessage('Position created successfully');
+                }
+            } catch (error) {
+                console.error('Error creating position:', error);
+                this.showErrorMessage('Failed to create position');
+            } finally {
+                this.isAddingPosition = false;
+            }
+        },
+
+        editPosition(position) {
+            this.editPositionData = { ...position };
+            this.showEditPositionModal = true;
+        },
+
+        async updatePosition() {
+            if (!this.editPositionData.name || this.editPositionData.salary < 0) {
+                this.showErrorMessage('Position Name and a non-negative Salary are required');
+                return;
+            }
+            this.isUpdatingPosition = true;
+            try {
+                const response = await axios.put(`${BASE_API_URL}/api/positions/${this.editPositionData.id}`, this.editPositionData, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                if (response.status === 200) {
+                    const index = this.adminPositions.findIndex(pos => pos.id === this.editPositionData.id);
+                    if (index !== -1) this.adminPositions[index] = { ...this.editPositionData };
+                    this.showEditPositionModal = false;
+                    this.showSuccessMessage('Position updated successfully');
+                }
+            } catch (error) {
+                console.error('Error updating position:', error);
+                this.showErrorMessage('Failed to update position');
+            } finally {
+                this.isUpdatingPosition = false;
+            }
+        },
+
+        confirmDeletePosition(position) {
+            this.selectedPosition = position;
+            this.showDeletePositionModal = true;
+        },
+
+        async deletePosition() {
+            this.isDeletingPosition = true;
+            try {
+                const response = await axios.delete(`${BASE_API_URL}/api/positions/${this.selectedPosition.id}`, {
+                    headers: {
+                        Authorization: `Bearer ${this.authStore.accessToken}`,
+                        'user-role': this.authStore.userRole,
+                    },
+                });
+                if (response.status === 200 || response.status === 204) {
+                    this.adminPositions = this.adminPositions.filter(pos => pos.id !== this.selectedPosition.id);
+                    this.showDeletePositionModal = false;
+                    this.showSuccessMessage('Position deleted successfully');
+                }
+            } catch (error) {
+                console.error('Error deleting position:', error);
+                this.showErrorMessage('Failed to delete position');
+            } finally {
+                this.isDeletingPosition = false;
+            }
+        },
+
+        updateSalaryFromPosition() {
+            const selectedPosition = this.adminPositions.find(pos => pos.name === this.newEmployee.position);
+            if (selectedPosition) {
+                this.newEmployee.salary = selectedPosition.salary;
+                this.newEmployee.hourlyRate = selectedPosition.salary / (8 * 22);
+            }
+        },
+
+        updateSalaryFromPositionEdit() {
+            const selectedPosition = this.adminPositions.find(pos => pos.name === this.selectedEmployee.position);
+            if (selectedPosition) {
+                this.selectedEmployee.salary = selectedPosition.salary;
+                this.selectedEmployee.hourlyRate = selectedPosition.salary / (8 * 22);
+            }
+        },
+
+        resetNewEmployee() {
+            this.newEmployee = {
+                empNo: '',
+                firstName: '',
+                middleName: '',
+                lastName: '',
+                position: '',
+                salary: 0,
+                hourlyRate: 0,
+                email: '',
+                contactInfo: '',
+                sss: '',
+                philhealth: '',
+                pagibig: '',
+                tin: '',
+                hireDate: new Date().toISOString().slice(0, 10),
+                earnings: { travelExpenses: 0, otherEarnings: 0 },
+                username: '',
+                password: '',
+                positionHistory: [],
+            };
+        },
+
+        resetNewPosition() {
+            this.newPosition = { name: '', salary: 0 };
+        },
+
+        showSuccessMessage(message) {
+            this.statusMessage = message;
+            setTimeout(() => (this.statusMessage = ''), 3000);
+        },
+
+        showErrorMessage(message) {
+            this.statusMessage = message;
+            setTimeout(() => (this.statusMessage = ''), 3000);
+        },
+    },
+};
+</script>
+
 <template>
     <div class="min-h-screen bg-gray-50 flex flex-col">
         <!-- Header -->
@@ -691,624 +1336,6 @@
         </div>
     </div>
 </template>
-
-<script>
-import axios from 'axios';
-import { useAuthStore } from '@/stores/auth.store.js';
-import { BASE_API_URL } from '@/utils/constants.js';
-
-export default {
-    data() {
-        return {
-            employees: [],
-            pendingRequests: [],
-            adminPositions: [],
-            selectedEmployee: {},
-            selectedRequest: {},
-            selectedPosition: {},
-            showRequestModal: false,
-            showEditModal: false,
-            showDetailsModal: false,
-            showDeleteModal: false,
-            showAddModal: false,
-            showPositionModal: false,
-            showEditPositionModal: false,
-            showDeletePositionModal: false,
-            isEditingRequest: false,
-            isLoading: false,
-            isUpdating: false,
-            isDeleting: false,
-            isAdding: false,
-            isAddingPosition: false,
-            isUpdatingPosition: false,
-            isDeletingPosition: false,
-            searchQuery: '',
-            positionFilter: '',
-            currentPage: 1,
-            itemsPerPage: 10,
-            statusMessage: '',
-            newEmployee: {
-                empNo: '',
-                firstName: '',
-                middleName: '',
-                lastName: '',
-                position: '',
-                salary: 0,
-                hourlyRate: 0,
-                email: '',
-                contactInfo: '',
-                sss: '',
-                philhealth: '',
-                pagibig: '',
-                tin: '',
-                hireDate: new Date().toISOString().slice(0, 10),
-                earnings: { travelExpenses: 0, otherEarnings: 0 },
-                username: '',
-                password: '',
-                positionHistory: [],
-            },
-            newPosition: { name: '', salary: 0 },
-            editPositionData: { id: null, name: '', salary: 0 },
-        };
-    },
-    setup() {
-        const authStore = useAuthStore();
-        return { authStore };
-    },
-    computed: {
-        filteredEmployees() {
-            return this.employees.filter(emp =>
-                `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
-                (this.positionFilter ? emp.position === this.positionFilter : true)
-            );
-        },
-        paginatedEmployees() {
-            const start = (this.currentPage - 1) * this.itemsPerPage;
-            return this.filteredEmployees.slice(start, start + this.itemsPerPage);
-        },
-        totalPages() {
-            return Math.ceil(this.filteredEmployees.length / this.itemsPerPage);
-        },
-        sortedPositionHistory() {
-            if (!this.selectedEmployee?.positionHistory || this.selectedEmployee.positionHistory.length === 0) {
-                return [{
-                    position: this.selectedEmployee.position || 'N/A',
-                    salary: this.selectedEmployee.salary || 0,
-                    startDate: this.selectedEmployee.hireDate || new Date().toISOString().slice(0, 10),
-                    endDate: null,
-                }];
-            }
-            return [...this.selectedEmployee.positionHistory].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-        },
-    },
-    watch: {
-        'selectedEmployee.salary'(newSalary) { this.selectedEmployee.hourlyRate = newSalary / (8 * 22); },
-        'selectedRequest.salary'(newSalary) { this.selectedRequest.hourlyRate = newSalary / (8 * 22); },
-        'newEmployee.salary'(newSalary) { this.newEmployee.hourlyRate = newSalary ? newSalary / (8 * 22) : 0; },
-    },
-    mounted() {
-        this.fetchEmployees();
-        this.fetchPendingRequests();
-        this.fetchPositions();
-    },
-    methods: {
-        calculateTotalEarnings(employee) {
-            const baseEarnings = (employee.earnings?.travelExpenses || 0) + (employee.earnings?.otherEarnings || 0);
-            return employee.salary + baseEarnings;
-        },
-        calculateTotalDeductions(employee) {
-            return this.calculateSSSContribution(employee.salary) +
-                this.calculatePhilHealthContribution(employee.salary) +
-                this.calculatePagIBIGContribution(employee.salary) +
-                this.calculateWithholdingTax(employee.salary);
-        },
-        calculateNetSalary(employee) {
-            return employee && employee.salary ? this.calculateTotalEarnings(employee) - this.calculateTotalDeductions(employee) : 0;
-        },
-        calculateRequestNetSalary(request) {
-            if (!request || !request.salary) return 0;
-            const totalEarnings = (request.earnings?.travelExpenses || 0) + (request.earnings?.otherEarnings || 0) + (request.salary || 0);
-            return totalEarnings - (this.calculateSSSContribution(request.salary) + this.calculatePhilHealthContribution(request.salary) +
-                this.calculatePagIBIGContribution(request.salary) + this.calculateWithholdingTax(request.salary));
-        },
-        calculateNewEmployeeNetSalary() {
-            if (!this.newEmployee.salary) return 0;
-            const totalEarnings = this.newEmployee.salary + (this.newEmployee.earnings.travelExpenses || 0) + (this.newEmployee.earnings.otherEarnings || 0);
-            return totalEarnings - (this.calculateSSSContribution(this.newEmployee.salary) + this.calculatePhilHealthContribution(this.newEmployee.salary) +
-                this.calculatePagIBIGContribution(this.newEmployee.salary) + this.calculateWithholdingTax(this.newEmployee.salary));
-        },
-        calculateSSSContribution(salary) {
-            const monthlySalary = Math.max(salary || 0, 0);
-            if (monthlySalary < 5000) return 250;
-            const salaryCredit = Math.min(Math.max(monthlySalary, 5000), 35000);
-            const regularSSContribution = Math.round(salaryCredit * 0.05);
-            let mpfContribution = salaryCredit > 20000 ? Math.round((Math.min(salaryCredit, 35000) - 20000) * 0.025) : 0;
-            return salaryCredit > 34750 ? 1750 : regularSSContribution + mpfContribution;
-        },
-        calculatePhilHealthContribution(salary) {
-            const monthlySalary = Math.max(salary || 0, 0);
-            return Math.round(Math.min(Math.max(monthlySalary, 10000), 100000) * 0.025);
-        },
-        calculatePagIBIGContribution(salary) {
-            const monthlySalary = Math.max(salary || 0, 0);
-            const cappedSalary = Math.min(monthlySalary, 5000);
-            return Math.round(cappedSalary * (cappedSalary <= 1500 ? 0.01 : 0.02));
-        },
-        calculateWithholdingTax(salary) {
-            const taxableIncome = salary || 0;
-            if (taxableIncome <= 20833) return 0;
-            if (taxableIncome <= 33333) return Math.round((taxableIncome - 20833) * 0.15);
-            if (taxableIncome <= 66667) return Math.round(1875 + (taxableIncome - 33333) * 0.20);
-            if (taxableIncome <= 166667) return Math.round(13541.80 + (taxableIncome - 66667) * 0.25);
-            if (taxableIncome <= 666667) return Math.round(90841.80 + (taxableIncome - 166667) * 0.30);
-            return Math.round(408841.80 + (taxableIncome - 666667) * 0.35);
-        },
-
-        async fetchEmployees() {
-            this.isLoading = true;
-            try {
-                const response = await axios.get(`${BASE_API_URL}/api/employees`, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                this.employees = (response.data || [])
-                    .filter(emp => emp.status !== 'trashed') // Additional safety filter
-                    .map(emp => ({
-                        ...emp,
-                        id: emp.id, // Use custom id field (Number)
-                        hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
-                        empNo: emp.empNo || `EMP-${String(emp.id).padStart(4, '0')}`,
-                        positionHistory: Array.isArray(emp.positionHistory) ? emp.positionHistory : [{
-                            position: emp.position || 'N/A',
-                            salary: emp.salary || 0,
-                            startDate: emp.hireDate || new Date().toISOString().slice(0, 10),
-                            endDate: null,
-                        }],
-                    }));
-            } catch (error) {
-                console.error('Error fetching employees:', error);
-                this.showErrorMessage('Failed to load employees');
-            } finally {
-                this.isLoading = false;
-            }
-        },
-
-        async fetchPendingRequests() {
-            this.isLoading = true;
-            try {
-                const response = await axios.get(`${BASE_API_URL}/api/pending-requests`, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                this.pendingRequests = response.data || [];
-            } catch (error) {
-                console.error('Error fetching pending requests:', error);
-                this.showErrorMessage('Failed to load pending requests');
-            } finally {
-                this.isLoading = false;
-            }
-        },
-
-        async fetchPositions() {
-            try {
-                const response = await axios.get(`${BASE_API_URL}/api/positions`, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                this.adminPositions = response.data || [];
-            } catch (error) {
-                console.error('Error fetching positions:', error);
-                this.showErrorMessage('Failed to load positions');
-            }
-        },
-
-        async refreshAll() {
-            await Promise.all([this.fetchEmployees(), this.fetchPendingRequests(), this.fetchPositions()]);
-            this.showSuccessMessage('Data refreshed successfully');
-        },
-
-        async refreshPendingRequests() {
-            await this.fetchPendingRequests();
-            this.showSuccessMessage('Pending requests refreshed successfully');
-        },
-
-        viewEmployeeDetails(employee) {
-            this.selectedEmployee = { ...employee };
-            this.showDetailsModal = true;
-        },
-
-        editEmployee(employee) {
-            this.selectedEmployee = {
-                ...employee,
-                earnings: {
-                    travelExpenses: employee.earnings?.travelExpenses || 0,
-                    otherEarnings: employee.earnings?.otherEarnings || 0
-                },
-                positionHistory: Array.isArray(employee.positionHistory) ? employee.positionHistory : [{
-                    position: employee.position || 'N/A',
-                    salary: employee.salary || 0,
-                    startDate: employee.hireDate || new Date().toISOString().slice(0, 10),
-                    endDate: null,
-                }],
-            };
-            this.showDetailsModal = false;
-            this.showEditModal = true;
-        },
-
-        async updateEmployee() {
-            if (!this.selectedEmployee.firstName || !this.selectedEmployee.lastName || !this.selectedEmployee.email ||
-                !this.selectedEmployee.contactInfo || this.selectedEmployee.salary < 0) {
-                this.showErrorMessage('Required fields missing or invalid salary');
-                return;
-            }
-            this.isUpdating = true;
-            try {
-                const originalEmployee = this.employees.find(emp => emp.id === this.selectedEmployee.id);
-                const positionChanged = originalEmployee.position !== this.selectedEmployee.position;
-
-                if (positionChanged) {
-                    const updatedPositionHistory = this.selectedEmployee.positionHistory.map(history => {
-                        if (!history.endDate) {
-                            return { ...history, endDate: new Date().toISOString().slice(0, 10) };
-                        }
-                        return history;
-                    });
-
-                    updatedPositionHistory.push({
-                        position: this.selectedEmployee.position,
-                        salary: this.selectedEmployee.salary,
-                        startDate: new Date().toISOString().slice(0, 10),
-                        endDate: null,
-                    });
-
-                    this.selectedEmployee.positionHistory = updatedPositionHistory;
-                }
-
-                const response = await axios.put(
-                    `${BASE_API_URL}/api/employees/${this.selectedEmployee.id}`,
-                    this.selectedEmployee,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${this.authStore.accessToken}`,
-                            'user-role': this.authStore.userRole,
-                        },
-                    }
-                );
-                if (response.status === 200) {
-                    const index = this.employees.findIndex(emp => emp.id === this.selectedEmployee.id);
-                    if (index !== -1) this.employees[index] = { ...this.selectedEmployee };
-                    this.showEditModal = false;
-                    this.showSuccessMessage('Employee updated successfully');
-                }
-            } catch (error) {
-                console.error('Error updating employee:', error);
-                this.showErrorMessage('Failed to update employee');
-            } finally {
-                this.isUpdating = false;
-            }
-        },
-
-        confirmMoveToTrash(employee) {
-            this.selectedEmployee = employee;
-            this.showDeleteModal = true;
-        },
-
-        async moveToTrash(id) {
-            this.isDeleting = true;
-            try {
-                const response = await axios.delete(`${BASE_API_URL}/api/employees/${id}`, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 200 || response.status === 204) {
-                    this.employees = this.employees.filter(emp => emp.id !== id); // Filter by custom id
-                    this.showDeleteModal = false;
-                    this.showSuccessMessage('Employee moved to trash successfully');
-                }
-            } catch (error) {
-                console.error('Error moving employee to trash:', error);
-                this.showErrorMessage('Failed to move employee to trash');
-            } finally {
-                this.isDeleting = false;
-            }
-        },
-
-        viewRequestInfo(request) {
-            this.selectedRequest = { ...request, earnings: { travelExpenses: request.earnings?.travelExpenses || 0, otherEarnings: request.earnings?.otherEarnings || 0 } };
-            this.showRequestModal = true;
-            this.isEditingRequest = false;
-        },
-
-        async saveRequestChanges() {
-            if (!`${this.selectedRequest.firstName} ${this.selectedRequest.middleName} ${this.selectedRequest.lastName}`.trim() || !this.selectedRequest.email || !this.selectedRequest.contactNumber || this.selectedRequest.salary < 0) {
-                this.showErrorMessage('Required fields missing or invalid salary');
-                return;
-            }
-            this.isUpdating = true;
-            try {
-                const response = await axios.put(`${BASE_API_URL}/api/pending-requests/${this.selectedRequest.id}`, this.selectedRequest, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 200) {
-                    const index = this.pendingRequests.findIndex(req => req.id === this.selectedRequest.id);
-                    if (index !== -1) this.pendingRequests[index] = { ...this.selectedRequest };
-                    this.showSuccessMessage('Request updated successfully');
-                    this.isEditingRequest = false;
-                }
-            } catch (error) {
-                console.error('Error saving request changes:', error);
-                this.showErrorMessage('Failed to save request changes');
-            } finally {
-                this.isUpdating = false;
-            }
-        },
-
-        async approveRequest(request) {
-            const requiredFields = ['empNo', 'firstName', 'lastName', 'position', 'salary', 'email', 'contactNumber', 'username', 'password'];
-            if (requiredFields.some(field => !request[field])) {
-                this.showErrorMessage(`Missing required fields: ${requiredFields.filter(field => !request[field]).join(', ')}`);
-                return;
-            }
-            try {
-                const newEmployee = {
-                    empNo: request.empNo,
-                    firstName: request.firstName,
-                    lastName: request.lastName,
-                    middleName: request.middleName || '',
-                    position: request.position,
-                    salary: Number(request.salary),
-                    hourlyRate: Number(request.hourlyRate || (request.salary / (8 * 22))),
-                    email: request.email,
-                    contactInfo: request.contactNumber,
-                    sss: request.sss || '',
-                    philhealth: request.philhealth || '',
-                    pagibig: request.pagibig || '',
-                    tin: request.tin || '',
-                    earnings: { travelExpenses: Number(request.earnings?.travelExpenses || 0), otherEarnings: Number(request.earnings?.otherEarnings || 0) },
-                    payheads: request.payheads || [],
-                    username: request.username,
-                    password: request.password,
-                    role: 'employee',
-                    hireDate: new Date().toISOString().slice(0, 10),
-                    positionHistory: [{
-                        position: request.position,
-                        salary: Number(request.salary),
-                        startDate: new Date().toISOString().slice(0, 10),
-                        endDate: null,
-                    }],
-                };
-                const response = await axios.post(`${BASE_API_URL}/api/employees`, newEmployee, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 201) {
-                    this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
-                    await axios.delete(`${BASE_API_URL}/api/pending-requests/${request.id}`, {
-                        headers: {
-                            Authorization: `Bearer ${this.authStore.accessToken}`,
-                            'user-role': this.authStore.userRole,
-                        },
-                    });
-                    this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
-                    this.showRequestModal = false;
-                    this.showSuccessMessage('Employee approved and added successfully');
-                }
-            } catch (error) {
-                console.error('Error approving request:', error);
-                this.showErrorMessage('Failed to approve employee');
-            }
-        },
-
-        async rejectRequest(id) {
-            try {
-                const response = await axios.delete(`${BASE_API_URL}/api/pending-requests/${id}`, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 200 || response.status === 204) {
-                    this.pendingRequests = this.pendingRequests.filter(req => req.id !== id);
-                    this.showRequestModal = false;
-                    this.showSuccessMessage('Application rejected successfully');
-                }
-            } catch (error) {
-                console.error('Error rejecting request:', error);
-                this.showErrorMessage('Failed to reject application');
-            }
-        },
-
-        async addEmployee() {
-            if (!this.newEmployee.firstName || !this.newEmployee.lastName || !this.newEmployee.empNo || !this.newEmployee.email || !this.newEmployee.contactInfo || !this.newEmployee.username || !this.newEmployee.password || this.newEmployee.salary < 0) {
-                this.showErrorMessage('Required fields missing or invalid salary');
-                return;
-            }
-            this.isAdding = true;
-            try {
-                const employeeData = {
-                    ...this.newEmployee,
-                    hourlyRate: this.newEmployee.hourlyRate,
-                    role: 'employee',
-                    positionHistory: [{
-                        position: this.newEmployee.position,
-                        salary: this.newEmployee.salary,
-                        startDate: this.newEmployee.hireDate,
-                        endDate: null,
-                    }],
-                };
-                const response = await axios.post(`${BASE_API_URL}/api/employees`, employeeData, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 201) {
-                    this.employees.push({ ...response.data, hourlyRate: response.data.hourlyRate || (response.data.salary / (8 * 22)) });
-                    this.showAddModal = false;
-                    this.resetNewEmployee();
-                    this.showSuccessMessage('Employee added successfully');
-                }
-            } catch (error) {
-                console.error('Error adding employee:', error);
-                this.showErrorMessage('Failed to add employee');
-            } finally {
-                this.isAdding = false;
-            }
-        },
-
-        async createPosition() {
-            if (!this.newPosition.name || this.newPosition.salary < 0) {
-                this.showErrorMessage('Position Name and a non-negative Salary are required');
-                return;
-            }
-            this.isAddingPosition = true;
-            try {
-                const response = await axios.post(`${BASE_API_URL}/api/positions`, this.newPosition, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 201) {
-                    this.adminPositions.push(response.data);
-                    this.resetNewPosition();
-                    this.showSuccessMessage('Position created successfully');
-                }
-            } catch (error) {
-                console.error('Error creating position:', error);
-                this.showErrorMessage('Failed to create position');
-            } finally {
-                this.isAddingPosition = false;
-            }
-        },
-
-        editPosition(position) {
-            this.editPositionData = { ...position };
-            this.showEditPositionModal = true;
-        },
-
-        async updatePosition() {
-            if (!this.editPositionData.name || this.editPositionData.salary < 0) {
-                this.showErrorMessage('Position Name and a non-negative Salary are required');
-                return;
-            }
-            this.isUpdatingPosition = true;
-            try {
-                const response = await axios.put(`${BASE_API_URL}/api/positions/${this.editPositionData.id}`, this.editPositionData, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 200) {
-                    const index = this.adminPositions.findIndex(pos => pos.id === this.editPositionData.id);
-                    if (index !== -1) this.adminPositions[index] = { ...this.editPositionData };
-                    this.showEditPositionModal = false;
-                    this.showSuccessMessage('Position updated successfully');
-                }
-            } catch (error) {
-                console.error('Error updating position:', error);
-                this.showErrorMessage('Failed to update position');
-            } finally {
-                this.isUpdatingPosition = false;
-            }
-        },
-
-        confirmDeletePosition(position) {
-            this.selectedPosition = position;
-            this.showDeletePositionModal = true;
-        },
-
-        async deletePosition() {
-            this.isDeletingPosition = true;
-            try {
-                const response = await axios.delete(`${BASE_API_URL}/api/positions/${this.selectedPosition.id}`, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 200 || response.status === 204) {
-                    this.adminPositions = this.adminPositions.filter(pos => pos.id !== this.selectedPosition.id);
-                    this.showDeletePositionModal = false;
-                    this.showSuccessMessage('Position deleted successfully');
-                }
-            } catch (error) {
-                console.error('Error deleting position:', error);
-                this.showErrorMessage('Failed to delete position');
-            } finally {
-                this.isDeletingPosition = false;
-            }
-        },
-
-        updateSalaryFromPosition() {
-            const selectedPosition = this.adminPositions.find(pos => pos.name === this.newEmployee.position);
-            if (selectedPosition) {
-                this.newEmployee.salary = selectedPosition.salary;
-                this.newEmployee.hourlyRate = selectedPosition.salary / (8 * 22);
-            }
-        },
-
-        updateSalaryFromPositionEdit() {
-            const selectedPosition = this.adminPositions.find(pos => pos.name === this.selectedEmployee.position);
-            if (selectedPosition) {
-                this.selectedEmployee.salary = selectedPosition.salary;
-                this.selectedEmployee.hourlyRate = selectedPosition.salary / (8 * 22);
-            }
-        },
-
-        resetNewEmployee() {
-            this.newEmployee = {
-                empNo: '',
-                firstName: '',
-                middleName: '',
-                lastName: '',
-                position: '',
-                salary: 0,
-                hourlyRate: 0,
-                email: '',
-                contactInfo: '',
-                sss: '',
-                philhealth: '',
-                pagibig: '',
-                tin: '',
-                hireDate: new Date().toISOString().slice(0, 10),
-                earnings: { travelExpenses: 0, otherEarnings: 0 },
-                username: '',
-                password: '',
-                positionHistory: [],
-            };
-        },
-
-        resetNewPosition() {
-            this.newPosition = { name: '', salary: 0 };
-        },
-
-        showSuccessMessage(message) {
-            this.statusMessage = message;
-            setTimeout(() => (this.statusMessage = ''), 3000);
-        },
-
-        showErrorMessage(message) {
-            this.statusMessage = message;
-            setTimeout(() => (this.statusMessage = ''), 3000);
-        },
-    },
-};
-</script>
 
 <style scoped>
 .animate-fade-in {

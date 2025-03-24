@@ -78,6 +78,9 @@ const employeeSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
+    resetToken: { type: String },
+    verificationCode: { type: String },
+    resetTokenExpires: { type: Date }
 }, { timestamps: true });
 
 employeeSchema.pre('save', function(next) {

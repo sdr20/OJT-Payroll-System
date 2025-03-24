@@ -6,10 +6,12 @@ const { verifyToken, restrictToAdmin } = require('../middlewares/authMiddleware.
 const Employee = require('../models/employee.model.js');
 const { 
   loginEmployee, 
-  registerEmployee 
+  registerEmployee,
+  forgotPassword,
+  resetPassword,
+  getPendingEmployees
 } = require('../controllers/employee/auth/employeeAuth.controller');
 const { 
-    getPendingEmployees,
     getTotalEmployees,
     getProfile,
     uploadProfilePicture,
@@ -66,9 +68,12 @@ const isAdmin = (req, res, next) => {
 
 router.post('/login', loginEmployee);
 router.post('/register', registerEmployee);
+router.post('forgot-password', forgotPassword);
+router.post('reset-password', resetPassword);
+router.get('/pending-requests', verifyToken, getPendingEmployees); 
+
 router.get('/total', getTotalEmployees);
 router.get('/profile', verifyToken, getProfile);
-router.get('/pending', verifyToken, getPendingEmployees); 
 router.post('/profile-picture', verifyToken, upload.single('profilePicture'), uploadProfilePicture);
 router.put('/:id', restrictToAdmin, updateEmployeeDetails);
 router.delete('/:id', restrictToAdmin, deleteEmployee);
@@ -274,14 +279,15 @@ router.post('/', isAdmin, async (req, res) => {
 // PUT update an employee by ID (admin only)
 router.put('/:id', isAdmin, async (req, res) => {
   try {
-    const employeeId = parseInt(req.params.id);
+    const employeeId = req.params.id; // This will be the _id (ObjectId)
     const updateData = req.body;
 
-    console.log('Updating employee with ID:', employeeId, 'Data:', updateData);
+    console.log('Updating employee with _id:', employeeId, 'Data:', updateData);
 
-    const employee = await Employee.findOne({ id: employeeId });
+    // Find the employee by '_id'
+    const employee = await Employee.findById(employeeId);
     if (!employee) {
-      return res.status(404).json({ error: `Employee with id ${employeeId} not found` });
+      return res.status(404).json({ error: `Employee with _id ${employeeId} not found` });
     }
 
     // Update position history if position or salary changes
@@ -303,6 +309,8 @@ router.put('/:id', isAdmin, async (req, res) => {
       }
     }
 
+    // Prevent updating _id
+    delete updateData._id;
     // Update employee fields
     Object.assign(employee, updateData, { updatedAt: new Date() });
     const updatedEmployee = await employee.save();

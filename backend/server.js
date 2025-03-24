@@ -1,6 +1,7 @@
 const cors = require('cors');
 const path = require('path');
 const express = require('express');
+const nodemailer = require('nodemailer');
 const connectDB = require('./config/database');
 const corsOptions = require('./config/cors');
 const adminRoutes = require('./routes/admin.routes.js');
@@ -19,6 +20,14 @@ const PORT = process.env.PORT || 7777;
 const app = express();
 
 connectDB();
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 app.use(express.json());
 app.use(cors(corsOptions));

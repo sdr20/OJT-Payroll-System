@@ -127,9 +127,9 @@ async function login() {
                     </div>
 
                     <div class="flex items-center justify-end">
-                        <router-link :to="{ name: 'LoginSelection' }"
+                        <router-link :to="{ name: 'ForgotPassword' }"
                             class="text-sm text-indigo-600 hover:text-indigo-700">
-                            Back to landing page
+                            Forgot Password?
                         </router-link>
                     </div>
 
