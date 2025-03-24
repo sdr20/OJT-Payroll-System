@@ -23,12 +23,14 @@ import EmployeeHolidays from '../views/employee/EmployeeHolidays.vue';
 import EmployeeReportsView from '../views/employee/EmployeeReports.vue';
 import EmployeeLeaveRequest from '../views/employee/EmployeeLeaveRequest.vue';
 import Records from '../views/admind/EmployeeRecords.vue';
+import ForgotPassword from '../components/employeelogin/ForgotPassword.vue';
 
 const routes = [
   { path: '/', component: LoginSelection },
   { path: '/admin-login', component: AdminLogin },
   { path: '/employee-login', component: EmployeeLogin },
   { path: '/register', component: EmployeeRegister },
+  { path: '/forgot-password', component: ForgotPassword },
   {
     path: '/admin',
     component: AdminLayout,

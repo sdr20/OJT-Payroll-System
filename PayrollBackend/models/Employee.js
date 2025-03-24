@@ -1,3 +1,4 @@
+// backend/models/Employee.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -26,7 +27,7 @@ const employeeSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'employee'], default: 'employee' },
-  hireDate: { type: Date, required: true }, // Removed default to enforce explicit hireDate
+  hireDate: { type: Date, required: true },
   earnings: {
     travelExpenses: { type: Number, default: 0 },
     otherEarnings: { type: Number, default: 0 },
@@ -52,13 +53,17 @@ const employeeSchema = new mongoose.Schema({
     days: { type: Number, default: 0 },
     amount: { type: Number, default: 0 },
   },
+  // Add reset fields
+  resetToken: { type: String },
+  verificationCode: { type: String },
+  resetTokenExpires: { type: Date }
 }, { timestamps: true });
 
 employeeSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
-  if (this.isModified('salary') || !this.hourlyRate) { // Ensure hourlyRate is set on creation
+  if (this.isModified('salary') || !this.hourlyRate) {
     this.hourlyRate = this.salary / (8 * 22);
   }
   next();

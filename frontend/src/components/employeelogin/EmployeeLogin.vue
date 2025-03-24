@@ -70,7 +70,9 @@
           </div>
 
           <div class="text-right">
-            <a href="#" @click.prevent="forgotPassword" class="text-sm text-blue-500 hover:underline transition-colors duration-300 hover:text-blue-700">Forgot Password?</a>
+             <router-link to="/forgot-password" class="text-sm text-blue-500 hover:underline transition-colors duration-300 hover:text-blue-700">
+               Forgot Password?
+             </router-link>
           </div>
 
           <button
@@ -688,7 +690,7 @@ export default {
       return Math.round(408841.80 + (taxableIncome - 666667) * 0.35);
     },
     forgotPassword() {
-      this.loginError = 'Forgot Password feature not implemented yet. Contact your admin.';
+  this.loginError = 'Forgot Password feature not implemented yet. Contact your admin.';
     }
   }
 };

@@ -1,8 +1,10 @@
+// backend/server.js
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer'); // Add nodemailer
 const connectDB = require('./config/database');
 const Employee = require('./models/Employee');
 
@@ -19,6 +21,15 @@ const contributionRoutes = require('./routes/contributions');
 const employeeRecordsRoutes = require('./routes/employeeRecords');
 
 const app = express();
+
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // Use your email service
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 const corsOptions = {
   origin: ['http://localhost:8080', 'http://localhost:3000'],
@@ -43,7 +54,6 @@ console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
 
 async function seedUsers() {
   try {
-    // Seed Admin User
     const existingAdmin = await Employee.findOne({ username: 'admin' });
     if (!existingAdmin) {
       const hashedPassword = bcrypt.hashSync('admin123', 10);
@@ -68,7 +78,6 @@ async function seedUsers() {
       console.log('Admin user already exists');
     }
 
-    // Seed Test Employee
     const existingEmployee = await Employee.findOne({ username: 'janedoe' });
     if (!existingEmployee) {
       const hashedPassword = bcrypt.hashSync('janedoe123', 10);
@@ -131,3 +140,6 @@ const PORT = process.env.PORT || 7777;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Export transporter for use in auth routes
+module.exports = { app, transporter };
