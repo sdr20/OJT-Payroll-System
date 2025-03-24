@@ -64,7 +64,7 @@
         </div>
 
         <!-- Confirmation Modal -->
-        <div v-if="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div v-if="showModal" class="fixed inset-0 bg-gray-600/50 bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg p-6 shadow-xl max-w-sm w-full">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Confirm Permanent Deletion</h3>
                 <p class="text-gray-600 mb-6">Are you sure you want to permanently delete this employee? This action
@@ -140,7 +140,12 @@ export default {
                 });
                 this.trashedEmployees = this.trashedEmployees.filter(emp => emp._id !== id);
             } catch (error) {
-                console.error('Error restoring employee:', error);
+                console.error('Error restoring employee:', {
+                    status: error.response?.status,
+                    data: error.response?.data,
+                    message: error.message
+                });
+                alert(`Failed to restore employee: ${error.response?.data?.message || 'Unknown error'}`);
             }
         },
         confirmDelete(id) {
@@ -163,6 +168,9 @@ export default {
             }
         },
         formatDate(date) {
+            if (!date || isNaN(new Date(date))) {
+                return 'N/A';
+            }
             return new Date(date).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',

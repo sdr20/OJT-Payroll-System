@@ -74,6 +74,10 @@ const employeeSchema = new mongoose.Schema({
         enum: ['pending', 'approved', 'rejected', 'trashed'], 
         default: 'pending' 
     },
+    trashedAt: {
+        type: Date,
+        default: null
+    },
 }, { timestamps: true });
 
 employeeSchema.pre('save', function(next) {

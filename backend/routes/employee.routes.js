@@ -80,41 +80,43 @@ router.delete('/trash/:id', restrictToAdmin, permanentDeleteEmployee);
 router.get('/', isAuthenticated, async (req, res) => {
     try {
         console.log('Fetching all employees');
-        const { month } = req.query; // e.g., "2025-03"
+        const { month } = req.query;
 
         // Validate month format if provided
         if (month && !/^\d{4}-\d{2}$/.test(month)) {
             return res.status(400).json({ error: 'Invalid month format: must be YYYY-MM (e.g., 2025-03)' });
         }
 
-        let query = {};
+        let query = { status: { $ne: 'trashed' } };
         if (month) {
-            // Filter employees active in the given month based on hireDate and positionHistory
             const endOfMonth = new Date(`${month}-31T23:59:59.999Z`);
             const startOfMonth = new Date(`${month}-01T00:00:00.000Z`);
 
-            query.$or = [
-                // Employees hired before or during the month with no end date in positionHistory
+            query.$and = [
+                { status: { $ne: 'trashed' } },
                 {
-                    hireDate: { $lte: endOfMonth },
-                    'positionHistory': {
-                        $elemMatch: {
-                        startDate: { $lte: endOfMonth },
-                        $or: [{ endDate: { $gte: startOfMonth } }, { endDate: null }]
+                    $or: [
+                        {
+                            hireDate: { $lte: endOfMonth },
+                            'positionHistory': {
+                                $elemMatch: {
+                                    startDate: { $lte: endOfMonth },
+                                    $or: [{ endDate: { $gte: startOfMonth } }, { endDate: null }]
+                                }
+                            }
+                        },
+                        {
+                            hireDate: { $lte: endOfMonth },
+                            'positionHistory.0.endDate': null
                         }
-                    }
-                },
-                // Employees hired before the month with no positionHistory changes
-                {
-                    hireDate: { $lte: endOfMonth },
-                    'positionHistory.0.endDate': null
+                    ]
                 }
             ];
         }
 
         const employees = await Employee.find(query)
             .sort({ empNo: 1 })
-            .select('-password') // Exclude sensitive fields like password
+            .select('-password')
             .catch((err) => {
                 throw new Error(`Database query failed: ${err.message}`);
             });
@@ -128,7 +130,7 @@ router.get('/', isAuthenticated, async (req, res) => {
 
         // Add salaryMonth to response for frontend consistency
         const employeesWithMonth = employees.map(emp => ({
-            ...emp._doc, // Spread the lean document
+            ...emp._doc,
             salaryMonth: month || new Date(emp.hireDate).toISOString().slice(0, 7),
         }));
 
@@ -180,7 +182,7 @@ router.get('/:id', isAuthenticated, async (req, res) => {
 // GET salary data for a specific employee
 router.get('/:id/salary', isAuthenticated, async (req, res) => {
     try {
-        const employeeId = req.params.id; // Changed to use MongoDB _id
+        const employeeId = req.params.id;
         const userId = req.headers['user-id'];
         const userRole = req.headers['user-role'];
         const { month } = req.query;

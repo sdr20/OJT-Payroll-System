@@ -114,11 +114,7 @@ exports.updateEmployeeDetails = asyncHandler(async (req, res) => {
 
 exports.deleteEmployee = asyncHandler(async (req, res) => {
     const { id } = req.params;
-
-    // Parse id as a number since your schema defines it as Number
     const employeeId = parseInt(id);
-
-    // Use findOne instead of findById to query by custom id field
     const employee = await Employee.findOne({ id: employeeId });
     if (!employee) {
         return res.status(404).json({ message: 'Employee not found' });
@@ -144,20 +140,34 @@ exports.getTrashedEmployees = asyncHandler(async (req, res) => {
 // Optional: Restore employee from trash
 exports.restoreEmployee = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const employee = await Employee.findById(id);
-    if (!employee) {
-        return res.status(404).json({ message: 'Employee not found' });
+    console.log('Restoring employee with ID:', id);
+    
+    try {
+        const employee = await Employee.findById(id);
+        if (!employee) {
+            console.log('Employee not found for ID:', id);
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+        
+        if (employee.status !== 'trashed') {
+            console.log('Employee not in trash, current status:', employee.status);
+            return res.status(400).json({ message: 'Employee is not in trash' });
+        }
+        
+        employee.status = 'approved';
+        employee.trashedAt = null;
+        await employee.save();
+        
+        console.log('Employee restored:', employee._id);
+        res.status(200).json({ message: 'Employee restored successfully' });
+    } catch (error) {
+        console.error('Error in restoreEmployee:', {
+            message: error.message,
+            stack: error.stack,
+            id
+        });
+        throw error; // Let asyncHandler handle the 500 response
     }
-    
-    if (employee.status !== 'trashed') {
-        return res.status(400).json({ message: 'Employee is not in trash' });
-    }
-    
-    employee.status = 'active';
-    employee.trashedAt = null;
-    await employee.save();
-    
-    res.status(200).json({ message: 'Employee restored successfully' });
 });
 
 // Optional: Permanently delete from trash

@@ -853,18 +853,20 @@ export default {
                         'user-role': this.authStore.userRole,
                     },
                 });
-                this.employees = response.data.map(emp => ({
-                    ...emp,
-                    id: emp.id, // Use custom id field (Number)
-                    hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
-                    empNo: emp.empNo || `EMP-${String(emp.id).padStart(4, '0')}`,
-                    positionHistory: Array.isArray(emp.positionHistory) ? emp.positionHistory : [{
-                        position: emp.position || 'N/A',
-                        salary: emp.salary || 0,
-                        startDate: emp.hireDate || new Date().toISOString().slice(0, 10),
-                        endDate: null,
-                    }],
-                })) || [];
+                this.employees = (response.data || [])
+                    .filter(emp => emp.status !== 'trashed') // Additional safety filter
+                    .map(emp => ({
+                        ...emp,
+                        id: emp.id, // Use custom id field (Number)
+                        hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
+                        empNo: emp.empNo || `EMP-${String(emp.id).padStart(4, '0')}`,
+                        positionHistory: Array.isArray(emp.positionHistory) ? emp.positionHistory : [{
+                            position: emp.position || 'N/A',
+                            salary: emp.salary || 0,
+                            startDate: emp.hireDate || new Date().toISOString().slice(0, 10),
+                            endDate: null,
+                        }],
+                    }));
             } catch (error) {
                 console.error('Error fetching employees:', error);
                 this.showErrorMessage('Failed to load employees');

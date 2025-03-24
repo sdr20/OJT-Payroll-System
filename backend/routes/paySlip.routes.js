@@ -17,8 +17,8 @@ const isAdmin = (req, res, next) => {
 // GET payslips for an employee
 router.get('/:employeeId', verifyToken, async (req, res) => {
     try {
-        const employeeId = req.params.employeeId; // MongoDB ObjectId string
-        const userId = req.employeeId || req.adminId; // From verifyToken middleware
+        const employeeId = req.params.employeeId;
+        const userId = req.employeeId || req.adminId;
         const userRole = req.role;
 
         // Validate employeeId format

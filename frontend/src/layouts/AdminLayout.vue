@@ -1,9 +1,9 @@
 <script setup>
 import { useRouter, useRoute } from 'vue-router';
 import Dropdown from '@/components/Dropdown.vue';
-import { useAuthStore } from '@/stores/auth.store.js';
 import DropdownLink from '@/components/DropdownLink.vue';
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useAuthStore } from '@/stores/auth.store.js';
+import { ref, computed } from 'vue';
 
 const authStore = useAuthStore();
 const router = useRouter();

@@ -203,6 +203,14 @@ const routes = [
                     title: 'Employee Leave Request',
                 } 
             },
+            { 
+                path: 'settings/:id', 
+                name: 'EmployeeSettings', 
+                component: () => import('../views/employees/settings/EmployeeSettings.vue'),
+                meta: {
+                    title: 'Settings',
+                } 
+            },
         ],
     },
 ];
