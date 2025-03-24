@@ -2,17 +2,22 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { verifyToken } = require('../middlewares/authMiddleware.js');
+const { verifyToken, restrictToAdmin } = require('../middlewares/authMiddleware.js');
 const Employee = require('../models/employee.model.js');
 const { 
   loginEmployee, 
   registerEmployee 
 } = require('../controllers/employee/auth/employeeAuth.controller');
 const { 
-  getPendingEmployees,
-  getTotalEmployees,
-  getProfile,
-  uploadProfilePicture,
+    getPendingEmployees,
+    getTotalEmployees,
+    getProfile,
+    uploadProfilePicture,
+    updateEmployeeDetails,
+    deleteEmployee,
+    getTrashedEmployees,
+    restoreEmployee,
+    permanentDeleteEmployee,
 } = require('../controllers/employee/employee.controller');
 
 const storage = multer.diskStorage({
@@ -65,6 +70,11 @@ router.get('/total', getTotalEmployees);
 router.get('/profile', verifyToken, getProfile);
 router.get('/pending', verifyToken, getPendingEmployees); 
 router.post('/profile-picture', verifyToken, upload.single('profilePicture'), uploadProfilePicture);
+router.put('/:id', restrictToAdmin, updateEmployeeDetails);
+router.delete('/:id', restrictToAdmin, deleteEmployee);
+router.get('/trash', restrictToAdmin, getTrashedEmployees);
+router.put('/trash/:id/restore', restrictToAdmin, restoreEmployee);
+router.delete('/trash/:id', restrictToAdmin, permanentDeleteEmployee);
 
 // GET all employees
 router.get('/', isAuthenticated, async (req, res) => {

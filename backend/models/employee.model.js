@@ -69,7 +69,11 @@ const employeeSchema = new mongoose.Schema({
         days: { type: Number, default: 0 },
         amount: { type: Number, default: 0 },
     },
-    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    status: { 
+        type: String, 
+        enum: ['pending', 'approved', 'rejected', 'trashed'], 
+        default: 'pending' 
+    },
 }, { timestamps: true });
 
 employeeSchema.pre('save', function(next) {

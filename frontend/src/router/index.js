@@ -138,6 +138,14 @@ const routes = [
                     title: 'Admin Settings',
                 }
             },
+            {
+                path: 'trash',
+                name: 'Trash',
+                component: () => import('../views/admin/Trash.vue'),
+                meta: {
+                    title: 'Trash',
+                }
+            }
         ],
     },
 

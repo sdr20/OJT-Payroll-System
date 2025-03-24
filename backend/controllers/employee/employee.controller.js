@@ -62,3 +62,110 @@ exports.uploadProfilePicture = asyncHandler(async (req, res) => {
         });
     }
 });
+
+exports.updateEmployeeDetails = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { position, password, hireDate, ...otherDetails } = req.body;
+
+        const updateData = {
+            ...otherDetails,
+            position,
+            ...(req.body.deductions && { deductions: req.body.deductions }),
+            ...(req.body.earnings && { earnings: req.body.earnings }),
+            ...(req.body.payheads && { payheads: req.body.payheads }),
+            ...(hireDate && { hireDate: new Date(hireDate) }), // Convert to Date if needed
+        };
+
+        if (req.file) {
+            updateData.profilePicture = `/uploads/profile-pictures/${req.file.filename}`;
+        }
+
+        if (req.body.salary) {
+            updateData.salary = Number(req.body.salary);
+        }
+
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            updateData.password = await bcrypt.hash(password, salt);
+        }
+
+        const updatedEmployee = await Employee.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedEmployee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+
+        const employeeObj = updatedEmployee.toObject();
+        delete employeeObj.password;
+
+        res.status(200).json({ 
+            message: 'Employee details updated successfully', 
+            updatedEmployee: employeeObj 
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+exports.deleteEmployee = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Parse id as a number since your schema defines it as Number
+    const employeeId = parseInt(id);
+
+    // Use findOne instead of findById to query by custom id field
+    const employee = await Employee.findOne({ id: employeeId });
+    if (!employee) {
+        return res.status(404).json({ message: 'Employee not found' });
+    }
+    
+    employee.status = 'trashed';
+    employee.trashedAt = new Date();
+    await employee.save();
+    
+    res.status(200).json({ message: 'Employee moved to trash successfully' });
+});
+
+// New function to get trashed employees
+exports.getTrashedEmployees = asyncHandler(async (req, res) => {
+    try {
+        const trashed = await Employee.find({ status: 'trashed' }).select('-password');
+        res.status(200).json(trashed);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching trashed employees', error: error.message });
+    }
+});
+
+// Optional: Restore employee from trash
+exports.restoreEmployee = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const employee = await Employee.findById(id);
+    if (!employee) {
+        return res.status(404).json({ message: 'Employee not found' });
+    }
+    
+    if (employee.status !== 'trashed') {
+        return res.status(400).json({ message: 'Employee is not in trash' });
+    }
+    
+    employee.status = 'active';
+    employee.trashedAt = null;
+    await employee.save();
+    
+    res.status(200).json({ message: 'Employee restored successfully' });
+});
+
+// Optional: Permanently delete from trash
+exports.permanentDeleteEmployee = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const employee = await Employee.findByIdAndDelete(id);
+    if (!employee) {
+        return res.status(404).json({ message: 'Employee not found' });
+    }
+    res.status(200).json({ message: 'Employee permanently deleted' });
+});
