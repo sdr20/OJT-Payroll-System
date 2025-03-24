@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { useAuthStore } from '@/stores/auth.store.ts';
+import { useAuthStore } from '@/stores/auth.store.js';
 
 // Access the auth store
 const authStore = useAuthStore();
@@ -8,11 +8,11 @@ const authStore = useAuthStore();
 // Compute the homepage route based on authentication status
 const homepageRoute = computed(() => {
     if (authStore.admin) {
-        return { name: 'admin-dashboard' };
+        return { name: 'AdminDashboard' };
     } else if (authStore.employee) {
-        return { name: 'employee-dashboard' };
+        return { name: 'EmployeeDashboard' };
     } else {
-        return { name: 'landing-page' };
+        return { name: 'LoginSelection' };
     }
 });
 </script>

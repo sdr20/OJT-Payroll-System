@@ -105,12 +105,11 @@ const loginEmployee = asyncHandler(async (req, res) => {
         res.status(401).json({ message: 'Unauthorized: Incorrect password' });
         return;
     }
-
+    
     if (employee.status === 'pending') {
         res.status(403).json({ message: 'Account awaiting approval. Please wait for admin approval.' });
         return;
     }
-
     if (employee.status === 'rejected') {
         res.status(403).json({ message: 'Account request was rejected. Contact the administrator.' });
         return;
@@ -122,24 +121,24 @@ const loginEmployee = asyncHandler(async (req, res) => {
         message: 'Login successful',
         employee: {
             id: employee._id,
-            employeeIdNumber: employee.empNo,
             firstName: employee.firstName,
             middleName: employee.middleName,
             lastName: employee.lastName,
             username: employee.username,
             email: employee.email,
-            position: employee.position,
-            salary: employee.salary,
+            empNo: employee.empNo,
+            birthday: employee.birthday,
+            hireDate: employee.hireDate,
             contactInfo: employee.contactInfo,
             civilStatus: employee.civilStatus,
+            position: employee.position,
+            salary: employee.salary,
             sss: employee.sss,
-            philhealth: employee.philhealth,
-            pagibig: employee.pagibig,
-            tin: employee.tin,
-            hireDate: employee.hireDate,
-            role: employee.role,
+            philhealth: employee.philHealth,
+            pagibig: employee.pagIbig,
+            role: employee.role
         },
-        token,
+        token
     });
 });
 
