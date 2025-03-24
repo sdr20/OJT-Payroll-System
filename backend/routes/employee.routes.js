@@ -180,47 +180,38 @@ router.get('/:id', isAuthenticated, async (req, res) => {
 // GET salary data for a specific employee
 router.get('/:id/salary', isAuthenticated, async (req, res) => {
     try {
-        const employeeId = parseInt(req.params.id);
-        const userId = parseInt(req.headers['user-id']);
+        const employeeId = req.params.id; // Changed to use MongoDB _id
+        const userId = req.headers['user-id'];
         const userRole = req.headers['user-role'];
         const { month } = req.query;
 
-        // Employees can only access their own data
         if (userRole === 'employee' && employeeId !== userId) {
-            return res.status(403).json({ error: 'Access denied: Employees can only access their own data' });
+            return res.status(403).json({ error: 'Access denied' });
         }
 
-        console.log('Fetching salary data for employee ID:', employeeId, 'month:', month);
-            const employee = await Employee.findOne({ id: employeeId }).catch((err) => {
-            throw new Error(`Database query failed: ${err.message}`);
-        });
-
+        const employee = await Employee.findById(employeeId);
         if (!employee) {
-            console.log('Employee with id', employeeId, 'not found');
-            return res.status(404).json({ error: `Employee with id ${employeeId} not found` });
+            return res.status(404).json({ error: 'Employee not found' });
         }
-
-        console.log('Found employee:', employee);
 
         const salaryData = {
-            id: employee.id,
+            _id: employee._id,
             empNo: employee.empNo,
             name: `${employee.firstName} ${employee.lastName}`.trim(),
             position: employee.position,
             salary: employee.salary,
+            earnings: employee.earnings,
+            sss: employee.sss,
+            philhealth: employee.philhealth,
+            pagibig: employee.pagibig,
             hireDate: employee.hireDate,
             salaryMonth: month || null,
         };
 
         res.status(200).json(salaryData);
     } catch (error) {
-        console.error('Error in GET /api/employees/:id/salary:', {
-            message: error.message,
-            stack: error.stack,
-            params: req.params,
-            query: req.query,
-        });
-        res.status(500).json({ error: 'Failed to fetch salary data', message: error.message });
+        console.error('Error fetching salary:', error);
+        res.status(500).json({ error: 'Failed to fetch salary data' });
     }
 });
 
