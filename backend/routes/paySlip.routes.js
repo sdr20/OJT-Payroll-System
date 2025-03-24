@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const Employee = require('../models/employee.model.js');
 const Payslip = require('../models/payslip.model.js');
+const { verifyToken } = require('../middlewares/authMiddleware.js');
 
 // Middleware to check for admin role
 const isAdmin = (req, res, next) => {
@@ -14,11 +15,20 @@ const isAdmin = (req, res, next) => {
 };
 
 // GET payslips for an employee
-router.get('/:employeeId', isAdmin, async (req, res) => {
+router.get('/:employeeId', verifyToken, async (req, res) => {
     try {
-        const employeeId = parseInt(req.params.employeeId);
-        if (isNaN(employeeId)) {
+        const employeeId = req.params.employeeId; // MongoDB ObjectId string
+        const userId = req.employeeId || req.adminId; // From verifyToken middleware
+        const userRole = req.role;
+
+        // Validate employeeId format
+        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
             return res.status(400).json({ error: 'Invalid employeeId format' });
+        }
+
+        // Restrict employees to their own payslips
+        if (userRole === 'employee' && employeeId !== userId.toString()) {
+            return res.status(403).json({ error: 'Employees can only access their own payslips' });
         }
 
         const payslips = await Payslip.find({ employeeId }).sort({ salaryMonth: 1, paydayType: 1 });
@@ -43,7 +53,7 @@ router.get('/:employeeId', isAdmin, async (req, res) => {
 });
 
 // POST generate a payslip
-router.post('/generate', isAdmin, async (req, res) => {
+router.post('/generate', verifyToken, async (req, res) => {
     try {
         const {
             employeeId,
@@ -55,18 +65,26 @@ router.post('/generate', isAdmin, async (req, res) => {
             salary
         } = req.body;
 
+        const userRole = req.role;
+        const userId = req.employeeId || req.adminId;
+
+        // Validate employeeId format
+        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+            return res.status(400).json({ error: 'Invalid employeeId format' });
+        }
+
+        // Restrict to admins or the employee themselves
+        if (userRole === 'employee' && employeeId !== userId.toString()) {
+            return res.status(403).json({ error: 'Employees can only generate their own payslips' });
+        }
+
         // Validate required fields
         if (!employeeId || !empNo || !payslipData || !salaryMonth || !paydayType || !position || salary === undefined) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const parsedEmployeeId = parseInt(employeeId);
-        if (isNaN(parsedEmployeeId)) {
-            return res.status(400).json({ error: 'Invalid employeeId format' });
-        }
-
-        // Find employee by custom id
-        const employee = await Employee.findOne({ id: parsedEmployeeId });
+        // Find employee by MongoDB _id
+        const employee = await Employee.findById(employeeId);
         if (!employee) {
             return res.status(404).json({ error: 'Employee not found' });
         }
@@ -119,7 +137,7 @@ router.post('/generate', isAdmin, async (req, res) => {
             });
         }
 
-        const existingPayslip = await Payslip.findOne({ employeeId: parsedEmployeeId, salaryMonth, paydayType });
+        const existingPayslip = await Payslip.findOne({ employeeId, salaryMonth, paydayType });
 
         if (existingPayslip) {
             existingPayslip.payslipData = payslipData;
@@ -128,9 +146,9 @@ router.post('/generate', isAdmin, async (req, res) => {
             await existingPayslip.save();
             return res.status(200).json({
                 success: true,
-                message: `Payslip updated for employee ID ${parsedEmployeeId}, ${salaryMonth}, ${paydayType}`,
+                message: `Payslip updated for employee ID ${employeeId}, ${salaryMonth}, ${paydayType}`,
                 payslip: {
-                    employeeId: parsedEmployeeId,
+                    employeeId,
                     empNo,
                     payslipData,
                     salaryMonth,
@@ -142,7 +160,7 @@ router.post('/generate', isAdmin, async (req, res) => {
         }
 
         const payslip = new Payslip({
-            employeeId: parsedEmployeeId,
+            employeeId,
             empNo,
             payslipData,
             salaryMonth,
@@ -155,9 +173,9 @@ router.post('/generate', isAdmin, async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: `Payslip generated for employee ID ${parsedEmployeeId}, ${salaryMonth}, ${paydayType}`,
+            message: `Payslip generated for employee ID ${employeeId}, ${salaryMonth}, ${paydayType}`,
             payslip: {
-                employeeId: parsedEmployeeId,
+                employeeId,
                 empNo,
                 payslipData,
                 salaryMonth,
@@ -169,20 +187,27 @@ router.post('/generate', isAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error generating payslip:', error);
         res.status(500).json({ error: 'Failed to generate payslip', message: error.message });
-    }   
+    }
 });
 
 // DELETE a payslip
-router.delete('/:employeeId/:salaryMonth/:paydayType', isAdmin, async (req, res) => {
+router.delete('/:employeeId/:salaryMonth/:paydayType', verifyToken, async (req, res) => {
     try {
         const { employeeId, salaryMonth, paydayType } = req.params;
-        const parsedEmployeeId = parseInt(employeeId);
-        if (isNaN(parsedEmployeeId)) {
+        const userRole = req.role;
+
+        // Validate employeeId format
+        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
             return res.status(400).json({ error: 'Invalid employeeId format' });
         }
 
+        // Restrict deletion to admins only
+        if (userRole !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required to delete payslips' });
+        }
+
         const payslip = await Payslip.findOneAndDelete({
-            employeeId: parsedEmployeeId,
+            employeeId,
             salaryMonth,
             paydayType
         });
@@ -191,9 +216,9 @@ router.delete('/:employeeId/:salaryMonth/:paydayType', isAdmin, async (req, res)
             return res.status(404).json({ error: 'Payslip not found' });
         }
 
-            res.status(200).json({
+        res.status(200).json({
             success: true,
-            message: `Payslip for employee ID ${parsedEmployeeId}, ${salaryMonth}, ${paydayType} deleted successfully`
+            message: `Payslip for employee ID ${employeeId}, ${salaryMonth}, ${paydayType} deleted successfully`
         });
     } catch (error) {
         console.error('Error deleting payslip:', error);

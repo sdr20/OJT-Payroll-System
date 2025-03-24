@@ -423,6 +423,7 @@ import axios from 'axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from 'moment';
+import { useAuthStore } from '@/stores/auth.store.js';
 
 jsPDF.prototype.autoTable = autoTable.default;
 
@@ -465,6 +466,10 @@ export default {
             sortNewAsc: true,
             currentDate: new Date('2025-03-17'), // Matches your initial context; adjust as needed
         };
+    },
+    setup() {
+        const authStore = useAuthStore();
+        return { authStore };
     },
     computed: {
         filteredEmployees() {
@@ -522,7 +527,7 @@ export default {
                 return 0;
             });
         },
-        sortedNewPayslips() {
+sortedNewPayslips() {
             const newPayslips = this.payslipHistory.filter(payslip =>
                 payslip.position === this.latestPosition.position &&
                 this.hasUpdatedPosition &&
@@ -543,15 +548,35 @@ export default {
         }
     },
     async created() {
-        await this.fetchConfig();
-        await this.fetchPositionsWithRetry();
-        await this.fetchEmployees();
+        if (!this.authStore.isAuthenticated || !this.authStore.isAdmin) {
+            console.error('User is not authenticated as admin. Redirecting to login...');
+            this.showErrorMessage('Please log in as an admin to access this page.');
+            this.$router.push('/admin-login');
+            return;
+        }
+
+        this.isLoading = true;
+        try {
+            await this.fetchConfig();
+            await this.fetchPositionsWithRetry();
+            await this.fetchEmployees();
+        } catch (error) {
+            console.error('Error in created hook:', error);
+            this.showErrorMessage('Failed to initialize component. Please try again.');
+        } finally {
+            this.isLoading = false;
+        }
     },
     methods: {
         async fetchConfig() {
             try {
+                const token = this.authStore.accessToken || localStorage.getItem('token');
+                if (!token) throw new Error('No authentication token found');
                 const response = await axios.get('http://localhost:7777/api/config', {
-                    headers: { 'user-role': 'admin' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'user-role': 'admin',
+                    },
                 });
                 this.config = {
                     minimumWage: response.data.minimumWage || 610,
@@ -573,8 +598,16 @@ export default {
         async fetchPositionsWithRetry(retries = 3, delay = 1000) {
             for (let i = 0; i < retries; i++) {
                 try {
+                    const userId = this.authStore.admin?._id || localStorage.getItem('userId') || '';
+                    const token = this.authStore.accessToken || localStorage.getItem('token') || '';
+                    if (!token) throw new Error('No authentication token found');
+                    console.log('Fetching positions with:', { userId, token: token.slice(0, 20) + '...' });
                     const response = await axios.get('http://localhost:7777/api/positions', {
-                        headers: { 'user-role': 'admin' },
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'user-role': 'admin',
+                            'user-id': userId,
+                        },
                     });
                     this.positions = response.data.map(position => ({
                         name: position.name,
@@ -606,15 +639,24 @@ export default {
         async fetchEmployees() {
             this.isLoading = true;
             this.statusMessage = '';
+            const userId = this.authStore.admin?._id || localStorage.getItem('userId') || '';
+            const token = this.authStore.accessToken || localStorage.getItem('token') || '';
+            console.log('Fetching employees with:', { userId, token: token.slice(0, 20) + '...' });
             try {
+                if (!token) throw new Error('No authentication token found');
                 const response = await axios.get('http://localhost:7777/api/employees', {
-                    headers: { 'user-role': 'admin' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'user-role': 'admin',
+                        'user-id': userId,
+                    },
                 });
                 this.employees = response.data.map((employee) => {
                     const latestPosition = this.getLatestPosition(employee);
                     const name = `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 'Unnamed Employee';
                     return {
                         ...employee,
+                        id: employee._id, // Explicitly set id to _id (string)
                         name,
                         position: latestPosition.position,
                         salary: latestPosition.salary,
@@ -661,6 +703,13 @@ export default {
                 return;
             }
 
+            const token = this.authStore.accessToken || localStorage.getItem('token');
+            if (!token) {
+                this.showErrorMessage('Authentication required. Please log in.');
+                this.$router.push('/admin-login');
+                return;
+            }
+
             this.selectedEmployee = {
                 ...employee,
                 positionHistory: Array.isArray(employee.positionHistory) && employee.positionHistory.length > 0 ? employee.positionHistory : [{
@@ -676,7 +725,10 @@ export default {
             let backendPayslips = [];
             try {
                 const response = await axios.get(`http://localhost:7777/api/payslips/${this.selectedEmployee.id}`, {
-                    headers: { 'user-role': 'admin' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'user-role': 'admin',
+                    },
                 });
                 backendPayslips = response.data || [];
                 console.log('Fetched backend payslips:', backendPayslips);
@@ -719,7 +771,7 @@ export default {
                     await this.generatePayslip(payslip);
                 }
 
-                currentPayDate.add(15, 'days'); // Increment by 15 days
+                currentPayDate.add(15, 'days');
             }
 
             this.allPayslipHistories[this.selectedEmployee.id] = payslipHistory;
@@ -772,13 +824,13 @@ export default {
                 const url = URL.createObjectURL(pdfBlob);
 
                 const payload = {
-                    employeeId: Number(employee.id), // Ensure number
+                    employeeId: employee.id,
                     empNo: String(employee.empNo),
-                    payslipData: base64Data.split(',')[1], // Remove "data:application/pdf;base64," prefix
+                    payslipData: base64Data.split(',')[1],
                     salaryMonth: payslip.salaryMonth,
                     paydayType: payslip.paydayType,
                     position: activePosition.position,
-                    salary: Number(activePosition.salary) // Ensure number
+                    salary: Number(activePosition.salary)
                 };
 
                 console.log('Sending payload to backend:', payload);
@@ -789,8 +841,16 @@ export default {
                     throw new Error('Payload is missing required fields or contains invalid data');
                 }
 
+                const token = this.authStore.accessToken || localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No authentication token available. Please log in.');
+                }
+
                 const response = await axios.post('http://localhost:7777/api/payslips/generate', payload, {
-                    headers: { 'user-role': 'admin' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'user-role': 'admin'
+                    },
                 });
 
                 console.log('Payslip generated successfully:', response.data);
@@ -818,6 +878,9 @@ export default {
                 this.showErrorMessage(`Failed to generate payslip: ${error.message}`);
                 if (error.response) {
                     console.error('Backend response:', error.response.data);
+                }
+                if (error.message === 'No authentication token available. Please log in.') {
+                    this.$router.push('/admin-login');
                 }
             } finally {
                 this.payslipGenerationStatus[key] = { generating: false };
@@ -921,9 +984,9 @@ export default {
                 const base64Data = await this.blobToBase64(pdfBlob);
 
                 const payload = {
-                    employeeId: Number(employee.id),
+                    employeeId: employee.id, // Use string ID directly
                     empNo: String(employee.empNo),
-                    payslipData: base64Data.split(',')[1], // Remove prefix
+                    payslipData: base64Data.split(',')[1],
                     salaryMonth: payslipData.salaryMonth,
                     paydayType: payslipData.paydayType,
                     position: activePosition.position,
@@ -938,8 +1001,16 @@ export default {
                     throw new Error('Payload is missing required fields or contains invalid data');
                 }
 
+                const token = this.authStore.accessToken || localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No authentication token available. Please log in.');
+                }
+
                 const response = await axios.post('http://localhost:7777/api/payslips/generate', payload, {
-                    headers: { 'user-role': 'admin' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'user-role': 'admin'
+                    },
                 });
 
                 console.log('Payslip generated successfully (generatePayslipNow):', response.data);
@@ -968,6 +1039,9 @@ export default {
                 this.showErrorMessage(`Failed to generate payslip: ${error.message}`);
                 if (error.response) {
                     console.error('Backend response:', error.response.data);
+                }
+                if (error.message === 'No authentication token available. Please log in.') {
+                    this.$router.push('/admin-login');
                 }
             } finally {
                 this.payslipGenerationStatus.generating = false;
