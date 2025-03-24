@@ -947,8 +947,9 @@ export default {
       return salaryCredit > 34750 ? 1750 : regularSSContribution + mpfContribution;
     },
     calculatePhilHealthContribution(salary) {
-      const monthlySalary = Math.max(salary || 0, 0);
-      return Math.round(Math.min(Math.max(monthlySalary, 10000), 100000) * 0.025);
+    const monthlySalary = Math.max(salary || 0, 0); // Ensure salary is not negative or undefined
+    const premiumRate = 0.025; // 2.5% for employee's share (half of 5%)
+    return Math.round(monthlySalary * premiumRate);
     },
     calculatePagIBIGContribution(salary) {
       const monthlySalary = Math.max(salary || 0, 0);
