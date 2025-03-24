@@ -68,8 +68,8 @@ const isAdmin = (req, res, next) => {
 
 router.post('/login', loginEmployee);
 router.post('/register', registerEmployee);
-router.post('forgot-password', forgotPassword);
-router.post('reset-password', resetPassword);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.get('/pending-requests', verifyToken, getPendingEmployees); 
 
 router.get('/total', getTotalEmployees);

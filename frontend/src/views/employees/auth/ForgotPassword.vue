@@ -91,7 +91,7 @@ export default {
             showPassword: false,
             error: '',
             isProcessing: false,
-            resetToken: '' // Temporary token for verification
+            resetToken: '' 
         };
     },
     methods: {

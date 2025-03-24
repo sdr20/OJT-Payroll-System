@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const Employee = require('../../../models/employee.model.js');
 
 function generateToken(employeeId) {
@@ -31,13 +32,11 @@ const registerEmployee = asyncHandler(async (req, res) => {
         hireDate, role, status,
     } = req.body;
 
-    // Check required fields per the model
     if (!employeeIdNumber || !firstName || !lastName || !username || !email || !password || !position || !salary || !contactInfo || !hireDate) {
         res.status(400).json({ error: 'Required fields are missing' });
         return;
     }
 
-    // Check for existing employee
     const existingEmployee = await Employee.exists({
         $or: [
             { username: { $regex: username, $options: 'i' } },
@@ -54,7 +53,6 @@ const registerEmployee = asyncHandler(async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Generate a unique numeric id
     const lastEmployee = await Employee.findOne().sort({ id: -1 });
     const newId = lastEmployee ? lastEmployee.id + 1 : 1;
 
@@ -162,20 +160,16 @@ const loginEmployee = asyncHandler(async (req, res) => {
 const pendingRequest = asyncHandler(async (req, res) => {
     const { name, positionApplied, salary, email, contactInfo, password } = req.body;
 
-    // Check required fields (adjusted for pending request context)
     if (!name || !positionApplied || !salary || !email || !contactInfo || !password) {
         res.status(400).json({ error: 'Required fields are missing' });
         return;
     }
 
-    // Split name into firstName and lastName (assuming "name" is full name)
     const [firstName, ...lastNameParts] = name.trim().split(' ');
-    const lastName = lastNameParts.join(' ') || 'Unknown'; // Fallback if no lastName
+    const lastName = lastNameParts.join(' ') || 'Unknown';
 
-    // Generate a temporary username (could be refined based on your needs)
-    const username = email.split('@')[0]; // Simple username from email
+    const username = email.split('@')[0];
 
-    // Check for existing employee
     const existingEmployee = await Employee.exists({ 
         $or: [
             { username: { $regex: username, $options: 'i' } },
@@ -191,7 +185,6 @@ const pendingRequest = asyncHandler(async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Generate a unique numeric id
     const lastEmployee = await Employee.findOne().sort({ id: -1 });
     const newId = lastEmployee ? lastEmployee.id + 1 : 1;
 
@@ -204,9 +197,9 @@ const pendingRequest = asyncHandler(async (req, res) => {
         email,
         password: hashedPassword,
         empNo: `TEMP-${Date.now()}`,
-        position: positionApplied,             // Map positionApplied to position
+        position: positionApplied,
         salary,
-        contactInfo: contactInfo,           // Map contactInfo to contactInfo
+        contactInfo: contactInfo,
         sss: '',
         philhealth: '',
         pagibig: '',
@@ -217,7 +210,7 @@ const pendingRequest = asyncHandler(async (req, res) => {
         },
         payheads: [],
         role: 'employee',
-        status: 'pending'                     // Set as pending per the model
+        status: 'pending'
     });
 
     const token = generateToken(employee._id);
@@ -243,12 +236,8 @@ const pendingRequest = asyncHandler(async (req, res) => {
 
 const getPendingEmployees = asyncHandler(async (req, res) => {
     try {
-        // Check if the requester is an admin (based on the middleware setting req.role)
         const isAdmin = req.role === 'admin';
-
-        // If the requester is an admin, include the password field (hashed)
-        const selectFields = isAdmin ? '' : '-password'; // Include password for admins
-
+        const selectFields = isAdmin ? '' : '-password';
         const pending = await Employee.find({ status: 'pending' }).select(selectFields);
         res.status(200).json(pending);
     } catch (error) {
@@ -347,7 +336,10 @@ const resetPassword = asyncHandler(async (req, res) => {
 
         console.log('Employee found for reset:', { id: employee.id, email: employee.email });
 
-        employee.password = trimmedNewPassword;
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(trimmedNewPassword, salt);
+
+        employee.password = hashedPassword;
         employee.resetToken = undefined;
         employee.verificationCode = undefined;
         employee.resetTokenExpires = undefined;
