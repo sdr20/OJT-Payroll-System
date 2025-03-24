@@ -104,7 +104,7 @@ export default {
     },
     mounted() {
         if (!this.authStore.isAdmin) {
-            this.$router.push('/unauthorized'); // Redirect if not admin
+            this.$router.push('/unauthorized');
         } else {
             this.fetchTrashedEmployees();
         }
