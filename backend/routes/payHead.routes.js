@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const PayHead = require('../models/payHead.model');
+const PayHead = require('../models/payHead.model.js');
 
 const isAdmin = (req, res, next) => {
     console.log('All request headers for payheads:', req.headers);

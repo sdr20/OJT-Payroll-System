@@ -650,7 +650,7 @@ export default {
             <h1 class="text-lg font-bold text-gray-800">Employee Management</h1>
             <div class="flex items-center gap-3">
                 <input v-model="searchQuery" type="text" placeholder="Search employees..."
-                    class="p-1.5 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48" />
+                    class="p-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48" />
                 <button @click="refreshAll"
                     class="bg-indigo-600 text-white px-3 py-1.5 text-sm rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
                     <span class="material-icons text-lg">refresh</span>
@@ -664,7 +664,7 @@ export default {
             <div class="max-w-screen-xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <!-- Employee List -->
                 <section class="lg:col-span-2 bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="p-4 flex justify-between items-center border-b">
+                    <div class="p-4 flex justify-between items-center border-b border-gray-300">
                         <h2 class="text-lg font-semibold text-gray-800">Employee List</h2>
                         <div class="flex gap-2">
                             <button @click="showAddModal = true"
@@ -678,7 +678,7 @@ export default {
                                 Positions
                             </button>
                             <select v-model="positionFilter"
-                                class="p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500">
+                                class="p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500">
                                 <option value="">All</option>
                                 <option v-for="pos in adminPositions" :key="pos.name" :value="pos.name">{{ pos.name }}
                                 </option>
@@ -730,7 +730,8 @@ export default {
                             </tbody>
                         </table>
                     </div>
-                    <div v-if="!isLoading" class="p-3 flex justify-between items-center border-t text-sm">
+                    <div v-if="!isLoading"
+                        class="p-3 flex justify-between items-center border-t border-gray-300 text-sm">
                         <button @click="currentPage--" :disabled="currentPage === 1"
                             class="px-2 py-1 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-gray-300">Prev</button>
                         <span>Page {{ currentPage }} of {{ totalPages }}</span>
@@ -741,7 +742,7 @@ export default {
 
                 <!-- Pending Approvals -->
                 <aside class="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="p-4 border-b flex justify-between items-center">
+                    <div class="p-4 border-b border-gray-300 flex justify-between items-center">
                         <h2 class="text-lg font-semibold text-gray-800">Pending Approvals</h2>
                         <button @click="refreshPendingRequests"
                             class="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-100">
@@ -793,7 +794,8 @@ export default {
         <div v-if="showDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
                 <!-- Header -->
-                <div class="p-4 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-lg">
+                <div
+                    class="p-4 border-b border-gray-300 flex justify-between items-center sticky top-0 bg-white rounded-t-lg">
                     <div>
                         <h2 class="text-xl font-bold text-gray-800">Employee Profile</h2>
                         <p class="text-xs text-gray-500 mt-0.5">Employee ID: {{ selectedEmployee.empNo }}</p>
@@ -807,7 +809,7 @@ export default {
                 <!-- Content -->
                 <div class="flex-1 overflow-y-auto p-4 space-y-6">
                     <!-- Profile Header -->
-                    <div class="flex items-center space-x-4 pb-4 border-b">
+                    <div class="flex items-center space-x-4 pb-4 border-b border-gray-300">
                         <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
                             <span class="material-icons text-3xl text-indigo-600">account_circle</span>
                         </div>
@@ -819,15 +821,17 @@ export default {
                             <p class="text-base text-indigo-600 font-medium">{{ selectedEmployee.position }}</p>
                             <p class="text-sm text-gray-500 mt-0.5">Joined {{ new
                                 Date(selectedEmployee.hireDate).toLocaleDateString('en-US', {
-                                    year: 'numeric', month:
-                                'long', day: 'numeric' }) }}</p>
+                                year: 'numeric', month:
+                                'long', day: 'numeric'
+                                }) }}</p>
                         </div>
                     </div>
 
                     <!-- Grid Layout -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Personal Information Card -->
-                        <div class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
+                        <div
+                            class="bg-white rounded-lg shadow-sm border border-gray-300 p-4 hover:shadow-md transition-shadow">
                             <div class="flex items-center mb-3">
                                 <span class="material-icons text-indigo-600 mr-1">person</span>
                                 <h4 class="text-base font-semibold text-gray-800">Personal Information</h4>
@@ -851,7 +855,8 @@ export default {
                         </div>
 
                         <!-- Financial Information Card -->
-                        <div class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
+                        <div
+                            class="bg-white rounded-lg shadow-sm border border-gray-300 p-4 hover:shadow-md transition-shadow">
                             <div class="flex items-center mb-3">
                                 <span class="material-icons text-green-600 mr-1">payments</span>
                                 <h4 class="text-base font-semibold text-gray-800">Financial Information</h4>
@@ -878,7 +883,8 @@ export default {
                         </div>
 
                         <!-- Government IDs Card -->
-                        <div class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
+                        <div
+                            class="bg-white rounded-lg shadow-sm border border-gray-300 p-4 hover:shadow-md transition-shadow">
                             <div class="flex items-center mb-3">
                                 <span class="material-icons text-blue-600 mr-1">badge</span>
                                 <h4 class="text-base font-semibold text-gray-800">Government IDs</h4>
@@ -904,7 +910,8 @@ export default {
                         </div>
 
                         <!-- Position History Card -->
-                        <div class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
+                        <div
+                            class="bg-white rounded-lg shadow-sm border-gray-300 p-4 hover:shadow-md transition-shadow">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center">
                                     <span class="material-icons text-purple-600 mr-1">history</span>
@@ -938,14 +945,14 @@ export default {
                 </div>
 
                 <!-- Footer -->
-                <div class="p-4 border-t bg-gray-50 flex justify-end gap-2 sticky bottom-0">
+                <div class="p-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-2 sticky bottom-0">
                     <button @click="editEmployee(selectedEmployee)"
                         class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-1">
                         <span class="material-icons">edit</span>
                         Edit Profile
                     </button>
                     <button @click="showDetailsModal = false"
-                        class="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors">
+                        class="px-3 py-1 border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors">
                         Close
                     </button>
                 </div>
@@ -1620,19 +1627,21 @@ export default {
         </div>
 
         <!-- Delete Employee Confirmation Modal -->
-        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
                 <div class="p-4 border-b">
-                    <h2 class="text-lg font-semibold text-gray-800">Confirm Delete</h2>
+                    <h2 class="text-lg font-semibold text-gray-800">Confirm Move to Trash</h2>
                 </div>
                 <div class="p-4">
-                    <p class="text-sm text-gray-700">Delete {{ selectedEmployee.firstName }} {{
-                        selectedEmployee.lastName }}?</p>
+                    <p class="text-sm text-gray-700">Move {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName
+                    }} to trash? This can be restored later.</p>
                 </div>
                 <div class="p-4 border-t bg-gray-50 flex justify-end gap-2">
-                    <button @click="removeEmployee(selectedEmployee.id)"
+                    <button @click="moveToTrash(selectedEmployee.id)"
                         class="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
-                        :disabled="isDeleting">{{ isDeleting ? 'Deleting...' : 'Delete' }}</button>
+                        :disabled="isDeleting">
+                        {{ isDeleting ? 'Moving...' : 'Move to Trash' }}
+                    </button>
                     <button @click="showDeleteModal = false"
                         class="px-3 py-1.5 border text-sm rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
                 </div>

@@ -7,7 +7,7 @@
     "dev": "node --env-file=.env server.js",
     "start": "nodemon --env-file=.env server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "seed": "node seeders/employeeSeeder.js && node seeders/positionSeeder.js && node seeders/adminSeeder.js"
+    "seed": "node -r dotenv/config seeders/employeeSeeder.js && node -r dotenv/config seeders/positionSeeder.js && node -r dotenv/config seeders/adminSeeder.js"
   },
   "keywords": [],
   "author": "",
