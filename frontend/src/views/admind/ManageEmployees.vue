@@ -328,8 +328,7 @@
                   <select v-model="selectedRequest.civilStatus" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required>
                     <option value="Single">Single</option>
                     <option value="Married">Married</option>
-                    <option value="Divorced">Divorced</option>
-                    <option value="Widowed">Widowed</option>
+       
                   </select>
                 </div>
               </div>
@@ -472,8 +471,7 @@
                   <select v-model="newEmployee.civilStatus" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required>
                     <option value="Single">Single</option>
                     <option value="Married">Married</option>
-                    <option value="Divorced">Divorced</option>
-                    <option value="Widowed">Widowed</option>
+              
                   </select>
                 </div>
               </div>
@@ -607,8 +605,7 @@
                   <select v-model="selectedEmployee.civilStatus" class="w-full p-1.5 text-sm border rounded-md focus:ring-1 focus:ring-indigo-500" required>
                     <option value="Single">Single</option>
                     <option value="Married">Married</option>
-                    <option value="Divorced">Divorced</option>
-                    <option value="Widowed">Widowed</option>
+         
                   </select>
                 </div>
               </div>

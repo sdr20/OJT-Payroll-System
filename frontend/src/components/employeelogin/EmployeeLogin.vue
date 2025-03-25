@@ -186,8 +186,7 @@
                 >
                   <option value="Single">Single</option>
                   <option value="Married">Married</option>
-                  <option value="Divorced">Divorced</option>
-                  <option value="Widowed">Widowed</option>
+                 
                 </select>
               </div>
               <div class="space-y-1">
@@ -421,6 +420,7 @@ export default {
         hireDate: new Date().toISOString().slice(0, 10),
         status: 'pending',
         role: 'employee',
+        empNo: '', // Intentionally empty; admin will fill this out
         earnings: { travelExpenses: 0, otherEarnings: 0 }
       },
       showLoginPassword: false,
@@ -595,7 +595,7 @@ export default {
         const requestData = {
           ...this.newRequest,
           id: newId,
-          empNo: 'pending', // Placeholder value for empNo
+          empNo: '', // Intentionally empty; admin will fill this out later
           earnings: { travelExpenses: 0, otherEarnings: 0 }
         };
 
@@ -604,11 +604,16 @@ export default {
         if (response.status === 201) {
           this.showRegisterModal = false;
           this.resetNewRequest();
-          this.showSuccessMessage('Account request submitted successfully! Please wait for admin approval.');
+          this.showSuccessMessage('Account request submitted successfully! Your employee number will be assigned by an admin.');
         }
       } catch (error) {
         console.error('Submission error:', error.response || error);
-        this.showErrorMessage(error.response?.data?.error || 'Failed to submit request. Please check your connection or try again.');
+        const errorMessage = error.response?.data?.error || 'Failed to submit request. Please check your connection or try again.';
+        if (errorMessage.includes('Missing required fields: [empNo]')) {
+          this.showErrorMessage('The server requires an employee number, but it should be assigned by an admin. Please contact support to resolve this.');
+        } else {
+          this.showErrorMessage(errorMessage);
+        }
       } finally {
         this.isSubmitting = false;
       }
@@ -633,6 +638,7 @@ export default {
         hireDate: new Date().toISOString().slice(0, 10),
         status: 'pending',
         role: 'employee',
+        empNo: '', // Reset to empty string; admin will fill this out
         earnings: { travelExpenses: 0, otherEarnings: 0 }
       };
       this.confirmPassword = '';

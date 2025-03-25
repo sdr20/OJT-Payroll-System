@@ -675,7 +675,7 @@ export default {
                   startDate: employee.hireDate || this.currentDate.toISOString().split('T')[0],
                   endDate: null,
                 }],
-            payheads: employee.payheads || [], // Ensure payheads is an array
+            payheads: Array.isArray(employee.payheads) ? employee.payheads : [], // Ensure payheads is an array
             createdAt: employee.createdAt || employee.hireDate,
             updatedAt: employee.updatedAt,
           };
@@ -726,7 +726,7 @@ export default {
               startDate: employee.hireDate || this.currentDate.toISOString().split('T')[0],
               endDate: null,
             }],
-        payheads: employee.payheads || [], // Ensure payheads is included
+        payheads: Array.isArray(employee.payheads) ? employee.payheads : [], // Ensure payheads is an array
       };
 
       const today = moment(this.currentDate);
@@ -1286,12 +1286,18 @@ export default {
       return monthlySalary + baseEarnings + holidayPay + overtimePay + payheadEarnings + taxableSupplementary || 0;
     },
     calculatePayheadEarnings(payheads) {
-      return (payheads || [])
+      const sanitizedPayheads = Array.isArray(payheads)
+        ? payheads.filter((p) => p && typeof p === 'object' && 'type' in p && 'amount' in p)
+        : [];
+      return sanitizedPayheads
         .filter((p) => p.type === 'Earnings')
         .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
     },
     calculatePayheadDeductions(payheads) {
-      return (payheads || [])
+      const sanitizedPayheads = Array.isArray(payheads)
+        ? payheads.filter((p) => p && typeof p === 'object' && 'type' in p && 'amount' in p)
+        : [];
+      return sanitizedPayheads
         .filter((p) => p.type === 'Deductions')
         .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
     },
@@ -1453,22 +1459,27 @@ export default {
       const paidLeavesAmount = employee.paidLeaves?.amount || 0;
       const absencesAmount = employee.absences ? -(employee.absences.amount || 0) : 0;
 
-      // Categorize payheads from the employee object
-      const earnings = (employee.payheads || [])
+      // Sanitize payheads to ensure it’s an array of valid objects
+      const sanitizedPayheads = Array.isArray(employee.payheads)
+        ? employee.payheads.filter((ph) => ph && typeof ph === 'object' && 'type' in ph && 'name' in ph && 'amount' in ph)
+        : [];
+
+      // Categorize payheads from the sanitized array
+      const earnings = sanitizedPayheads
         .filter((ph) => ph.type === 'Earnings')
         .map((ph) => ({
           name: ph.name,
           amount: this.formatNumber(ph.amount),
         }));
 
-      const deductions = (employee.payheads || [])
+      const deductions = sanitizedPayheads
         .filter((ph) => ph.type === 'Deductions' && !ph.isRecurring)
         .map((ph) => ({
           name: ph.name,
           amount: this.formatNumber(ph.amount),
         }));
 
-      const recurringDeductions = (employee.payheads || [])
+      const recurringDeductions = sanitizedPayheads
         .filter((ph) => ph.type === 'Deductions' && ph.isRecurring)
         .map((ph) => ({
           name: ph.name,
@@ -1484,7 +1495,6 @@ export default {
         birthDate: moment(employee.birthDate).isValid() ? moment(employee.birthDate).format('MM/DD/YYYY') : 'N/A',
         hireDate: moment(employee.hireDate).isValid() ? moment(employee.hireDate).format('MM/DD/YYYY') : 'N/A',
         civilStatus: employee.civilStatus || 'SINGLE',
-        // dependents: employee.dependents || 0,
         sss: employee.sss || 'N/A',
         tin: employee.tin || 'N/A',
         philhealth: employee.philhealth || 'N/A',
@@ -1501,10 +1511,10 @@ export default {
         paidLeavesAmount: this.formatNumber(paidLeavesAmount),
         absencesAmount: this.formatNumber(absencesAmount),
         withholdingTax: this.formatNumber(this.calculateWithholdingTax(employee) || 0),
-        payheads: employee.payheads || [],
-        earnings, // Employee-specific earnings
-        deductions, // Employee-specific non-recurring deductions
-        recurringDeductions, // Employee-specific recurring deductions
+        payheads: sanitizedPayheads,
+        earnings,
+        deductions,
+        recurringDeductions,
       };
     },
     formatNumber(value) {
@@ -1575,7 +1585,6 @@ export default {
       yRight += lineHeight;
       const rightPersonalInfo = [
         ['Civil Status', payslipData.civilStatus],
-        // ['Dependents', payslipData.dependents.toString()],
         ['SSS', payslipData.sss],
         ['TIN', payslipData.tin],
         ['Philhealth', payslipData.philhealth],

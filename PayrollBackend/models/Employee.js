@@ -23,7 +23,7 @@ const employeeSchema = new mongoose.Schema({
   philhealth: { type: String, default: '' },
   pagibig: { type: String, default: '' },
   tin: { type: String, default: '' },
-  civilStatus: { type: String, enum: ['Single', 'Married', 'Divorced', 'Widowed'], default: 'Single' },
+  civilStatus: { type: String, enum: ['Single', 'Married'], default: 'Single' },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'employee'], default: 'employee' },
