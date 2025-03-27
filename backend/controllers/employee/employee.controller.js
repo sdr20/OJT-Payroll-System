@@ -15,7 +15,11 @@ exports.getPendingEmployees = asyncHandler(async (req, res) => {
 // Get total number of employees
 exports.getTotalEmployees = asyncHandler(async (req, res) => {
     try {
-        const total = await Employee.countDocuments();
+        const total = await Employee.countDocuments({ 
+            status: { 
+                $ne: 'pending' 
+            } 
+        });
         res.status(200).json({ total });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching total employees', error: error.message });
@@ -66,20 +70,18 @@ exports.uploadProfilePicture = asyncHandler(async (req, res) => {
 exports.updateEmployeeDetails = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const { position, password, hireDate, ...otherDetails } = req.body;
+        const { position, password, ...otherDetails } = req.body;
+
+        console.log('Received req.body:', req.body);
+        console.log('Updating employee with ID:', id);
 
         const updateData = {
             ...otherDetails,
             position,
             ...(req.body.deductions && { deductions: req.body.deductions }),
             ...(req.body.earnings && { earnings: req.body.earnings }),
-            ...(req.body.payheads && { payheads: req.body.payheads }),
-            ...(hireDate && { hireDate: new Date(hireDate) }), // Convert to Date if needed
+            ...(req.body.payheads && { payheads: req.body.payheads })
         };
-
-        if (req.file) {
-            updateData.profilePicture = `/uploads/profile-pictures/${req.file.filename}`;
-        }
 
         if (req.body.salary) {
             updateData.salary = Number(req.body.salary);
@@ -103,6 +105,7 @@ exports.updateEmployeeDetails = asyncHandler(async (req, res) => {
         const employeeObj = updatedEmployee.toObject();
         delete employeeObj.password;
 
+        console.log('Updated employee:', employeeObj);
         res.status(200).json({ 
             message: 'Employee details updated successfully', 
             updatedEmployee: employeeObj 

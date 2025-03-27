@@ -1,5 +1,6 @@
 <script>
 import axios from 'axios';
+import { BASE_API_URL } from '@/utils/constants.js';
 import { useAuthStore } from '@/stores/auth.store.js';
 
 export default {
@@ -20,7 +21,7 @@ export default {
     mounted() {
         this.authStore.restoreSession();
         if (this.authStore.isAuthenticated && this.authStore.userRole === 'admin') {
-            this.$router.push('admin/dashboard');
+            this.$router.push('admin/');
         }
     },
     methods: {
@@ -31,10 +32,13 @@ export default {
 
             try {
                 const response = await axios.post(
-                    'http://localhost:7777/api/admin/login',
+                    `${BASE_API_URL}/api/admin/login`,
                     { username: this.username.trim(), password: this.password.trim() },
-                    { headers: { 'Content-Type': 'application/json' } }
+                    {
+                        headers: { 'Content-Type': 'application/json' }
+                    }
                 );
+                console.log(response.data);
 
                 // Check if response contains a token (indicating success)
                 if (!response.data.token) {
@@ -51,6 +55,7 @@ export default {
                 this.loginError = true;
                 this.errorMessage = error.response?.data?.message || error.message || 'An unexpected error occurred';
                 console.error('Login error:', error.response?.data || error);
+                console.error('Error response:', error.response);
                 this.password = '';
             } finally {
                 this.isLoading = false;

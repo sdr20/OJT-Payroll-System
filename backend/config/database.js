@@ -1,19 +1,22 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 
-const MONGO_URI = process.env.USE_ATLAS === 'true' 
-    ? process.env.MONGO_URI_ATLAS 
-    : process.env.MONGO_URI_COMPASS;
-
-console.log('USE_ATLAS:', process.env.USE_ATLAS);
-console.log('MONGO_URI:', MONGO_URI);
-
 const connectDB = async () => {
+    if (mongoose.connection.readyState === 1) {
+        console.log('MongoDB already connected');
+        return;
+    }
+
     try {
-        await mongoose.connect(MONGO_URI);
-        console.log(`MongoDB connected successfully to ${MONGO_URI.includes('mongodb+srv') ? 'Atlas' : 'Compass'}`);
+        if (!process.env.MONGO_URI) {
+            throw new Error('MONGO_URI is not defined in .env file');
+        }
+
+        const conn = await mongoose.connect(process.env.MONGO_URI);
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
-        console.error('MongoDB connection error:', error);
-        process.exit(1);
+        console.error(`MongoDB Connection Error: ${error.message}`);
+        throw error;
     }
 };
 
