@@ -24,13 +24,13 @@ const isAdding = ref(false);
 
 // Function to generate EMP-[7 random numbers]
 function generateEmpNo() {
-    const randomNum = Math.floor(1000000 + Math.random() * 9000000); // Generates a 7-digit number (1000000-9999999)
+    const randomNum = Math.floor(1000000 + Math.random() * 9000000);
     return `EMP-${randomNum}`;
 }
 
 // Set empNo when the modal is mounted
 onMounted(() => {
-    if (show && !employee.empNo) { // Only set if empNo is empty
+    if (show && !employee.empNo) {
         employee.empNo = generateEmpNo();
     }
 });
