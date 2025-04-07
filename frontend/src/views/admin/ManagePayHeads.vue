@@ -65,35 +65,6 @@
                 </div>
             </div>
 
-            <!-- Action Buttons Section (Always Visible) -->
-            <div v-if="!isLoading" class="mb-4 flex items-center justify-between px-4 py-2 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
-                <h2 class="text-base font-medium text-gray-900">
-                    {{ activeTab === 'payheads' ? 'Pay Heads' : 'Employees' }}
-                </h2>
-                <div class="flex items-center space-x-2">
-                    <button v-if="activeTab === 'payheads'" @click="showAddModal = true" class="inline-flex items-center px-2 py-0.5 bg-blue-600 text-white rounded-sm 
-                        text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-1 
-                        focus:ring-offset-1 focus:ring-blue-500 transition-all shadow-sm transform hover:scale-105">
-                        <span class="material-icons text-xs mr-1">add</span>
-                        New Pay Head
-                    </button>
-                    <button v-if="activeTab === 'payheads'" @click="showRecurringDeductionModal = true" class="inline-flex items-center px-2 py-0.5 bg-green-600 text-white rounded-sm 
-                        text-xs font-medium hover:bg-green-700 focus:outline-none focus:ring-1 
-                        focus:ring-offset-1 focus:ring-green-500 transition-all shadow-sm transform hover:scale-105">
-                        <span class="material-icons text-xs mr-1">repeat</span>
-                        Add Recurring Deduction
-                    </button>
-                    <!-- Temporary Test Button -->
-                    <button v-if="activeTab === 'employees'" @click="testOpenAddPayheadModal"
-                        class="inline-flex items-center px-2 py-0.5 bg-purple-600 text-white rounded-sm 
-                        text-xs font-medium hover:bg-purple-700 focus:outline-none focus:ring-1 
-                        focus:ring-offset-1 focus:ring-purple-500 transition-all shadow-sm transform hover:scale-105">
-                        <span class="material-icons text-xs mr-1">bug_report</span>
-                        Test Add Payhead Modal
-                    </button>
-                </div>
-            </div>
-
             <!-- Loading State -->
             <div v-if="isLoading" class="bg-white rounded-lg shadow-sm flex justify-center items-center p-10">
                 <div class="flex flex-col items-center">
@@ -127,10 +98,28 @@
 
             <!-- Data Table Section -->
             <div v-else class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
-                <!-- Table Header (Only show item count here) -->
-                <div v-if="activeTab === 'payheads'" class="px-4 py-2 border-b bg-gray-50">
-                    <div class="text-xs text-gray-500">
-                        Showing {{ filteredPayHeads.length }} {{ filteredPayHeads.length === 1 ? 'item' : 'items' }}
+                <!-- Table Header -->
+                <div class="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
+                    <h2 class="text-base font-medium text-gray-900">
+                        {{ activeTab === 'payheads' ? 'Pay Heads' : 'Employees' }}
+                    </h2>
+                    <div class="flex items-center space-x-2">
+                        <div v-if="filteredPayHeads.length > 0 && activeTab === 'payheads'"
+                            class="text-xs text-gray-500">
+                            Showing {{ filteredPayHeads.length }} {{ filteredPayHeads.length === 1 ? 'item' : 'items' }}
+                        </div>
+                        <button v-if="activeTab === 'payheads'" @click="showAddModal = true" class="inline-flex items-center px-2 py-0.5 bg-blue-600 text-white rounded-sm 
+                     text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-1 
+                     focus:ring-offset-1 focus:ring-blue-500 transition-all shadow-sm transform hover:scale-105">
+                            <span class="material-icons text-xs mr-1">add</span>
+                            New Pay Head
+                        </button>
+                        <button v-if="activeTab === 'payheads'" @click="showRecurringDeductionModal = true" class="inline-flex items-center px-2 py-0.5 bg-green-600 text-white rounded-sm 
+                     text-xs font-medium hover:bg-green-700 focus:outline-none focus:ring-1 
+                     focus:ring-offset-1 focus:ring-green-500 transition-all shadow-sm transform hover:scale-105">
+                            <span class="material-icons text-xs mr-1">repeat</span>
+                            Add Recurring Deduction
+                        </button>
                     </div>
                 </div>
 
@@ -147,7 +136,7 @@
                     <div class="text-xs text-gray-700">
                         Showing <span class="font-medium">{{ ((currentPage - 1) * itemsPerPage) + 1 }}</span> to
                         <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, filteredEmployees.length)
-                        }}</span> of
+                            }}</span> of
                         <span class="font-medium">{{ filteredEmployees.length }}</span> entries
                     </div>
 
@@ -200,8 +189,8 @@
 
         <transition name="modal-fade">
             <RecurringDeductionModal v-if="showRecurringDeductionModal"
-                :availableDeductions="filteredPayHeads.filter(p => p.type === 'Deductions')" :employees="employees"
-                @close="showRecurringDeductionModal = false" @save="saveRecurringDeductions" />
+                :availableDeductions="filteredPayHeads.filter(p => p.type === 'Deductions' && p.isRecurring)"
+                :employees="employees" @close="showRecurringDeductionModal = false" @save="saveRecurringDeductions" />
         </transition>
 
         <!-- Toast Notifications -->
@@ -240,7 +229,8 @@
 
 <script>
 import axios from 'axios';
-import { BASE_API_URL } from '@/utils/constants.js';
+import { BASE_API_URL } from '@/utils/constants';
+import { useAuthStore } from '@/stores/auth.store.js';
 import PayHeadModal from './partials/payheads/PayHeadModal.vue';
 import PayHeadTable from './partials/payheads/PayHeadTable.vue';
 import EmployeePayrollTable from './partials/payheads/EmployeePayrollTable.vue';
@@ -291,13 +281,13 @@ export default {
             activeTab: 'payheads',
             currentPage: 1,
             itemsPerPage: 10,
-            isLoading: true, // Start with loading true to show loading state initially
+            isLoading: false,
         };
     },
 
     computed: {
         filteredPayHeads() {
-            let filtered = [...this.payHeads || []]; // Fallback to empty array
+            let filtered = [...this.payHeads];
             if (this.searchQuery) {
                 const query = this.searchQuery.toLowerCase();
                 filtered = filtered.filter(p =>
@@ -315,7 +305,7 @@ export default {
         },
 
         filteredEmployees() {
-            let filtered = [...this.employees || []]; // Fallback to empty array
+            let filtered = [...this.employees];
             if (this.searchQuery) {
                 const query = this.searchQuery.toLowerCase();
                 filtered = filtered.filter(e =>
@@ -325,9 +315,9 @@ export default {
             }
             if (this.filterType) {
                 filtered = filtered.filter(e => {
-                    const earnings = this.calculateEarnings(e.payheads || []);
-                    const deductions = this.calculateDeductions(e.payheads || []);
-                    const recurringDeductions = this.calculateRecurringDeductions(e.payheads || []);
+                    const earnings = this.calculateEarnings(e.payheads);
+                    const deductions = this.calculateDeductions(e.payheads);
+                    const recurringDeductions = this.calculateRecurringDeductions(e.payheads);
                     if (this.filterType === 'Earnings') return earnings > 0;
                     if (this.filterType === 'Deductions') return deductions > 0;
                     if (this.filterType === 'Recurring Deductions') return recurringDeductions > 0;
@@ -351,7 +341,6 @@ export default {
             const total = this.totalPages;
             const current = this.currentPage;
             const pages = [];
-
             if (total <= 7) {
                 for (let i = 1; i <= total; i++) pages.push(i);
             } else {
@@ -372,9 +361,9 @@ export default {
 
         totalPayableSalary() {
             if (!this.selectedEmployee) return 0;
-            const earnings = this.calculateEarnings(this.selectedEmployeePayheads || []);
-            const deductions = this.calculateDeductions(this.selectedEmployeePayheads || []);
-            const recurringDeductions = this.calculateRecurringDeductions(this.selectedEmployeePayheads || []);
+            const earnings = this.calculateEarnings(this.selectedEmployeePayheads);
+            const deductions = this.calculateDeductions(this.selectedEmployeePayheads);
+            const recurringDeductions = this.calculateRecurringDeductions(this.selectedEmployeePayheads);
             return (this.selectedEmployee.salary || 0) + earnings - deductions - recurringDeductions;
         },
     },
@@ -382,21 +371,29 @@ export default {
     methods: {
         async fetchPayHeads() {
             this.isLoading = true;
-            this.statusMessage = '';
+            const authStore = useAuthStore();
             try {
                 const response = await axios.get(`${BASE_API_URL}/api/payheads`, {
-                    headers: { 'user-role': 'admin' },
+                    headers: {
+                        'Authorization': `Bearer ${authStore.accessToken}`,
+                        'user-role': 'admin',
+                        'user-id': authStore.admin?.id || authStore.employee?.id, // Optional, based on backend needs
+                    },
                 });
-                this.payHeads = (response.data || []).map(item => ({
-                    ...item,
+                this.payHeads = response.data.map(item => ({
+                    _id: item._id,
+                    id: item.id,
+                    name: item.name,
                     amount: Number(item.amount || 0),
+                    type: item.type,
                     isRecurring: item.isRecurring || false,
                     appliedThisCycle: item.appliedThisCycle || false,
                 }));
-                this.showSuccessMessage('Pay heads loaded successfully!');
+                this.availablePayheads = [...this.payHeads];
+                console.log('Fetched payHeads:', this.payHeads);
             } catch (error) {
-                console.error('Error fetching pay heads:', error);
-                this.showErrorMessage('Failed to load pay heads. Please try again.');
+                console.error('Error fetching pay heads:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to load pay heads: ' + (error.response?.data?.message || error.message));
                 this.payHeads = [];
             } finally {
                 this.isLoading = false;
@@ -405,79 +402,98 @@ export default {
 
         async fetchEmployees() {
             this.isLoading = true;
-            this.statusMessage = '';
+            const authStore = useAuthStore();
+            console.log('Auth State:', {
+                token: authStore.accessToken,
+                role: authStore.userRole,
+                id: authStore.admin?.id || authStore.employee?.id,
+            });
             try {
                 const response = await axios.get(`${BASE_API_URL}/api/employees`, {
-                    headers: { 'user-role': 'admin' },
+                    headers: {
+                        'Authorization': `Bearer ${authStore.accessToken}`,
+                        'user-role': 'admin',
+                        'user-id': authStore.admin?.id || authStore.employee?.id,
+                    },
                 });
-
-                this.employees = (response.data || []).map(emp => ({
-                    ...emp,
-                    name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Unknown Employee',
-                    position: emp.position || 'N/A',
-                    salary: Number(emp.salary || 0),
-                    payheads: (emp.payheads || []).map(ph => ({
-                        ...ph,
-                        amount: Number(ph.amount || 0),
-                        isRecurring: ph.isRecurring || false,
-                        appliedThisCycle: ph.appliedThisCycle || false,
-                        uniqueId: ph.uniqueId || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    })),
-                    totalEarnings: this.calculateEarnings(emp.payheads || []),
-                    totalDeduction: this.calculateDeductions(emp.payheads || []),
-                    totalRecurringDeduction: this.calculateRecurringDeductions(emp.payheads || []),
-                    totalSalary: (Number(emp.salary || 0)) +
-                        this.calculateEarnings(emp.payheads || []) -
-                        this.calculateDeductions(emp.payheads || []) -
-                        this.calculateRecurringDeductions(emp.payheads || []),
-                }));
-                this.showSuccessMessage('Employees loaded successfully!');
+                this.employees = response.data
+                    .filter(emp => emp.status !== 'pending' && emp.status !== 'trashed') // Filter out pending and trashed
+                    .map(emp => {
+                        const payheads = (emp.payheads || []).map(ph => ({
+                            _id: ph._id,
+                            id: ph.id || -1,
+                            name: ph.name || 'Unknown',
+                            amount: Number(ph.amount || 0),
+                            type: ph.type || 'Earnings',
+                            isRecurring: ph.isRecurring || false,
+                            appliedThisCycle: ph.appliedThisCycle || false,
+                            uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        }));
+                        return {
+                            ...emp,
+                            name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Unknown Employee',
+                            position: emp.position || 'N/A',
+                            salary: Number(emp.salary || 0),
+                            payheads,
+                            totalEarnings: this.calculateEarnings(payheads),
+                            totalDeduction: this.calculateDeductions(payheads),
+                            totalRecurringDeduction: this.calculateRecurringDeductions(payheads),
+                            totalSalary: Number(emp.salary || 0) +
+                                this.calculateEarnings(payheads) -
+                                this.calculateDeductions(payheads) -
+                                this.calculateRecurringDeductions(payheads),
+                        };
+                    });
+                console.log('Fetched employees:', this.employees);
+                this.showSuccessMessage('Data loaded successfully!');
             } catch (error) {
-                console.error('Error fetching employees:', error);
-                this.showErrorMessage('Failed to load employees. Please try again.');
-                this.employees = []; // Reset to empty array on error
+                console.error('Error fetching employees:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to load employees: ' + (error.response?.data?.message || error.message));
+                this.employees = [];
             } finally {
                 this.isLoading = false;
             }
         },
 
         async initializeData() {
-            this.isLoading = true;
-            try {
-                await Promise.all([this.fetchPayHeads(), this.fetchEmployees()]);
-            } catch (error) {
-                console.error('Error initializing data:', error);
-            } finally {
-                this.isLoading = false;
-            }
+            await Promise.all([this.fetchPayHeads(), this.fetchEmployees()]);
         },
 
         async addPayHead(payHead) {
             try {
                 this.isLoading = true;
                 const payload = {
-                    ...payHead,
+                    name: payHead.name,
                     amount: Number(payHead.amount || 0),
-                    isRecurring: payHead.isRecurring || false,
-                    appliedThisCycle: false,
+                    type: payHead.type,
+                    isRecurring: payHead.isRecurring || false // Include isRecurring
                 };
                 const response = await axios.post(`${BASE_API_URL}/api/payheads`, payload, {
                     headers: { 'user-role': 'admin' },
                 });
-                this.payHeads.push({ ...response.data, amount: Number(response.data.amount || 0) });
+                this.payHeads.push({
+                    _id: response.data._id,
+                    id: response.data.id,
+                    name: response.data.name,
+                    amount: Number(response.data.amount),
+                    type: response.data.type,
+                    isRecurring: response.data.isRecurring || false,
+                    appliedThisCycle: false,
+                });
+                this.availablePayheads = [...this.payHeads];
                 this.showAddModal = false;
                 this.showSuccessMessage('Pay head added successfully!');
-                await this.fetchEmployees(); // Refresh employees to reflect changes
+                await this.fetchPayHeads();
             } catch (error) {
-                console.error('Error adding pay head:', error);
-                this.showErrorMessage('Failed to add pay head.');
+                console.error('Error adding pay head:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to add pay head: ' + (error.response?.data?.message || error.message));
             } finally {
                 this.isLoading = false;
             }
         },
 
         showUpdatePayHeadModal(payHead) {
-            this.selectedPayHead = { ...payHead, amount: Number(payHead.amount || 0) };
+            this.selectedPayHead = { ...payHead };
             this.showUpdateModal = true;
         },
 
@@ -485,10 +501,10 @@ export default {
             try {
                 this.isLoading = true;
                 const payload = {
-                    ...updatedPayHead,
+                    name: updatedPayHead.name,
                     amount: Number(updatedPayHead.amount || 0),
-                    isRecurring: updatedPayHead.isRecurring || false,
-                    appliedThisCycle: updatedPayHead.appliedThisCycle || false,
+                    type: updatedPayHead.type,
+                    isRecurring: updatedPayHead.isRecurring || false // Include isRecurring
                 };
                 const response = await axios.put(
                     `${BASE_API_URL}/api/payheads/${updatedPayHead.id}`,
@@ -497,14 +513,23 @@ export default {
                 );
                 const index = this.payHeads.findIndex(ph => ph.id === updatedPayHead.id);
                 if (index !== -1) {
-                    this.payHeads.splice(index, 1, { ...response.data, amount: Number(response.data.amount || 0) });
+                    this.payHeads[index] = {
+                        _id: response.data._id,
+                        id: response.data.id,
+                        name: response.data.name,
+                        amount: Number(response.data.amount),
+                        type: response.data.type,
+                        isRecurring: response.data.isRecurring || false,
+                        appliedThisCycle: false,
+                    };
+                    this.availablePayheads = [...this.payHeads];
                     this.showUpdateModal = false;
                     this.showSuccessMessage('Pay head updated successfully!');
-                    await this.fetchEmployees(); // Refresh employees to reflect changes
+                    await this.fetchEmployees();
                 }
             } catch (error) {
-                console.error('Error updating pay head:', error);
-                this.showErrorMessage('Failed to update pay head.');
+                console.error('Error updating pay head:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to update pay head: ' + (error.response?.data?.message || error.message));
             } finally {
                 this.isLoading = false;
             }
@@ -522,43 +547,34 @@ export default {
                 await axios.delete(`${BASE_API_URL}/api/payheads/${id}`, {
                     headers: { 'user-role': 'admin' },
                 });
-                this.payHeads = this.payHeads.filter(payHead => payHead.id !== id);
+                this.payHeads = this.payHeads.filter(ph => ph.id !== id);
+                this.availablePayheads = [...this.payHeads];
                 this.showSuccessMessage('Pay head deleted successfully!');
-                await this.fetchEmployees(); // Refresh employees to reflect changes
+                await this.fetchEmployees();
             } catch (error) {
-                console.error('Error deleting pay head:', error);
-                this.showErrorMessage('Failed to delete pay head.');
+                console.error('Error deleting pay head:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to delete pay head: ' + (error.response?.data?.message || error.message));
             } finally {
                 this.isLoading = false;
             }
         },
 
         openAddPayheadModal(employee) {
-            console.log('Opening AddPayheadModal for employee:', employee);
             this.selectedEmployee = { ...employee, salary: Number(employee.salary || 0) };
-            this.selectedEmployeePayheads = [...(employee.payheads || [])];
-            this.availablePayheads = [...this.payHeads];
+            this.selectedEmployeePayheads = [...employee.payheads];
             this.showAddPayheadModal = true;
-            console.log('showAddPayheadModal:', this.showAddPayheadModal);
-        },
-
-        testOpenAddPayheadModal() {
-            const employee = this.employees[0] || {
-                id: 'test-id',
-                name: 'Test Employee',
-                position: 'Developer',
-                salary: 50000,
-                payheads: [],
-            };
-            this.openAddPayheadModal(employee);
         },
 
         addPayheadToEmployee(payhead) {
             const newPayhead = {
-                ...payhead,
+                _id: payhead._id,
+                id: payhead.id,
+                name: payhead.name,
                 amount: Number(payhead.amount || 0),
+                type: payhead.type,
+                isRecurring: payhead.isRecurring || false,
+                appliedThisCycle: false,
                 uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                appliedThisCycle: payhead.isRecurring ? false : undefined,
             };
             this.selectedEmployeePayheads.push(newPayhead);
         },
@@ -574,62 +590,54 @@ export default {
                 p => p.uniqueId === updatedPayhead.uniqueId
             );
             if (index !== -1) {
-                this.selectedEmployeePayheads.splice(index, 1, {
+                this.selectedEmployeePayheads[index] = {
                     ...updatedPayhead,
                     amount: Number(updatedPayhead.amount || 0),
-                    appliedThisCycle: updatedPayhead.isRecurring ? updatedPayhead.appliedThisCycle : undefined,
-                });
+                };
             }
         },
 
         async savePayheads() {
             try {
                 this.isLoading = true;
-                const payheadsToSave = this.selectedEmployeePayheads.map(ph => ({
-                    _id: ph._id,
-                    id: ph.id,
-                    name: ph.name,
-                    amount: Number(ph.amount || 0),
-                    type: ph.type,
-                    isRecurring: ph.isRecurring || false,
-                    appliedThisCycle: ph.isRecurring ? ph.appliedThisCycle || false : undefined,
-                }));
-
-                const payheadsForBackend = payheadsToSave.map(ph => ph._id).filter(id => id); // Only send valid _ids
-
+                const authStore = useAuthStore();
+                const payheadsForBackend = this.selectedEmployeePayheads.map(ph => ph._id).filter(id => id);
                 const updatedEmployee = {
-                    ...this.selectedEmployee,
                     payheads: payheadsForBackend,
-                    totalEarnings: this.calculateEarnings(payheadsToSave),
-                    totalDeduction: this.calculateDeductions(payheadsToSave),
-                    totalRecurringDeduction: this.calculateRecurringDeductions(payheadsToSave),
-                    totalSalary: (Number(this.selectedEmployee.salary || 0)) +
-                        this.calculateEarnings(payheadsToSave) -
-                        this.calculateDeductions(payheadsToSave) -
-                        this.calculateRecurringDeductions(payheadsToSave),
+                    salary: Number(this.selectedEmployee.salary || 0) +
+                        this.calculateEarnings(this.selectedEmployeePayheads) -
+                        this.calculateDeductions(this.selectedEmployeePayheads) -
+                        this.calculateRecurringDeductions(this.selectedEmployeePayheads),
                 };
 
+                console.log('Saving payheads for employee:', this.selectedEmployee._id, updatedEmployee);
+
                 await axios.put(
-                    `${BASE_API_URL}/api/employees/${this.selectedEmployee.id}`,
+                    `${BASE_API_URL}/api/employees/update/${this.selectedEmployee._id}`,
                     updatedEmployee,
-                    { headers: { 'user-role': 'admin' } }
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${authStore.accessToken}`,
+                            'user-role': 'admin',
+                            'user-id': authStore.admin?.id || authStore.employee?.id,
+                        }
+                    }
                 );
 
-                const employeeIndex = this.employees.findIndex(
-                    e => e.id === this.selectedEmployee.id
-                );
+                const employeeIndex = this.employees.findIndex(e => e._id === this.selectedEmployee._id);
                 if (employeeIndex !== -1) {
-                    this.employees.splice(employeeIndex, 1, {
-                        ...updatedEmployee,
-                        payheads: payheadsToSave,
-                    });
+                    this.employees[employeeIndex] = {
+                        ...this.employees[employeeIndex],
+                        payheads: [...this.selectedEmployeePayheads],
+                        salary: updatedEmployee.salary,
+                    };
                 }
 
                 this.showAddPayheadModal = false;
                 this.showSuccessMessage('Payheads saved successfully!');
             } catch (error) {
-                console.error('Error saving payheads:', error);
-                this.showErrorMessage('Failed to save payheads.');
+                console.error('Error saving payheads:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to save payheads: ' + (error.response?.data?.message || error.message));
             } finally {
                 this.isLoading = false;
             }
@@ -638,24 +646,15 @@ export default {
         async saveRecurringDeductions(selectedDeductions, selectedEmployees) {
             try {
                 this.isLoading = true;
+                const authStore = useAuthStore();
                 for (const employee of selectedEmployees) {
-                    const existingPayheads = this.employees.find(e => e.id === employee.id)?.payheads || [];
+                    const existingPayheads = this.employees.find(e => e._id === employee._id)?.payheads || [];
                     const updatedPayheads = [...existingPayheads];
 
                     for (const deduction of selectedDeductions) {
-                        if (!updatedPayheads.some(ph => ph.id === deduction.id && ph.isRecurring)) {
-                            const payheadResponse = await axios.get(`${BASE_API_URL}/api/payheads`, {
-                                headers: { 'user-role': 'admin' },
-                                params: { id: deduction.id }
-                            });
-
-                            const payhead = payheadResponse.data.find(ph => ph.id === deduction.id);
-                            if (!payhead) {
-                                throw new Error(`Payhead with id ${deduction.id} not found`);
-                            }
-
+                        if (!updatedPayheads.some(ph => ph._id === deduction._id && ph.isRecurring)) {
                             updatedPayheads.push({
-                                _id: payhead._id,
+                                _id: deduction._id,
                                 id: deduction.id,
                                 name: deduction.name,
                                 amount: Number(deduction.amount || 0),
@@ -668,38 +667,43 @@ export default {
                     }
 
                     const payheadsForBackend = updatedPayheads.map(ph => ph._id).filter(id => id);
-
                     const updatedEmployee = {
-                        ...employee,
                         payheads: payheadsForBackend,
-                        totalEarnings: this.calculateEarnings(updatedPayheads),
-                        totalDeduction: this.calculateDeductions(updatedPayheads),
-                        totalRecurringDeduction: this.calculateRecurringDeductions(updatedPayheads),
-                        totalSalary: (Number(employee.salary || 0)) +
+                        salary: Number(employee.salary || 0) +
                             this.calculateEarnings(updatedPayheads) -
                             this.calculateDeductions(updatedPayheads) -
                             this.calculateRecurringDeductions(updatedPayheads),
                     };
 
+                    console.log('Saving recurring deductions for employee:', employee._id, updatedEmployee);
+
                     await axios.put(
-                        `${BASE_API_URL}/api/employees/${employee.id}`,
+                        `${BASE_API_URL}/api/employees/update/${employee._id}`,
                         updatedEmployee,
-                        { headers: { 'user-role': 'admin' } }
+                        {
+                            headers: {
+                                'Authorization': `Bearer ${authStore.accessToken}`,
+                                'user-role': 'admin',
+                                'user-id': authStore.admin?.id || authStore.employee?.id,
+                            }
+                        }
                     );
 
-                    const employeeIndex = this.employees.findIndex(e => e.id === employee.id);
+                    const employeeIndex = this.employees.findIndex(e => e._id === employee._id);
                     if (employeeIndex !== -1) {
-                        this.employees.splice(employeeIndex, 1, {
-                            ...updatedEmployee,
+                        this.employees[employeeIndex] = {
+                            ...this.employees[employeeIndex],
                             payheads: updatedPayheads,
-                        });
+                            salary: updatedEmployee.salary,
+                        };
                     }
                 }
                 this.showRecurringDeductionModal = false;
                 this.showSuccessMessage('Recurring deductions saved successfully!');
+                await this.fetchPayHeads();
             } catch (error) {
-                console.error('Error saving recurring deductions:', error);
-                this.showErrorMessage('Failed to save recurring deductions.');
+                console.error('Error saving recurring deductions:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to save recurring deductions: ' + (error.response?.data?.message || error.message));
             } finally {
                 this.isLoading = false;
             }
@@ -708,31 +712,27 @@ export default {
         calculateEarnings(payheads = []) {
             return payheads
                 .filter(p => p.type === 'Earnings')
-                .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
         },
 
         calculateDeductions(payheads = []) {
             return payheads
                 .filter(p => p.type === 'Deductions' && !p.isRecurring)
-                .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
         },
 
         calculateRecurringDeductions(payheads = []) {
             return payheads
                 .filter(p => p.isRecurring && !p.appliedThisCycle)
-                .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
         },
 
         prevPage() {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-            }
+            if (this.currentPage > 1) this.currentPage--;
         },
 
         nextPage() {
-            if (this.currentPage < this.totalPages) {
-                this.currentPage++;
-            }
+            if (this.currentPage < this.totalPages) this.currentPage++;
         },
 
         resetFilters() {
@@ -751,13 +751,9 @@ export default {
         },
 
         resetPayheadsCycle() {
-            this.payHeads = this.payHeads.map(ph => ({
-                ...ph,
-                appliedThisCycle: ph.isRecurring ? false : ph.appliedThisCycle,
-            }));
             this.employees = this.employees.map(emp => ({
                 ...emp,
-                payheads: (emp.payheads || []).map(ph => ({
+                payheads: emp.payheads.map(ph => ({
                     ...ph,
                     appliedThisCycle: ph.isRecurring ? false : ph.appliedThisCycle,
                 })),
@@ -766,14 +762,13 @@ export default {
     },
 
     created() {
-        this.initializeData(); // Use a single method to handle both fetches
+        this.initializeData();
         setInterval(() => this.resetPayheadsCycle(), 24 * 60 * 60 * 1000);
     },
 };
 </script>
 
 <style scoped>
-/* Modal animation */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
     transition: opacity 0.3s ease;
@@ -784,7 +779,6 @@ export default {
     opacity: 0;
 }
 
-/* Loader animation */
 .loader {
     border-top-color: #3b82f6;
     animation: spin 1s ease-in-out infinite;
@@ -796,7 +790,6 @@ export default {
     }
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
@@ -816,28 +809,8 @@ export default {
     background: #555;
 }
 
-/* Cross-browser scrollbar support */
 .scrollbar {
     scrollbar-width: thin;
     scrollbar-color: #888 #f1f1f1;
-}
-
-.scrollbar::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-}
-
-.scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 2px;
-}
-
-.scrollbar::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 2px;
-}
-
-.scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #555;
 }
 </style>

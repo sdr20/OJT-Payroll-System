@@ -18,6 +18,7 @@ const employeeSchema = new mongoose.Schema({
     middleName: { type: String, default: '' },
     lastName: { type: String, required: true },
     position: { type: String, required: true },
+    profilePicture: { type: String, default: null },
     positionHistory: [{
         position: { type: String, required: true },
         salary: { type: Number, required: true },
@@ -48,7 +49,7 @@ const employeeSchema = new mongoose.Schema({
         travelExpenses: { type: Number, default: 0 },
         otherEarnings: { type: Number, default: 0 },
     },
-    payheads: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Payhead' }],
+    payheads: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PayHead' }],
     commission: { type: Number, default: 0 },
     profitSharing: { type: Number, default: 0 },
     fees: { type: Number, default: 0 },

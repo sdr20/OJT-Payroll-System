@@ -2,6 +2,15 @@
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth.store.js';
 import { BASE_API_URL } from '@/utils/constants.js';
+import EmployeeDetailsModal from './partials/manage-employees/EmployeeDetailsModal.vue';
+import PendingRequestModal from './partials/manage-employees/PendingRequestModal.vue';
+import AddEmployeeModal from './partials/manage-employees/AddEmployeeModal.vue';
+import EditEmployeeModal from './partials/manage-employees/EditEmployeeModal.vue';
+import PositionModal from './partials/manage-employees/PositionModal.vue';
+import EditPositionModal from './partials/manage-employees/EditPositionModal.vue';
+import DeletePositionModal from './partials/manage-employees/DeletePositionModal.vue';
+import DeleteEmployeeModal from './partials/manage-employees/DeleteEmployeeModal.vue';
+import Modal from '@/components/Modal.vue';
 
 export default {
     data() {
@@ -59,6 +68,17 @@ export default {
             newPosition: { name: '', salary: 0 },
             editPositionData: { id: null, name: '', salary: 0 },
         };
+    },
+    components: {
+        EmployeeDetailsModal,
+        PendingRequestModal,
+        AddEmployeeModal,
+        EditEmployeeModal,
+        PositionModal,
+        EditPositionModal,
+        DeletePositionModal,
+        DeleteEmployeeModal,
+        Modal,
     },
     setup() {
         const authStore = useAuthStore();
@@ -167,9 +187,11 @@ export default {
                     .map(emp => ({
                         ...emp,
                         id: emp.id,
+                        _id: emp._id,
                         hourlyRate: emp.hourlyRate || (emp.salary / (8 * 22)),
                         empNo: emp.empNo || `EMP-${String(emp.id).padStart(4, '0')}`,
                         hireDate: new Date(emp.hireDate).toISOString().slice(0, 10),
+                        payheads: Array.isArray(emp.payheads) ? emp.payheads : [], // Ensure payheads is an array
                         positionHistory: Array.isArray(emp.positionHistory) ? emp.positionHistory : [{
                             position: emp.position || 'N/A',
                             salary: emp.salary || 0,
@@ -194,11 +216,8 @@ export default {
                         'user-role': this.authStore.userRole,
                     },
                 });
-                this.pendingRequests = (response.data || []).map(req => ({
-                    ...req,
-                    id: req._id, // Map _id to id for consistency
-                    _id: req._id,
-                }));
+                this.pendingRequests = (response.data || []).map(req => ({ ...req, _id: req._id }));
+                console.log('Pending Requests:', this.pendingRequests);
             } catch (error) {
                 console.error('Error fetching pending requests:', error);
                 this.showErrorMessage('Failed to load pending requests');
@@ -241,6 +260,7 @@ export default {
         },
 
         editEmployee(employee) {
+            console.log('Editing employee:', employee);
             this.selectedEmployee = {
                 ...employee,
                 hireDate: new Date(employee.hireDate).toISOString().slice(0, 10),
@@ -260,9 +280,14 @@ export default {
         },
 
         async updateEmployee() {
+            if (!this.selectedEmployee._id || typeof this.selectedEmployee._id !== 'string') {
+                this.showErrorMessage('Invalid employee _id');
+                return;
+            }
+
             const requiredFields = [
                 'empNo', 'firstName', 'lastName', 'position', 'salary',
-                'email', 'contactInfo', 'username' // Removed 'password'
+                'email', 'contactInfo', 'username'
             ];
 
             const missingFields = requiredFields.filter(field => {
@@ -282,10 +307,9 @@ export default {
                 return;
             }
 
-            // Rest of the method remains unchanged
             this.isUpdating = true;
             try {
-                const originalEmployee = this.employees.find(emp => emp.id === this.selectedEmployee.id);
+                const originalEmployee = this.employees.find(emp => emp._id === this.selectedEmployee._id);
                 const positionChanged = originalEmployee.position !== this.selectedEmployee.position;
 
                 if (positionChanged) {
@@ -306,9 +330,26 @@ export default {
                     this.selectedEmployee.positionHistory = updatedPositionHistory;
                 }
 
+                // Clean and validate payheads
+                const cleanedEmployee = { ...this.selectedEmployee };
+                if (!Array.isArray(cleanedEmployee.payheads)) {
+                    cleanedEmployee.payheads = [];
+                } else {
+                    cleanedEmployee.payheads = cleanedEmployee.payheads.filter(id => {
+                        const isValidObjectId = typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id);
+                        if (!isValidObjectId) {
+                            console.warn(`Invalid payhead ID filtered out: ${id}`);
+                        }
+                        return isValidObjectId;
+                    });
+                }
+
+                console.log('Cleaned employee data for update:', cleanedEmployee);
+                console.log('Payheads after cleaning:', cleanedEmployee.payheads);
+
                 const response = await axios.put(
-                    `${BASE_API_URL}/api/employees/${this.selectedEmployee._id}`,
-                    this.selectedEmployee,
+                    `${BASE_API_URL}/api/employees/update/${this.selectedEmployee._id}`,
+                    cleanedEmployee,
                     {
                         headers: {
                             Authorization: `Bearer ${this.authStore.accessToken}`,
@@ -318,8 +359,8 @@ export default {
                 );
 
                 if (response.status === 200) {
-                    const index = this.employees.findIndex(emp => emp.id === this.selectedEmployee.id);
-                    if (index !== -1) this.employees[index] = { ...this.selectedEmployee };
+                    const index = this.employees.findIndex(emp => emp._id === this.selectedEmployee._id);
+                    if (index !== -1) this.employees[index] = { ...cleanedEmployee };
                     this.showEditModal = false;
                     this.showSuccessMessage('Employee updated successfully');
                 }
@@ -339,14 +380,23 @@ export default {
         async moveToTrash(id) {
             this.isDeleting = true;
             try {
-                const response = await axios.delete(`${BASE_API_URL}/api/employees/${id}`, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 200 || response.status === 204) {
-                    this.employees = this.employees.filter(emp => emp.id !== id); // Filter by custom id
+                const employee = this.employees.find(emp => emp.id === id);
+                if (!employee || !employee._id) {
+                    this.showErrorMessage('Invalid employee _id');
+                    return;
+                }
+                const response = await axios.put(
+                    `${BASE_API_URL}/api/employees/${employee._id}/trash`,
+                    {},
+                    {
+                        headers: {
+                            Authorization: `Bearer ${this.authStore.accessToken}`,
+                            'user-role': this.authStore.userRole,
+                        },
+                    }
+                );
+                if (response.status === 200) {
+                    this.employees = this.employees.filter(emp => emp._id !== employee._id);
                     this.showDeleteModal = false;
                     this.showSuccessMessage('Employee moved to trash successfully');
                 }
@@ -361,31 +411,22 @@ export default {
         viewRequestInfo(request) {
             this.selectedRequest = {
                 ...request,
+                _id: request._id,
                 earnings: {
                     travelExpenses: request.earnings?.travelExpenses || 0,
                     otherEarnings: request.earnings?.otherEarnings || 0
                 },
-                hireDate: request.hireDate ? new Date(request.hireDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10) // Convert to "yyyy-MM-dd"
+                hireDate: request.hireDate ? new Date(request.hireDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
             };
             this.showRequestModal = true;
             this.isEditingRequest = false;
         },
 
         async saveRequestChanges() {
-            const requiredFields = [
-                'firstName', 'lastName', 'position', 'salary', 'email', 'contactInfo'
-            ];
-
+            const requiredFields = ['firstName', 'lastName', 'position', 'salary', 'email', 'contactInfo'];
             const missingFields = requiredFields.filter(field => {
                 const value = this.selectedRequest[field];
-                if (value === undefined || value === null) return true;
-                if (['firstName', 'lastName', 'position', 'email', 'contactInfo'].includes(field)) {
-                    return typeof value !== 'string' || value.trim() === '';
-                }
-                if (field === 'salary') {
-                    return typeof value !== 'number' || value < 0;
-                }
-                return false;
+                return value === undefined || value === null || (typeof value === 'string' && value.trim() === '') || (field === 'salary' && (typeof value !== 'number' || value < 0));
             });
 
             if (missingFields.length > 0) {
@@ -395,13 +436,9 @@ export default {
 
             this.isUpdating = true;
             try {
-                const updatedRequest = {
-                    ...this.selectedRequest,
-                    hireDate: this.selectedRequest.hireDate
-                };
-
+                const updatedRequest = { ...this.selectedRequest, hireDate: this.selectedRequest.hireDate };
                 const response = await axios.put(
-                    `${BASE_API_URL}/api/employees/pending-requests/${this.selectedRequest._id}`, // Updated endpoint
+                    `${BASE_API_URL}/api/employees/pending-requests/${this.selectedRequest._id}`,
                     updatedRequest,
                     {
                         headers: {
@@ -412,7 +449,7 @@ export default {
                 );
 
                 if (response.status === 200) {
-                    const index = this.pendingRequests.findIndex(req => req.id === this.selectedRequest.id);
+                    const index = this.pendingRequests.findIndex(req => req._id === this.selectedRequest._id);
                     if (index !== -1) this.pendingRequests[index] = { ...this.selectedRequest };
                     this.showSuccessMessage('Request updated successfully');
                     this.isEditingRequest = false;
@@ -434,7 +471,7 @@ export default {
                     empNo: request.empNo || `EMP-${Date.now()}`,
                 };
                 const response = await axios.put(
-                    `${BASE_API_URL}/api/employees/update/${request.id}`,
+                    `${BASE_API_URL}/api/employees/update/${request._id}`,
                     updatedEmployee,
                     {
                         headers: {
@@ -444,8 +481,7 @@ export default {
                     }
                 );
                 if (response.status === 200) {
-                    // Update local state directly (Options API)
-                    this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
+                    this.pendingRequests = this.pendingRequests.filter(req => req._id !== request._id); // Match _id
                     this.employees.push(response.data.updatedEmployee);
                     this.showRequestModal = false;
                     this.showSuccessMessage('Employee approved successfully');
@@ -456,16 +492,20 @@ export default {
             }
         },
 
-        async rejectRequest(id) {
+        async rejectRequest(_id) {
             try {
-                const response = await axios.delete(`${BASE_API_URL}/api/pending-requests/${id}`, {
-                    headers: {
-                        Authorization: `Bearer ${this.authStore.accessToken}`,
-                        'user-role': this.authStore.userRole,
-                    },
-                });
-                if (response.status === 200 || response.status === 204) {
-                    this.pendingRequests = this.pendingRequests.filter(req => req.id !== id);
+                const response = await axios.put(
+                    `${BASE_API_URL}/api/employees/pending-requests/${_id}/reject`,
+                    { status: 'rejected' },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${this.authStore.accessToken}`,
+                            'user-role': this.authStore.userRole,
+                        },
+                    }
+                );
+                if (response.status === 200) {
+                    this.pendingRequests = this.pendingRequests.filter(req => req._id !== _id);
                     this.showRequestModal = false;
                     this.showSuccessMessage('Application rejected successfully');
                 }
@@ -702,8 +742,8 @@ export default {
         </header>
 
         <!-- Main Content -->
-        <main class="flex-1 p-2">
-            <div class="max-w-screen-xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <main class="flex-1 py-2">
+            <div class="mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <!-- Employee List -->
                 <section class="lg:col-span-2 bg-white rounded-lg shadow-sm overflow-hidden">
                     <div class="p-4 flex justify-between items-center border-b border-gray-300">
@@ -822,7 +862,7 @@ export default {
                                     title="Approve">
                                     <span class="material-icons text-lg">check_circle</span>
                                 </button>
-                                <button @click="rejectRequest(request.id)"
+                                <button @click="rejectRequest(request._id)"
                                     class="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100"
                                     title="Reject">
                                     <span class="material-icons text-lg">cancel</span>
@@ -836,890 +876,24 @@ export default {
             </div>
         </main>
 
-        <!-- Employee Details Modal -->
-        <div v-if="showDetailsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
-                <!-- Header -->
-                <div
-                    class="p-4 border-b border-gray-300 flex justify-between items-center sticky top-0 bg-white rounded-t-lg">
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-800">Employee Profile</h2>
-                        <p class="text-xs text-gray-500 mt-0.5">Employee ID: {{ selectedEmployee.empNo }}</p>
-                    </div>
-                    <button @click="showDetailsModal = false"
-                        class="p-1 hover:bg-gray-100 rounded-full transition-colors">
-                        <span class="material-icons">close</span>
-                    </button>
-                </div>
-
-                <!-- Content -->
-                <div class="flex-1 overflow-y-auto p-4 space-y-6">
-                    <!-- Profile Header -->
-                    <div class="flex items-center space-x-4 pb-4 border-b border-gray-300">
-                        <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
-                            <span class="material-icons text-3xl text-indigo-600">account_circle</span>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-gray-900">
-                                {{ selectedEmployee.firstName }} {{ selectedEmployee.middleName }} {{
-                                selectedEmployee.lastName }}
-                            </h3>
-                            <p class="text-base text-indigo-600 font-medium">{{ selectedEmployee.position }}</p>
-                            <p class="text-sm text-gray-500 mt-0.5">Joined {{ new
-                                Date(selectedEmployee.hireDate).toLocaleDateString('en-US', {
-                                year: 'numeric', month:
-                                'long', day: 'numeric'
-                                }) }}</p>
-                        </div>
-                    </div>
-
-                    <!-- Grid Layout -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Personal Information Card -->
-                        <div
-                            class="bg-white rounded-lg shadow-sm border border-gray-300 p-4 hover:shadow-md transition-shadow">
-                            <div class="flex items-center mb-3">
-                                <span class="material-icons text-indigo-600 mr-1">person</span>
-                                <h4 class="text-base font-semibold text-gray-800">Personal Information</h4>
-                            </div>
-                            <dl class="grid grid-cols-1 gap-2">
-                                <div class="flex justify-between py-1 border-b border-gray-100">
-                                    <dt class="text-sm text-gray-500">Email</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ selectedEmployee.email }}</dd>
-                                </div>
-                                <div class="flex justify-between py-1 border-b border-gray-100">
-                                    <dt class="text-sm text-gray-500">Contact</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ selectedEmployee.contactInfo }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between py-1 border-b border-gray-100">
-                                    <dt class="text-sm text-gray-500">Civil Status</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ selectedEmployee.civilStatus }}
-                                    </dd>
-                                </div>
-                            </dl>
-                        </div>
-
-                        <!-- Financial Information Card -->
-                        <div
-                            class="bg-white rounded-lg shadow-sm border border-gray-300 p-4 hover:shadow-md transition-shadow">
-                            <div class="flex items-center mb-3">
-                                <span class="material-icons text-green-600 mr-1">payments</span>
-                                <h4 class="text-base font-semibold text-gray-800">Financial Information</h4>
-                            </div>
-                            <dl class="space-y-3">
-                                <div class="p-3 bg-green-50 rounded-md">
-                                    <dt class="text-xs text-green-600 mb-0.5">Net Salary</dt>
-                                    <dd class="text-xl font-bold text-green-700">₱{{
-                                        calculateNetSalary(selectedEmployee).toLocaleString() }}</dd>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="p-2 bg-gray-50 rounded-md">
-                                        <dt class="text-xs text-gray-500 mb-0.5">Monthly Salary</dt>
-                                        <dd class="text-base font-semibold text-gray-900">₱{{
-                                            selectedEmployee.salary?.toLocaleString() }}</dd>
-                                    </div>
-                                    <div class="p-2 bg-gray-50 rounded-md">
-                                        <dt class="text-xs text-gray-500 mb-0.5">Hourly Rate</dt>
-                                        <dd class="text-base font-semibold text-gray-900">₱{{
-                                            selectedEmployee.hourlyRate?.toLocaleString() }}</dd>
-                                    </div>
-                                </div>
-                            </dl>
-                        </div>
-
-                        <!-- Government IDs Card -->
-                        <div
-                            class="bg-white rounded-lg shadow-sm border border-gray-300 p-4 hover:shadow-md transition-shadow">
-                            <div class="flex items-center mb-3">
-                                <span class="material-icons text-blue-600 mr-1">badge</span>
-                                <h4 class="text-base font-semibold text-gray-800">Government IDs</h4>
-                            </div>
-                            <dl class="grid grid-cols-1 gap-2">
-                                <div class="flex justify-between py-1 border-b border-gray-100">
-                                    <dt class="text-sm text-gray-500">SSS</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ selectedEmployee.sss }}</dd>
-                                </div>
-                                <div class="flex justify-between py-1 border-b border-gray-100">
-                                    <dt class="text-sm text-gray-500">PhilHealth</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ selectedEmployee.philhealth }}</dd>
-                                </div>
-                                <div class="flex justify-between py-1 border-b border-gray-100">
-                                    <dt class="text-sm text-gray-500">Pag-IBIG</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ selectedEmployee.pagibig }}</dd>
-                                </div>
-                                <div class="flex justify-between py-1 border-b border-gray-100">
-                                    <dt class="text-sm text-gray-500">TIN</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ selectedEmployee.tin }}</dd>
-                                </div>
-                            </dl>
-                        </div>
-
-                        <!-- Position History Card -->
-                        <div
-                            class="bg-white rounded-lg shadow-sm border-gray-300 p-4 hover:shadow-md transition-shadow">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center">
-                                    <span class="material-icons text-purple-600 mr-1">history</span>
-                                    <h4 class="text-base font-semibold text-gray-800">Position History</h4>
-                                </div>
-                            </div>
-                            <div class="space-y-3">
-                                <div v-for="(history, index) in sortedPositionHistory" :key="index"
-                                    class="p-3 rounded-md"
-                                    :class="!history.endDate ? 'bg-purple-50 border border-purple-100' : 'bg-gray-50'">
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <p class="font-medium text-sm text-gray-900">{{ history.position }}</p>
-                                            <p class="text-xs text-gray-500">₱{{ history.salary.toLocaleString()
-                                                }}/month</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-xs text-gray-500">{{ new
-                                                Date(history.startDate).toLocaleDateString() }}</p>
-                                            <p class="text-xs"
-                                                :class="history.endDate ? 'text-gray-500' : 'text-purple-600 font-medium'">
-                                                {{ history.endDate ? new Date(history.endDate).toLocaleDateString() :
-                                                'Current' }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="p-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-2 sticky bottom-0">
-                    <button @click="editEmployee(selectedEmployee)"
-                        class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-1">
-                        <span class="material-icons">edit</span>
-                        Edit Profile
-                    </button>
-                    <button @click="showDetailsModal = false"
-                        class="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pending Request Details Modal -->
-        <div v-if="showRequestModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
-                <div class="p-4 border-b border-gray-300">
-                    <h2 class="text-lg font-semibold text-gray-800">Pending Request Details - {{
-                        selectedRequest.firstName }} {{ selectedRequest.lastName }}</h2>
-                </div>
-                <div class="p-4">
-                    <div class="space-y-4">
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">ID *</label>
-                                    <input v-model.number="selectedRequest.id" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required min="1" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Employee Number *</label>
-                                    <input v-model="selectedRequest.empNo"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">First Name *</label>
-                                    <input v-model="selectedRequest.firstName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Middle Name</label>
-                                    <input v-model="selectedRequest.middleName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Last Name *</label>
-                                    <input v-model="selectedRequest.lastName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Email *</label>
-                                    <input v-model="selectedRequest.email" type="email"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Contact Number *</label>
-                                    <input v-model="selectedRequest.contactInfo"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required pattern="\d{11}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Civil Status *</label>
-                                    <select v-model="selectedRequest.civilStatus"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required>
-                                        <option value="Single">Single</option>
-                                        <option value="Married">Married</option>
-                                        <option value="Divorced">Divorced</option>
-                                        <option value="Widowed">Widowed</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Employment Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Position *</label>
-                                    <select v-model="selectedRequest.position"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required>
-                                        <option v-for="position in adminPositions" :key="position.name"
-                                            :value="position.name">{{ position.name }}</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Hire Date *</label>
-                                    <input v-model="selectedRequest.hireDate" type="date"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">SSS ID</label>
-                                    <input v-model="selectedRequest.sss"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{10}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">PhilHealth ID</label>
-                                    <input v-model="selectedRequest.philhealth"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{12}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Pag-IBIG ID</label>
-                                    <input v-model="selectedRequest.pagibig"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{12}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">TIN</label>
-                                    <input v-model="selectedRequest.tin"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{9,12}" />
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Financial Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Monthly Salary *</label>
-                                    <input v-model.number="selectedRequest.salary" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Hourly Rate</label>
-                                    <input :value="selectedRequest.hourlyRate.toLocaleString()" type="text"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Travel Expenses</label>
-                                    <input v-model.number="selectedRequest.earnings.travelExpenses" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Other Earnings</label>
-                                    <input v-model.number="selectedRequest.earnings.otherEarnings" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">SSS Contribution</label>
-                                    <input :value="calculateSSSContribution(selectedRequest.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">PhilHealth Contribution</label>
-                                    <input
-                                        :value="calculatePhilHealthContribution(selectedRequest.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Pag-IBIG Contribution</label>
-                                    <input
-                                        :value="calculatePagIBIGContribution(selectedRequest.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Withholding Tax</label>
-                                    <input :value="calculateWithholdingTax(selectedRequest.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-4 p-3 bg-gray-50 rounded-md">
-                            <div class="flex justify-between items-center text-sm">
-                                <span class="font-medium text-gray-700">Net Salary Preview:</span>
-                                <span class="font-semibold text-gray-900">₱{{
-                                    calculateRequestNetSalary(selectedRequest).toLocaleString() }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-2">
-                    <button @click="saveRequestChanges"
-                        class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1"
-                        :disabled="isEditingRequest">
-                        <span class="material-icons">save</span>
-                        {{ isEditingRequest ? 'Saving...' : 'Save Changes' }}
-                    </button>
-                    <button @click="approveRequest(selectedRequest)"
-                        class="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
-                        :disabled="isEditingRequest">
-                        <span class="material-icons">check_circle</span>
-                        Approve
-                    </button>
-                    <button @click="rejectRequest(selectedRequest.id)"
-                        class="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-800 transition-colors flex items-center gap-1"
-                        :disabled="isEditingRequest">
-                        <span class="material-icons">cancel</span>
-                        Reject
-                    </button>
-                    <button @click="showRequestModal = false"
-                        class="px-3 py-1.5 border text-sm rounded-md text-gray-700 hover:bg-gray-100">Close</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add Employee Modal -->
-        <div v-if="showAddModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
-                <div class="p-4 border-b border-gray-300">
-                    <h2 class="text-lg font-semibold text-gray-800">Add New Employee</h2>
-                </div>
-                <div class="p-4">
-                    <div class="space-y-4">
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">ID *</label>
-                                    <input v-model.number="newEmployee.id" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required min="1" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Employee Number *</label>
-                                    <input v-model="newEmployee.empNo"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">First Name *</label>
-                                    <input v-model="newEmployee.firstName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Middle Name</label>
-                                    <input v-model="newEmployee.middleName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Last Name *</label>
-                                    <input v-model="newEmployee.lastName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Email *</label>
-                                    <input v-model="newEmployee.email" type="email"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Contact Number *</label>
-                                    <input v-model="newEmployee.contactInfo"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required pattern="\d{11}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Civil Status *</label>
-                                    <select v-model="newEmployee.civilStatus"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required>
-                                        <option value="Single">Single</option>
-                                        <option value="Married">Married</option>
-                                        <option value="Divorced">Divorced</option>
-                                        <option value="Widowed">Widowed</option>
-                                    </select>
-                                </div>
-                                <!-- Add Username and Password Fields -->
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Username *</label>
-                                    <input v-model="newEmployee.username"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Password *</label>
-                                    <input v-model="newEmployee.password" type="password"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Rest of the modal remains unchanged -->
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Employment Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Position *</label>
-                                    <select v-model="newEmployee.position" @change="updateSalaryFromPosition"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required>
-                                        <option v-for="position in adminPositions" :key="position.name"
-                                            :value="position.name">{{ position.name }}</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Hire Date *</label>
-                                    <input v-model="newEmployee.hireDate" type="date"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">SSS ID</label>
-                                    <input v-model="newEmployee.sss"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{10}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">PhilHealth ID</label>
-                                    <input v-model="newEmployee.philhealth"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{12}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Pag-IBIG ID</label>
-                                    <input v-model="newEmployee.pagibig"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{12}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">TIN</label>
-                                    <input v-model="newEmployee.tin"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{9,12}" />
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Financial Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Monthly Salary *</label>
-                                    <input v-model.number="newEmployee.salary" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Hourly Rate</label>
-                                    <input :value="newEmployee.hourlyRate.toLocaleString()" type="text"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Travel Expenses</label>
-                                    <input v-model.number="newEmployee.earnings.travelExpenses" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Other Earnings</label>
-                                    <input v-model.number="newEmployee.earnings.otherEarnings" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">SSS Contribution</label>
-                                    <input :value="calculateSSSContribution(newEmployee.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">PhilHealth Contribution</label>
-                                    <input :value="calculatePhilHealthContribution(newEmployee.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Pag-IBIG Contribution</label>
-                                    <input :value="calculatePagIBIGContribution(newEmployee.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Withholding Tax</label>
-                                    <input :value="calculateWithholdingTax(newEmployee.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-4 p-3 bg-gray-50 rounded-md">
-                            <div class="flex justify-between items-center text-sm">
-                                <span class="font-medium text-gray-700">Net Salary Preview:</span>
-                                <span class="font-semibold text-gray-900">₱{{
-                                    calculateNewEmployeeNetSalary().toLocaleString() }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-2">
-                    <button @click="addEmployee"
-                        class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
-                        :disabled="isAdding">
-                        {{ isAdding ? 'Adding...' : 'Add' }}
-                    </button>
-                    <button @click="showAddModal = false"
-                        class="px-3 py-1.5 border border-gray-300 text-sm rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <div v-if="showEditModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
-                <div class="p-4 border-b border-gray-300">
-                    <h2 class="text-lg font-semibold text-gray-800">Edit Employee - {{ selectedEmployee.firstName }} {{
-                        selectedEmployee.lastName }}</h2>
-                </div>
-                <div class="p-4">
-                    <div class="space-y-4">
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Personal Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">ID *</label>
-                                    <input v-model.number="selectedEmployee.id" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required min="1" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Employee Number *</label>
-                                    <input v-model="selectedEmployee.empNo"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">First Name *</label>
-                                    <input v-model="selectedEmployee.firstName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Middle Name</label>
-                                    <input v-model="selectedEmployee.middleName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Last Name *</label>
-                                    <input v-model="selectedEmployee.lastName"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Email *</label>
-                                    <input v-model="selectedEmployee.email" type="email"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Contact Number *</label>
-                                    <input v-model="selectedEmployee.contactInfo"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required pattern="\d{11}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Civil Status *</label>
-                                    <select v-model="selectedEmployee.civilStatus"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required>
-                                        <option value="Single">Single</option>
-                                        <option value="Married">Married</option>
-                                        <option value="Divorced">Divorced</option>
-                                        <option value="Widowed">Widowed</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Employment Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Position *</label>
-                                    <select v-model="selectedEmployee.position" @change="updateSalaryFromPositionEdit"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required>
-                                        <option v-for="position in adminPositions" :key="position.name"
-                                            :value="position.name">{{ position.name }}</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Hire Date *</label>
-                                    <input v-model="selectedEmployee.hireDate" type="date"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">SSS ID</label>
-                                    <input v-model="selectedEmployee.sss"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{10}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">PhilHealth ID</label>
-                                    <input v-model="selectedEmployee.philhealth"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{12}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Pag-IBIG ID</label>
-                                    <input v-model="selectedEmployee.pagibig"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{12}" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">TIN</label>
-                                    <input v-model="selectedEmployee.tin"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        pattern="\d{9,12}" />
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-800 mb-2">Financial Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Monthly Salary *</label>
-                                    <input v-model.number="selectedEmployee.salary" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        required min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Hourly Rate</label>
-                                    <input :value="selectedEmployee.hourlyRate.toLocaleString()" type="text"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Travel Expenses</label>
-                                    <input v-model.number="selectedEmployee.earnings.travelExpenses" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Other Earnings</label>
-                                    <input v-model.number="selectedEmployee.earnings.otherEarnings" type="number"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                        min="0" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">SSS Contribution</label>
-                                    <input :value="calculateSSSContribution(selectedEmployee.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">PhilHealth Contribution</label>
-                                    <input
-                                        :value="calculatePhilHealthContribution(selectedEmployee.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Pag-IBIG Contribution</label>
-                                    <input
-                                        :value="calculatePagIBIGContribution(selectedEmployee.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-600">Withholding Tax</label>
-                                    <input :value="calculateWithholdingTax(selectedEmployee.salary).toLocaleString()"
-                                        class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
-                                        disabled />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-4 p-3 bg-gray-50 rounded-md">
-                            <div class="flex justify-between items-center text-sm">
-                                <span class="font-medium text-gray-700">Net Salary Preview:</span>
-                                <span class="font-semibold text-gray-900">₱{{
-                                    calculateNetSalary(selectedEmployee).toLocaleString() }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-2">
-                    <button @click="updateEmployee"
-                        class="px-3 py-1.5 bg-yellow-600 text-white text-sm rounded-md hover:bg-yellow-700"
-                        :disabled="isUpdating">
-                        {{ isUpdating ? 'Updating...' : 'Update' }}
-                    </button>
-                    <button @click="showEditModal = false"
-                        class="px-3 py-1.5 border border-gray-300 text-sm rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <div v-if="showPositionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-                <div class="p-4 border-b border-gray-300">
-                    <h2 class="text-lg font-semibold text-gray-800">Manage Positions</h2>
-                </div>
-                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-4">
-                        <h3 class="text-base font-semibold text-gray-800">Create Position</h3>
-                        <div class="space-y-2">
-                            <div class="space-y-1">
-                                <label class="text-xs font-medium text-gray-600">Position Name *</label>
-                                <input v-model="newPosition.name"
-                                    class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                    required />
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-medium text-gray-600">Monthly Salary *</label>
-                                <input v-model.number="newPosition.salary" type="number"
-                                    class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                                    required min="0" />
-                            </div>
-                            <button @click="createPosition"
-                                class="w-full px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-                                :disabled="isAddingPosition">
-                                {{ isAddingPosition ? 'Creating...' : 'Create' }}
-                            </button>
-                        </div>
-                    </div>
-                    <div class="space-y-4">
-                        <h3 class="text-base font-semibold text-gray-800">Available Positions</h3>
-                        <div v-if="adminPositions.length === 0" class="text-gray-500 text-sm text-center">
-                            No positions
-                        </div>
-                        <div v-else class="space-y-2 max-h-[50vh] overflow-y-auto">
-                            <div v-for="position in adminPositions" :key="position.id"
-                                class="p-3 bg-gray-50 rounded-md flex justify-between items-center">
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">{{ position.name }}</p>
-                                    <p class="text-xs text-gray-600">₱{{ position.salary.toLocaleString() }}</p>
-                                </div>
-                                <div class="flex gap-1">
-                                    <button @click="editPosition(position)"
-                                        class="text-yellow-600 hover:text-yellow-800 p-1 rounded-full hover:bg-yellow-100">
-                                        <span class="material-icons text-lg">edit</span>
-                                    </button>
-                                    <button @click="confirmDeletePosition(position)"
-                                        class="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100">
-                                        <span class="material-icons text-lg">delete</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-4 border-t border-gray-300 bg-gray-50 flex justify-end">
-                    <button @click="showPositionModal = false"
-                        class="px-3 py-1.5 border border-gray-300 text-sm rounded-md text-gray-700 hover:bg-gray-100">Close</button>
-                </div>
-            </div>
-        </div>
-
-        <div v-if="showEditPositionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
-                <div class="p-4 border-b border-gray-300">
-                    <h2 class="text-lg font-semibold text-gray-800">Edit Position</h2>
-                </div>
-                <div class="p-4 space-y-3">
-                    <div class="space-y-1">
-                        <label class="text-xs font-medium text-gray-600">Position Name *</label>
-                        <input v-model="editPositionData.name"
-                            class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                            required />
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-xs font-medium text-gray-600">Monthly Salary *</label>
-                        <input v-model.number="editPositionData.salary" type="number"
-                            class="w-full p-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500"
-                            required min="0" />
-                    </div>
-                </div>
-                <div class="p-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-2">
-                    <button @click="updatePosition"
-                        class="px-3 py-1.5 bg-yellow-600 text-white text-sm rounded-md hover:bg-yellow-700"
-                        :disabled="isUpdatingPosition">
-                        {{ isUpdatingPosition ? 'Updating...' : 'Update' }}
-                    </button>
-                    <button @click="showEditPositionModal = false"
-                        class="px-3 py-1.5 border border-gray-300 text-sm rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Delete Position Confirmation Modal -->
-        <div v-if="showDeletePositionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
-                <div class="p-4 border-b border-gray-300">
-                    <h2 class="text-lg font-semibold text-gray-800">Confirm Delete</h2>
-                </div>
-                <div class="p-4">
-                    <p class="text-sm text-gray-700">Delete <strong>{{ selectedPosition.name }}</strong>?</p>
-                </div>
-                <div class="p-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-2">
-                    <button @click="deletePosition"
-                        class="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
-                        :disabled="isDeletingPosition">
-                        {{ isDeletingPosition ? 'Deleting...' : 'Delete' }}
-                    </button>
-                    <button @click="showDeletePositionModal = false"
-                        class="px-3 py-1.5 border border-gray-300 text-sm rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Delete Employee Confirmation Modal -->
-        <div v-if="showDeleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
-                <div class="p-4 border-b border-gray-300">
-                    <h2 class="text-lg font-semibold text-gray-800">Confirm Move to Trash</h2>
-                </div>
-                <div class="p-4">
-                    <p class="text-sm text-gray-700">Move {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName
-                        }} to trash? This can be restored later.</p>
-                </div>
-                <div class="p-2 border-t border-gray-300 flex justify-end gap-2">
-                    <button @click="moveToTrash(selectedEmployee.id)"
-                        class="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
-                        :disabled="isDeleting">
-                        {{ isDeleting ? 'Moving...' : 'Move to Trash' }}
-                    </button>
-                    <button @click="showDeleteModal = false"
-                        class="px-3 py-1.5 border border-gray-300 text-sm rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
-                </div>
-            </div>
-        </div>
+        <EmployeeDetailsModal :show="showDetailsModal" :employee="selectedEmployee" @close="showDetailsModal = false"
+            @edit="editEmployee" />
+        <PendingRequestModal :show="showRequestModal" :request="selectedRequest" :positions="adminPositions"
+            @close="showRequestModal = false" @save="saveRequestChanges" @approve="approveRequest"
+            @reject="rejectRequest" />
+        <AddEmployeeModal :show="showAddModal" :employee="newEmployee" :positions="adminPositions"
+            @close="showAddModal = false" @add-success="handleAddSuccess" />
+        <EditEmployeeModal :show="showEditModal" :employee="selectedEmployee" :positions="adminPositions"
+            @close="showEditModal = false" @update="updateEmployee" />
+        <PositionModal :show="showPositionModal" :positions="adminPositions" :newPosition="newPosition"
+            @close="showPositionModal = false" @create="createPosition" @edit="editPosition"
+            @delete="confirmDeletePosition" />
+        <EditPositionModal :show="showEditPositionModal" :position="editPositionData"
+            @close="showEditPositionModal = false" @update="updatePosition" />
+        <DeletePositionModal :show="showDeletePositionModal" :position="selectedPosition"
+            @close="showDeletePositionModal = false" @delete="deletePosition" />
+        <DeleteEmployeeModal :show="showDeleteModal" :employee="selectedEmployee" @close="showDeleteModal = false"
+            @delete="moveToTrash" />
 
         <!-- Status Toast -->
         <div v-if="statusMessage" :class="statusMessage.includes('successfully') ? 'bg-green-500' : 'bg-red-500'"

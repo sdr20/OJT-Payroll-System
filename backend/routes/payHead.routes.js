@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const PayHead = require('../models/payHead.model.js');
 
 const isAdmin = (req, res, next) => {
@@ -15,10 +16,17 @@ const isAdmin = (req, res, next) => {
 router.get('/', isAdmin, async (req, res) => {
     try {
         const payheads = await PayHead.find().sort({ id: 1 });
-        console.log('Fetched pay heads:', payheads.length);
+        if (!payheads || payheads.length === 0) {
+            console.log('No payheads found in database');
+            return res.status(200).json([]);
+        }
+        console.log('Fetched pay heads:', payheads);
         res.status(200).json(payheads);
     } catch (error) {
-        console.error('Error fetching pay heads:', error);
+        console.error('Error fetching pay heads:', {
+            message: error.message,
+            stack: error.stack,
+        });
         res.status(500).json({ error: 'Failed to fetch pay heads', message: error.message });
     }
 });
@@ -38,7 +46,11 @@ router.post('/', isAdmin, async (req, res) => {
         const maxIdPayhead = await PayHead.findOne().sort({ id: -1 }).select('id');
         const newId = maxIdPayhead ? maxIdPayhead.id + 1 : 1;
 
-        const payhead = new PayHead({ ...req.body, id: newId });
+        const payhead = new PayHead({
+            ...req.body,
+            id: newId,
+            isRecurring: req.body.isRecurring || false // Ensure isRecurring is set
+        });
         await payhead.save();
         console.log('Saved pay head:', payhead);
         res.status(201).json(payhead);
@@ -59,7 +71,7 @@ router.put('/:id', isAdmin, async (req, res) => {
     try {
         const payhead = await PayHead.findOneAndUpdate(
             { id: parseInt(req.params.id) },
-            req.body,
+            { ...req.body, isRecurring: req.body.isRecurring || false }, // Ensure isRecurring is updated
             { new: true, runValidators: true }
         );
         if (!payhead) {
