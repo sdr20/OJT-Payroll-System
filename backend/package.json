@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "main": "server.js",
   "type": "commonjs",
-  "scripts": {
-    "dev": "nodemon --env-file=.env server.js",
-    "start": "node --env-file=.env server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "seed": "node -r dotenv/config seeders/employeeSeeder.js && node -r dotenv/config seeders/positionSeeder.js && node -r dotenv/config seeders/adminSeeder.js"
-  },
+ "scripts": {
+  "dev": "nodemon server.js",
+  "start": "node server.js",
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "seed": "node -r dotenv/config seeders/employeeSeeder.js && node -r dotenv/config seeders/positionSeeder.js && node -r dotenv/config seeders/adminSeeder.js"
+},
+
   "keywords": [],
   "author": "",
   "license": "ISC",
