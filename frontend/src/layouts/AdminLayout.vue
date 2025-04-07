@@ -3,7 +3,7 @@ import { useRouter, useRoute } from 'vue-router';
 import Dropdown from '@/components/Dropdown.vue';
 import DropdownLink from '@/components/DropdownLink.vue';
 import { useAuthStore } from '@/stores/auth.store.js';
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -36,35 +36,35 @@ const getLinkIcon = (name) => {
         'Salary Slips': 'receipt',
         'Manage Pay Heads': 'attach_money',
         'Leave Management': 'event_available',
-        'Trash': 'delete_sweep',
+        'Trash': 'delete_sweep'
     }[name] || 'widgets';
 };
 
-const isSidebarMinimized = ref(false);
-const isMobile = ref(window.innerWidth < 640); // 640px as mobile breakpoint (Tailwind's sm:)
+// Initialize sidebar state from localStorage, only use screen size as fallback for first-time load
+const isSidebarMinimized = ref(() => {
+    const savedState = localStorage.getItem('sidebarMinimized');
+    if (savedState !== null) {
+        return savedState === 'true';
+    }
+    // First-time load: minimize on mobile, expand on desktop
+    return window.innerWidth < 640;
+});
 
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
+    localStorage.setItem('sidebarMinimized', isSidebarMinimized.value);
 };
 
-// Update isMobile when window resizes
-const checkScreenSize = () => {
-    isMobile.value = window.innerWidth < 640;
-};
-
-// Watch for mobile state changes and auto-toggle sidebar
-watch(isMobile, (newValue) => {
-    if (newValue) {
-        isSidebarMinimized.value = true; // Minimize on mobile
-    } else {
-        isSidebarMinimized.value = false; // Expand on wide screens
-    }
-});
-
-// Set up initial state and resize listener
 onMounted(() => {
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
+    // Ensure the state is synced with localStorage on mount
+    const savedState = localStorage.getItem('sidebarMinimized');
+    if (savedState !== null) {
+        isSidebarMinimized.value = savedState === 'true';
+    } else {
+        // First load: set initial state based on screen size and save it
+        isSidebarMinimized.value = window.innerWidth < 640;
+        localStorage.setItem('sidebarMinimized', isSidebarMinimized.value);
+    }
 });
 </script>
 
@@ -108,12 +108,13 @@ onMounted(() => {
                 'fixed top-0 left-0 h-full bg-white shadow-sm border-r border-gray-100 overflow-y-auto transition-all duration-300 z-20',
                 isSidebarMinimized ? 'w-16' : 'w-72'
             ]">
-                <nav class="pt-20 pb-4 px-2">
+                <nav class="pt-24 pb-4 px-2"> <!-- Changed from pt-20 to pt-24 -->
                     <button @click="toggleSidebar" class="w-full flex justify-end px-2 mb-4">
                         <span class="material-icons text-gray-600 hover:text-blue-700">
                             {{ isSidebarMinimized ? 'chevron_right' : 'chevron_left' }}
                         </span>
                     </button>
+                    <div class="border-b border-gray-200 mb-4" :class="{ 'hidden': isSidebarMinimized }"></div>
                     <div class="space-y-1">
                         <router-link v-for="link in navigationLinks" :key="link.path" :to="link.path"
                             class="flex items-center px-3 py-3 rounded-xl text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-all group"
