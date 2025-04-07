@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { Schema, model } = mongoose;
+const bcrypt = require('bcrypt'); // Add bcrypt for password hashing
 
 const USERNAME_INVALID_CHARACTERS = ' ?;:,.`\'"(){}[]|\\/';
 
@@ -47,4 +48,46 @@ const adminSchema = new Schema({
     resetTokenExpires: { type: Date }
 });
 
-module.exports = model('Admin', adminSchema);
+// Pre-save hook to hash password
+adminSchema.pre('save', async function (next) {
+    if (this.isModified('password')) {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+    }
+    next();
+});
+
+// Define the Admin model
+const Admin = mongoose.models.Admin || model('Admin', adminSchema);
+
+// Create static admin account
+const createStaticAdminAccount = async () => {
+    try {
+        const staticAdmin = {
+            name: 'Administrator',
+            username: 'admin',
+            email: 'admin@example.com',
+            password: 'admin123', // Plain text, will be hashed by pre-save hook
+            role: 'admin'
+        };
+
+        const adminExists = await Admin.findOne({ email: staticAdmin.email });
+
+        if (!adminExists) {
+            const newAdmin = new Admin(staticAdmin);
+            await newAdmin.save();
+            console.log('Static admin account created successfully.');
+        } else {
+            console.log('Static admin account already exists.');
+        }
+    } catch (err) {
+        console.error('Error creating static admin account:', err);
+    }
+};
+
+// Run static admin creation when the database connection opens
+mongoose.connection.once('open', () => {
+    createStaticAdminAccount();
+});
+
+module.exports = Admin;

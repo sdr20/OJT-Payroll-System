@@ -49,9 +49,9 @@ const toggleSidebar = () => {
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col bg-slate-50">
+    <div class="min-h-screen flex flex-col bg-slate-50 relative z-0">
         <header
-            class="sticky top-0 z-[1000] backdrop-blur-sm bg-gradient-to-r from-blue-700/95 to-indigo-700/95 text-white shadow-lg">
+            class="sticky top-0 z-20 backdrop-blur-sm bg-gradient-to-r from-blue-700/95 to-indigo-700/95 text-white shadow-lg">
             <div class="mx-auto px-2 sm:px-10 py-2 sm:py-3 flex justify-between items-center">
                 <div class="flex items-center gap-4">
                     <button @click="toggleSidebar" class="md:hidden p-2 cursor-pointer hover:bg-white/20 flex items-center rounded-lg">
@@ -95,7 +95,7 @@ const toggleSidebar = () => {
             <aside :class="[
                 'fixed top-[4rem] left-0 h-[calc(100vh-4rem)] bg-white shadow-sm border-r border-gray-100 overflow-y-auto transition-all duration-300',
                 'xl:w-72 lg:w-72 md:w-72 w-0 xl:static lg:static md:static',
-                { 'w-64 z-50': isSidebarOpen }
+                { 'w-64 z-30': isSidebarOpen }
             ]">
                 <nav class="py-8 px-2 md:px-4">
                     <div class="space-y-1">
@@ -126,10 +126,10 @@ const toggleSidebar = () => {
                 </nav>
             </aside>
 
-            <div v-if="isSidebarOpen" @click="isSidebarOpen = false" class="md:hidden fixed inset-0 bg-black/50 z-40">
+            <div v-if="isSidebarOpen" @click="isSidebarOpen = false" class="md:hidden fixed inset-0 bg-black/50 z-10">
             </div>
 
-            <main class="flex-1 overflow-auto bg-slate-50 px-6 py-4">
+            <main class="flex-1 overflow-auto bg-slate-50 px-6 py-4 z-0">
                 <router-view v-slot="{ Component }">
                     <transition name="fade" mode="out-in">
                         <component :is="Component" />
