@@ -13,14 +13,14 @@ import {
     calculatePagIBIGContribution,
     calculateWithholdingTax,
 } from '@/utils/calculations.js';
-import EmployeeDetailsModal from './partials/manage-employees/EmployeeDetailsModal.vue';
-import PendingRequestModal from './partials/manage-employees/PendingRequestModal.vue';
-import AddEmployeeModal from './partials/manage-employees/AddEmployeeModal.vue';
-import EditEmployeeModal from './partials/manage-employees/EditEmployeeModal.vue';
-import PositionModal from './partials/manage-employees/PositionModal.vue';
-import EditPositionModal from './partials/manage-employees/EditPositionModal.vue';
-import DeletePositionModal from './partials/manage-employees/DeletePositionModal.vue';
-import DeleteEmployeeModal from './partials/manage-employees/DeleteEmployeeModal.vue';
+import EmployeeDetailsModal from './partials/EmployeeDetailsModal.vue';
+import PendingRequestModal from './partials/PendingRequestModal.vue';
+import AddEmployeeModal from './partials/AddEmployeeModal.vue';
+import EditEmployeeModal from './partials/EditEmployeeModal.vue';
+import PositionModal from './partials/PositionModal.vue';
+import EditPositionModal from './partials/EditPositionModal.vue';
+import DeletePositionModal from './partials/DeletePositionModal.vue';
+import DeleteEmployeeModal from './partials/DeleteEmployeeModal.vue';
 import Modal from '@/components/Modal.vue';
 
 export default {
@@ -389,7 +389,7 @@ export default {
 <template>
     <div class="min-h-screen bg-gray-50 flex flex-col">
         <!-- Header -->
-        <header class="bg-white shadow-sm p-3 flex justify-between items-center sticky top-0 z-40 rounded-lg">
+        <header class="bg-white shadow-sm p-3 flex justify-between items-center sticky top-0 z-20 rounded-lg">
             <h1 class="text-lg font-bold text-gray-800">Employee Management</h1>
             <div class="flex items-center gap-3">
                 <input v-model="searchQuery" type="text" placeholder="Search employees..."
