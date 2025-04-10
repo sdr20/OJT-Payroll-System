@@ -212,7 +212,7 @@
                                                     leave-to="opacity-0"
                                                 >
                                                     <div
-                                                        v-for="period in selectedPeriods"
+                                                        v-for="(period, index) in selectedPeriods"
                                                         :key="period.start.toISOString()"
                                                         class="flex items-center justify-between rounded-lg bg-white p-2 md:p-3 shadow-sm hover:bg-gray-50 text-sm"
                                                     >
@@ -220,7 +220,7 @@
                                                             {{ formatDate(period.start) }} - {{ formatDate(period.end) }}
                                                         </span>
                                                         <button
-                                                            @click="toggleDate(period.start)"
+                                                            @click="removePeriod(index)"
                                                             class="rounded-full p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                                         >
                                                             <XMarkIcon class="h-4 w-4" />
@@ -374,13 +374,27 @@ const calendarDays = computed(() => {
 })
 
 const selectedPeriods = computed(() => {
-    return selectedDates.value
-        .sort((a, b) => a - b)
-        .map(date => {
-            const endDate = new Date(date)
-            endDate.setDate(endDate.getDate() + 13)
-            return { start: new Date(date), end: endDate }
-        })
+    const periods = []
+    const sortedDates = [...selectedDates.value].sort((a, b) => a - b)
+
+    for (let i = 0; i < sortedDates.length; i++) {
+        const start = new Date(sortedDates[i])
+        let end
+
+        // If this is the last date, set the end date 14 days from the start
+        if (i === sortedDates.length - 1) {
+            end = new Date(start)
+            end.setDate(start.getDate() + 13)
+        } else {
+            // Otherwise, the end date is the day before the next start date
+            end = new Date(sortedDates[i + 1])
+            end.setDate(end.getDate() - 1)
+        }
+
+        periods.push({ start, end })
+    }
+
+    return periods
 })
 
 // Methods
@@ -402,15 +416,51 @@ const isSelectedPeriod = (date) => {
     return selectedDates.value.some(d => d.toDateString() === date.toDateString())
 }
 
-const toggleDate = (date) => {
-    if (!isPayrollDay(date)) return
-    const dateString = date.toDateString()
-    const index = selectedDates.value.findIndex(d => d.toDateString() === dateString)
-    if (index === -1) {
-        selectedDates.value.push(new Date(date))
+const toggleDate = (selectedDate) => {
+    if (!isPayrollDay(selectedDate)) return
+
+    const dateString = selectedDate.toDateString()
+    const isAlreadySelected = selectedDates.value.some(d => d.toDateString() === dateString)
+
+    if (isAlreadySelected) {
+        // If the date is already selected, remove it and all dates after it
+        const index = selectedDates.value.findIndex(d => d.toDateString() === dateString)
+        selectedDates.value.splice(index, selectedDates.value.length - index)
     } else {
-        selectedDates.value.splice(index, 1)
+        // Clear previous selections
+        selectedDates.value = []
+
+        // Determine the range from currentDate to selectedDate
+        const start = new Date(Math.min(currentDate.value.getTime(), selectedDate.getTime()))
+        const end = new Date(Math.max(currentDate.value.getTime(), selectedDate.getTime()))
+
+        // Iterate through each month in the range
+        let current = new Date(start.getFullYear(), start.getMonth(), 1)
+        while (current <= end) {
+            // Check the 15th of the month
+            const midMonth = new Date(current.getFullYear(), current.getMonth(), 15)
+            if (midMonth >= start && midMonth <= end && isPayrollDay(midMonth)) {
+                selectedDates.value.push(new Date(midMonth))
+            }
+
+            // Check the last day of the month
+            const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0)
+            if (lastDay >= start && lastDay <= end && isPayrollDay(lastDay)) {
+                selectedDates.value.push(new Date(lastDay))
+            }
+
+            // Move to the next month
+            current.setMonth(current.getMonth() + 1)
+        }
+
+        // Sort dates in ascending order
+        selectedDates.value.sort((a, b) => a - b)
     }
+}
+
+const removePeriod = (index) => {
+    // Remove the period by removing the corresponding start date from selectedDates
+    selectedDates.value.splice(index, 1)
 }
 
 const formatDate = (date) => {
