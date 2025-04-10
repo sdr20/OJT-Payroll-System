@@ -1,7 +1,6 @@
 <template>
-    <TransitionRoot appear show as="template">
+    <TransitionRoot appear :show="true" as="template">
         <Dialog as="div" @close="$emit('close')" class="relative z-50">
-            <!-- Background overlay (unchanged) -->
             <TransitionChild
                 enter="ease-out duration-300"
                 enter-from="opacity-0"
@@ -13,9 +12,8 @@
                 <div class="fixed inset-0 bg-gray-900/75 backdrop-blur-sm" />
             </TransitionChild>
 
-            <!-- Modal content (unchanged structure) -->
             <div class="fixed inset-0 overflow-y-auto">
-                <div class="flex min-h-full items-center justify-center p-4 text-center">
+                <div class="flex min-h-full items-center justify-center p-4">
                     <TransitionChild
                         enter="ease-out duration-300"
                         enter-from="opacity-0 scale-95"
@@ -24,61 +22,176 @@
                         leave-from="opacity-100 scale-100"
                         leave-to="opacity-0 scale-95"
                     >
-                        <DialogPanel class="w-full max-w-5xl transform rounded-2xl bg-white shadow-2xl transition-all flex">
-                            <!-- Left Panel (unchanged) -->
+                        <DialogPanel class="w-full max-w-5xl rounded-2xl bg-white shadow-2xl flex">
+                            <!-- Left Panel -->
                             <div class="w-1/2 p-6 border-r border-gray-200">
-                                <!-- ... (previous left panel content remains unchanged) ... -->
+                                <div class="flex items-center justify-between border-b border-gray-200 pb-4">
+                                    <DialogTitle class="text-2xl font-semibold text-gray-800">
+                                        Assign Recurring Deductions
+                                    </DialogTitle>
+                                    <button
+                                        @click="$emit('close')"
+                                        class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    >
+                                        <XMarkIcon class="h-6 w-6" />
+                                    </button>
+                                </div>
+
+                                <div class="mt-6 grid grid-cols-2 gap-6">
+                                    <!-- Deductions -->
+                                    <div class="space-y-4">
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-lg font-medium text-gray-900">Deductions</h3>
+                                            <span class="text-sm text-gray-500">
+                                                {{ selectedDeductions.length }} selected
+                                            </span>
+                                        </div>
+                                        <div class="relative">
+                                            <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                            <input
+                                                v-model="deductionSearch"
+                                                type="text"
+                                                placeholder="Search deductions..."
+                                                class="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                        <div class="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-2">
+                                            <TransitionGroup
+                                                enter="transition-all ease-out duration-200"
+                                                enter-from="opacity-0 -translate-y-2"
+                                                enter-to="opacity-100 translate-y-0"
+                                                leave="transition-all ease-in duration-150"
+                                                leave-from="opacity-100"
+                                                leave-to="opacity-0"
+                                            >
+                                                <div
+                                                    v-for="deduction in filteredDeductions"
+                                                    :key="deduction.id"
+                                                    class="flex items-center p-3 rounded-lg bg-gray-50 hover:bg-blue-50 group"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        :id="'deduction-' + deduction.id"
+                                                        v-model="selectedDeductions"
+                                                        :value="deduction"
+                                                        class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3"
+                                                    />
+                                                    <label :for="'deduction-' + deduction.id" class="flex-1 cursor-pointer">
+                                                        <span class="block text-sm font-medium text-gray-900">
+                                                            {{ deduction.name }}
+                                                        </span>
+                                                        <span class="text-sm text-gray-500">
+                                                            ₱{{ deduction.amount.toLocaleString() }}
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            </TransitionGroup>
+                                        </div>
+                                    </div>
+
+                                    <!-- Employees -->
+                                    <div class="space-y-4">
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-lg font-medium text-gray-900">Employees</h3>
+                                            <span class="text-sm text-gray-500">
+                                                {{ selectedEmployees.length }} selected
+                                            </span>
+                                        </div>
+                                        <div class="relative">
+                                            <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                            <input
+                                                v-model="employeeSearch"
+                                                type="text"
+                                                placeholder="Search employees..."
+                                                class="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                        <div class="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-2">
+                                            <TransitionGroup
+                                                enter="transition-all ease-out duration-200"
+                                                enter-from="opacity-0 -translate-y-2"
+                                                enter-to="opacity-100 translate-y-0"
+                                                leave="transition-all ease-in duration-150"
+                                                leave-from="opacity-100"
+                                                leave-to="opacity-0"
+                                            >
+                                                <div
+                                                    v-for="employee in filteredEmployees"
+                                                    :key="employee.id"
+                                                    class="flex items-center p-3 rounded-lg bg-gray-50 hover:bg-blue-50 group"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        :id="'employee-' + employee.id"
+                                                        v-model="selectedEmployees"
+                                                        :value="employee"
+                                                        class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3"
+                                                    />
+                                                    <label :for="'employee-' + employee.id" class="flex-1 cursor-pointer">
+                                                        <span class="block text-sm font-medium text-gray-900">
+                                                            {{ employee.name }}
+                                                        </span>
+                                                        <span class="text-sm text-gray-500">
+                                                            {{ employee.position }}
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            </TransitionGroup>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Right Panel: Schedule Details -->
+                            <!-- Right Panel -->
                             <div class="w-1/2 p-6 flex flex-col">
-                                <div class="space-y-4 flex-grow">
-                                    <h3 class="text-lg font-medium text-gray-900">Schedule Details</h3>
-                                    <p class="text-sm text-gray-600">Select bi-weekly payroll periods</p>
+                                <div class="space-y-6 flex-grow">
+                                    <div>
+                                        <h3 class="text-lg font-medium text-gray-900">Schedule Details</h3>
+                                        <p class="text-sm text-gray-600">Select bi-weekly payroll periods (15th or last day of month)</p>
+                                    </div>
                                     
                                     <div class="grid grid-cols-2 gap-6">
-                                        <!-- Calendar with highlights -->
                                         <div class="rounded-lg bg-white p-4 shadow-sm">
-                                            <div class="flex items-center justify-between">
+                                            <div class="flex items-center justify-between mb-4">
                                                 <button
                                                     @click="prevMonth"
-                                                    class="rounded-full p-1 hover:bg-gray-100"
+                                                    class="rounded-full p-1 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                                 >
                                                     <ChevronLeftIcon class="h-5 w-5 text-gray-600" />
                                                 </button>
-                                                <span class="text-sm font-medium text-gray-900">
+                                                <span class="text-sm font-semibold text-gray-900">
                                                     {{ currentMonthYear }}
                                                 </span>
                                                 <button
                                                     @click="nextMonth"
-                                                    class="rounded-full p-1 hover:bg-gray-100"
+                                                    class="rounded-full p-1 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                                 >
                                                     <ChevronLeftIcon class="h-5 w-5 text-gray-600 rotate-180" />
                                                 </button>
                                             </div>
 
-                                            <div class="mt-4 grid grid-cols-7 gap-1">
+                                            <div class="grid grid-cols-7 gap-1 text-center">
                                                 <div
                                                     v-for="day in ['S', 'M', 'T', 'W', 'T', 'F', 'S']"
                                                     :key="day"
-                                                    class="text-center text-xs font-medium text-gray-500"
+                                                    class="text-xs font-medium text-gray-600 pb-2"
                                                 >
                                                     {{ day }}
                                                 </div>
                                                 <button
                                                     v-for="day in calendarDays"
-                                                    :key="day.date"
+                                                    :key="day.date.toISOString()"
                                                     @click="toggleDate(day.date)"
                                                     :disabled="!isPayrollDay(day.date)"
-                                                    class="relative aspect-square rounded-full text-sm flex items-center justify-center"
+                                                    class="relative aspect-square rounded-full text-sm flex items-center justify-center m-0.5"
                                                     :class="[
                                                         isSelectedPeriod(day.date)
-                                                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                            ? 'bg-blue-600 text-white hover:bg-blue-700 font-medium'
                                                             : [
                                                                 isPayrollDay(day.date)
-                                                                    ? 'bg-green-100 text-gray-700 hover:bg-green-200 cursor-pointer'
-                                                                    : 'bg-red-100 text-gray-700 hover:bg-red-200 cursor-not-allowed',
-                                                                !day.isCurrentMonth && 'opacity-50'
+                                                                    ? 'bg-green-100 text-gray-800 hover:bg-green-200 cursor-pointer'
+                                                                    : 'bg-red-100 text-gray-600 hover:bg-red-200 cursor-not-allowed',
+                                                                !day.isCurrentMonth && 'opacity-60'
                                                             ]
                                                     ]"
                                                 >
@@ -87,10 +200,9 @@
                                             </div>
                                         </div>
 
-                                        <!-- Selected Periods (unchanged) -->
                                         <div class="space-y-3">
                                             <h4 class="text-sm font-medium text-gray-700">Selected Periods</h4>
-                                            <div class="max-h-[200px] space-y-2 overflow-y-auto">
+                                            <div class="max-h-[200px] overflow-y-auto space-y-2">
                                                 <TransitionGroup
                                                     enter="transition-all ease-out duration-200"
                                                     enter-from="opacity-0 -translate-y-2"
@@ -102,16 +214,16 @@
                                                     <div
                                                         v-for="period in selectedPeriods"
                                                         :key="period.start.toISOString()"
-                                                        class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm"
+                                                        class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm hover:bg-gray-50"
                                                     >
                                                         <span class="text-sm text-gray-900">
                                                             {{ formatDate(period.start) }} - {{ formatDate(period.end) }}
                                                         </span>
                                                         <button
                                                             @click="toggleDate(period.start)"
-                                                            class="text-gray-400 hover:text-gray-600"
+                                                            class="rounded-full p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                                         >
-                                                            <XMarkIcon class="h-5 w-5" />
+                                                            <XMarkIcon class="h-4 w-4" />
                                                         </button>
                                                     </div>
                                                 </TransitionGroup>
@@ -120,7 +232,7 @@
                                                     class="rounded-lg border-2 border-dashed border-gray-200 p-4 text-center"
                                                 >
                                                     <p class="text-sm text-gray-500">
-                                                        No periods selected. Click on a payroll date to select a period.
+                                                        No periods selected. Click green dates to select payroll periods.
                                                     </p>
                                                 </div>
                                             </div>
@@ -128,22 +240,21 @@
                                     </div>
                                 </div>
 
-                                <!-- Footer Actions (unchanged) -->
-                                <div class="mt-8 flex items-center justify-end space-x-4">
+                                <div class="mt-6 flex items-center justify-end space-x-3">
                                     <button
                                         @click="$emit('close')"
-                                        class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400/50"
+                                        class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400/50"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         @click="saveChanges"
                                         :disabled="!isValid"
+                                        class="rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-all focus:outline-none"
                                         :class="[
-                                            'rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all',
                                             isValid
-                                                ? 'hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50'
-                                                : 'cursor-not-allowed opacity-50',
+                                                ? 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/50'
+                                                : 'bg-blue-400 cursor-not-allowed'
                                         ]"
                                     >
                                         Save Changes
@@ -170,19 +281,20 @@ import {
 import {
     XMarkIcon,
     ChevronLeftIcon,
-    CheckIcon,
     MagnifyingGlassIcon,
-} from '@heroicons/vue/24/outline/index.js'
+} from '@heroicons/vue/24/outline'
 
 // Props
 const props = defineProps({
     availableDeductions: {
         type: Array,
         required: true,
+        default: () => []
     },
     employees: {
         type: Array,
         required: true,
+        default: () => []
     },
 })
 
@@ -192,14 +304,14 @@ const emit = defineEmits(['close', 'save'])
 // State
 const selectedDeductions = ref([])
 const selectedEmployees = ref([])
-const currentDate = ref(new Date('2025-04-07'))  // Updated to current date
+const currentDate = ref(new Date()) // Use current date
 const selectedDates = ref([])
 
 // Search filters
 const deductionSearch = ref('')
 const employeeSearch = ref('')
 
-// Computed
+// Computed Properties
 const isValid = computed(() => {
     return (
         selectedDeductions.value.length > 0 &&
@@ -209,16 +321,14 @@ const isValid = computed(() => {
 })
 
 const filteredDeductions = computed(() => {
-    if (!deductionSearch.value) return props.availableDeductions
-    const search = deductionSearch.value.toLowerCase()
+    const search = deductionSearch.value.toLowerCase().trim()
     return props.availableDeductions.filter(deduction =>
         deduction.name.toLowerCase().includes(search)
     )
 })
 
 const filteredEmployees = computed(() => {
-    if (!employeeSearch.value) return props.employees
-    const search = employeeSearch.value.toLowerCase()
+    const search = employeeSearch.value.toLowerCase().trim()
     return props.employees.filter(employee =>
         employee.name.toLowerCase().includes(search) ||
         employee.position.toLowerCase().includes(search)
@@ -234,78 +344,71 @@ const currentMonthYear = computed(() => {
 
 const calendarDays = computed(() => {
     const days = []
-    const firstDayOfMonth = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1)
-    const lastDayOfMonth = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 0)
+    const year = currentDate.value.getFullYear()
+    const month = currentDate.value.getMonth()
+    const firstDayOfMonth = new Date(year, month, 1)
+    const lastDayOfMonth = new Date(year, month + 1, 0)
     const startDay = firstDayOfMonth.getDay()
 
-    // Add previous month days
+    // Previous month days
     for (let i = startDay - 1; i >= 0; i--) {
         const date = new Date(firstDayOfMonth)
-        date.setDate(date.getDate() - (i + 1))
+        date.setDate(firstDayOfMonth.getDate() - (i + 1))
         days.push({ date, isCurrentMonth: false })
     }
 
-    // Add current month days
+    // Current month days
     for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
         days.push({
-            date: new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), i),
+            date: new Date(year, month, i),
             isCurrentMonth: true
         })
+    }
+
+    // Next month days to fill grid
+    const totalDays = days.length
+    const remainingDays = 42 - totalDays // Ensure 6 rows
+    for (let i = 1; i <= remainingDays; i++) {
+        const date = new Date(year, month + 1, i)
+        days.push({ date, isCurrentMonth: false })
     }
 
     return days
 })
 
 const selectedPeriods = computed(() => {
-    const periods = []
-    selectedDates.value.sort((a, b) => a - b)
-    selectedDates.value.forEach(date => {
-        if (isPayrollDay(date)) {
+    return selectedDates.value
+        .sort((a, b) => a - b)
+        .map(date => {
             const endDate = new Date(date)
-            endDate.setDate(endDate.getDate() + 14)
-            periods.push({ start: date, end: endDate })
-        }
-    })
-    return periods
+            endDate.setDate(endDate.getDate() + 13) // 14-day period
+            return { start: new Date(date), end: endDate }
+        })
 })
 
 // Methods
 const prevMonth = () => {
-    currentDate.value = new Date(
-        currentDate.value.getFullYear(),
-        currentDate.value.getMonth() - 1,
-        1
-    )
+    currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() - 1, 1)
 }
 
 const nextMonth = () => {
-    currentDate.value = new Date(
-        currentDate.value.getFullYear(),
-        currentDate.value.getMonth() + 1,
-        1
-    )
+    currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 1)
 }
 
 const isPayrollDay = (date) => {
     const day = date.getDate()
-    return (
-        day === 15 ||
-        day === new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
-    )
+    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+    return day === 15 || day === lastDay
 }
 
 const isSelectedPeriod = (date) => {
-    return selectedDates.value.some(
-        (d) => d.toDateString() === date.toDateString()
-    )
+    return selectedDates.value.some(d => d.toDateString() === date.toDateString())
 }
 
 const toggleDate = (date) => {
     if (!isPayrollDay(date)) return
     const dateString = date.toDateString()
-    const index = selectedDates.value.findIndex(
-        (d) => d.toDateString() === dateString
-    )
+    const index = selectedDates.value.findIndex(d => d.toDateString() === dateString)
     if (index === -1) {
         selectedDates.value.push(new Date(date))
     } else {
@@ -315,13 +418,14 @@ const toggleDate = (date) => {
 
 const formatDate = (date) => {
     return date.toLocaleDateString('default', {
-        month: 'long',
+        month: 'short',
         day: 'numeric',
         year: 'numeric',
     })
 }
 
 const saveChanges = () => {
+    if (!isValid.value) return
     emit('save', {
         deductions: selectedDeductions.value,
         employees: selectedEmployees.value,
@@ -332,7 +436,6 @@ const saveChanges = () => {
 </script>
 
 <style scoped>
-/* Scrollbar styling */
 ::-webkit-scrollbar {
     @apply w-2;
 }
@@ -342,11 +445,6 @@ const saveChanges = () => {
 }
 
 ::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-gray-300 hover:bg-gray-400;
-}
-
-/* Ensure smooth transitions */
-.transition-all {
-    @apply duration-200 ease-in-out;
+    @apply rounded-full bg-gray-400 hover:bg-gray-500;
 }
 </style>
