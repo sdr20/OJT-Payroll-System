@@ -22,11 +22,11 @@
                         leave-from="opacity-100 scale-100"
                         leave-to="opacity-0 scale-95"
                     >
-                        <DialogPanel class="w-full max-w-5xl rounded-2xl bg-white shadow-2xl flex">
+                        <DialogPanel class="w-full max-w-5xl rounded-2xl bg-white shadow-2xl flex flex-col md:flex-row">
                             <!-- Left Panel -->
-                            <div class="w-1/2 p-6 border-r border-gray-200">
+                            <div class="w-full md:w-1/2 p-4 md:p-6 md:border-r border-gray-200">
                                 <div class="flex items-center justify-between border-b border-gray-200 pb-4">
-                                    <DialogTitle class="text-2xl font-semibold text-gray-800">
+                                    <DialogTitle class="text-xl md:text-2xl font-semibold text-gray-800">
                                         Assign Recurring Deductions
                                     </DialogTitle>
                                     <button
@@ -37,11 +37,11 @@
                                     </button>
                                 </div>
 
-                                <div class="mt-6 grid grid-cols-2 gap-6">
+                                <div class="mt-4 md:mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                     <!-- Deductions -->
                                     <div class="space-y-4">
                                         <div class="flex items-center justify-between">
-                                            <h3 class="text-lg font-medium text-gray-900">Deductions</h3>
+                                            <h3 class="text-base md:text-lg font-medium text-gray-900">Deductions</h3>
                                             <span class="text-sm text-gray-500">
                                                 {{ selectedDeductions.length }} selected
                                             </span>
@@ -55,7 +55,7 @@
                                                 class="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                             />
                                         </div>
-                                        <div class="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-2">
+                                        <div class="max-h-[200px] md:max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-2">
                                             <TransitionGroup
                                                 enter="transition-all ease-out duration-200"
                                                 enter-from="opacity-0 -translate-y-2"
@@ -67,7 +67,7 @@
                                                 <div
                                                     v-for="deduction in filteredDeductions"
                                                     :key="deduction.id"
-                                                    class="flex items-center p-3 rounded-lg bg-gray-50 hover:bg-blue-50 group"
+                                                    class="flex items-center p-2 md:p-3 rounded-lg bg-gray-50 hover:bg-blue-50 group"
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -92,7 +92,7 @@
                                     <!-- Employees -->
                                     <div class="space-y-4">
                                         <div class="flex items-center justify-between">
-                                            <h3 class="text-lg font-medium text-gray-900">Employees</h3>
+                                            <h3 class="text-base md:text-lg font-medium text-gray-900">Employees</h3>
                                             <span class="text-sm text-gray-500">
                                                 {{ selectedEmployees.length }} selected
                                             </span>
@@ -106,7 +106,7 @@
                                                 class="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                             />
                                         </div>
-                                        <div class="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-2">
+                                        <div class="max-h-[200px] md:max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-2">
                                             <TransitionGroup
                                                 enter="transition-all ease-out duration-200"
                                                 enter-from="opacity-0 -translate-y-2"
@@ -118,7 +118,7 @@
                                                 <div
                                                     v-for="employee in filteredEmployees"
                                                     :key="employee.id"
-                                                    class="flex items-center p-3 rounded-lg bg-gray-50 hover:bg-blue-50 group"
+                                                    class="flex items-center p-2 md:p-3 rounded-lg bg-gray-50 hover:bg-blue-50 group"
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -143,16 +143,16 @@
                             </div>
 
                             <!-- Right Panel -->
-                            <div class="w-1/2 p-6 flex flex-col">
-                                <div class="space-y-6 flex-grow">
+                            <div class="w-full md:w-1/2 p-4 md:p-6 flex flex-col">
+                                <div class="space-y-4 flex-grow">
                                     <div>
-                                        <h3 class="text-lg font-medium text-gray-900">Schedule Details</h3>
-                                        <p class="text-sm text-gray-600">Select bi-weekly payroll periods (15th or last day of month)</p>
+                                        <h3 class="text-base md:text-lg font-medium text-gray-900">Schedule Details</h3>
+                                        <p class="text-sm text-gray-600">Select bi-weekly payroll periods (15th or last day)</p>
                                     </div>
                                     
-                                    <div class="grid grid-cols-2 gap-6">
-                                        <div class="rounded-lg bg-white p-4 shadow-sm">
-                                            <div class="flex items-center justify-between mb-4">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                        <div class="rounded-lg bg-white p-3 md:p-4 shadow-sm">
+                                            <div class="flex items-center justify-between mb-3 md:mb-4">
                                                 <button
                                                     @click="prevMonth"
                                                     class="rounded-full p-1 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
@@ -170,11 +170,11 @@
                                                 </button>
                                             </div>
 
-                                            <div class="grid grid-cols-7 gap-1 text-center">
+                                            <div class="grid grid-cols-7 gap-0.5 md:gap-1 text-center">
                                                 <div
                                                     v-for="day in ['S', 'M', 'T', 'W', 'T', 'F', 'S']"
                                                     :key="day"
-                                                    class="text-xs font-medium text-gray-600 pb-2"
+                                                    class="text-xs font-medium text-gray-600 pb-1 md:pb-2"
                                                 >
                                                     {{ day }}
                                                 </div>
@@ -183,7 +183,7 @@
                                                     :key="day.date.toISOString()"
                                                     @click="toggleDate(day.date)"
                                                     :disabled="!isPayrollDay(day.date)"
-                                                    class="relative aspect-square rounded-full text-sm flex items-center justify-center m-0.5"
+                                                    class="relative aspect-square rounded-full text-sm flex items-center justify-center m-0.5 text-xs md:text-sm"
                                                     :class="[
                                                         isSelectedPeriod(day.date)
                                                             ? 'bg-blue-600 text-white hover:bg-blue-700 font-medium'
@@ -202,7 +202,7 @@
 
                                         <div class="space-y-3">
                                             <h4 class="text-sm font-medium text-gray-700">Selected Periods</h4>
-                                            <div class="max-h-[200px] overflow-y-auto space-y-2">
+                                            <div class="max-h-[150px] md:max-h-[200px] overflow-y-auto space-y-2">
                                                 <TransitionGroup
                                                     enter="transition-all ease-out duration-200"
                                                     enter-from="opacity-0 -translate-y-2"
@@ -214,9 +214,9 @@
                                                     <div
                                                         v-for="period in selectedPeriods"
                                                         :key="period.start.toISOString()"
-                                                        class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm hover:bg-gray-50"
+                                                        class="flex items-center justify-between rounded-lg bg-white p-2 md:p-3 shadow-sm hover:bg-gray-50 text-sm"
                                                     >
-                                                        <span class="text-sm text-gray-900">
+                                                        <span class="text-gray-900">
                                                             {{ formatDate(period.start) }} - {{ formatDate(period.end) }}
                                                         </span>
                                                         <button
@@ -229,10 +229,10 @@
                                                 </TransitionGroup>
                                                 <div
                                                     v-if="selectedPeriods.length === 0"
-                                                    class="rounded-lg border-2 border-dashed border-gray-200 p-4 text-center"
+                                                    class="rounded-lg border-2 border-dashed border-gray-200 p-3 md:p-4 text-center"
                                                 >
                                                     <p class="text-sm text-gray-500">
-                                                        No periods selected. Click green dates to select payroll periods.
+                                                        No periods selected. Tap green dates to select.
                                                     </p>
                                                 </div>
                                             </div>
@@ -240,17 +240,17 @@
                                     </div>
                                 </div>
 
-                                <div class="mt-6 flex items-center justify-end space-x-3">
+                                <div class="mt-4 md:mt-6 flex flex-col md:flex-row items-center justify-end space-y-3 md:space-y-0 md:space-x-3">
                                     <button
                                         @click="$emit('close')"
-                                        class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400/50"
+                                        class="w-full md:w-auto rounded-lg px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400/50"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         @click="saveChanges"
                                         :disabled="!isValid"
-                                        class="rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-all focus:outline-none"
+                                        class="w-full md:w-auto rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-all focus:outline-none"
                                         :class="[
                                             isValid
                                                 ? 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/50'
@@ -304,7 +304,7 @@ const emit = defineEmits(['close', 'save'])
 // State
 const selectedDeductions = ref([])
 const selectedEmployees = ref([])
-const currentDate = ref(new Date()) // Use current date
+const currentDate = ref(new Date())
 const selectedDates = ref([])
 
 // Search filters
@@ -350,14 +350,12 @@ const calendarDays = computed(() => {
     const lastDayOfMonth = new Date(year, month + 1, 0)
     const startDay = firstDayOfMonth.getDay()
 
-    // Previous month days
     for (let i = startDay - 1; i >= 0; i--) {
         const date = new Date(firstDayOfMonth)
         date.setDate(firstDayOfMonth.getDate() - (i + 1))
         days.push({ date, isCurrentMonth: false })
     }
 
-    // Current month days
     for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
         days.push({
             date: new Date(year, month, i),
@@ -365,9 +363,8 @@ const calendarDays = computed(() => {
         })
     }
 
-    // Next month days to fill grid
     const totalDays = days.length
-    const remainingDays = 42 - totalDays // Ensure 6 rows
+    const remainingDays = 42 - totalDays
     for (let i = 1; i <= remainingDays; i++) {
         const date = new Date(year, month + 1, i)
         days.push({ date, isCurrentMonth: false })
@@ -381,7 +378,7 @@ const selectedPeriods = computed(() => {
         .sort((a, b) => a - b)
         .map(date => {
             const endDate = new Date(date)
-            endDate.setDate(endDate.getDate() + 13) // 14-day period
+            endDate.setDate(endDate.getDate() + 13)
             return { start: new Date(date), end: endDate }
         })
 })
@@ -436,15 +433,53 @@ const saveChanges = () => {
 </script>
 
 <style scoped>
+/* Mobile adjustments using max-width media query */
+@media (max-width: 639px) {
+    .max-w-5xl {
+        max-width: 100%;
+        margin: 0.5rem;
+    }
+    
+    .text-xl {
+        font-size: 1.125rem;
+        line-height: 1.75rem;
+    }
+    
+    .grid-cols-1 {
+        grid-template-columns: 1fr;
+    }
+    
+    .aspect-square {
+        padding: 0.5rem;
+    }
+    
+    .w-full {
+        width: 100%;
+    }
+}
+
+/* Scrollbar styles */
 ::-webkit-scrollbar {
-    @apply w-2;
+    width: 0.5rem;
 }
 
 ::-webkit-scrollbar-track {
-    @apply rounded-full bg-gray-100;
+    background: #f3f4f6; /* gray-100 */
+    border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-gray-400 hover:bg-gray-500;
+    background: #9ca3af; /* gray-400 */
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6b7280; /* gray-500 */
+}
+
+/* Touch optimizations */
+button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 </style>
