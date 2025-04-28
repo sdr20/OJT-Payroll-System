@@ -3,24 +3,20 @@ import axios from 'axios';
 import { useAuthStore } from '@/stores/auth.store.js';
 import { BASE_API_URL } from '@/utils/constants.js';
 import {
-    calculateTotalEarnings,
-    calculateTotalDeductions,
-    calculateNetSalary,
-    calculateRequestNetSalary,
     calculateNewEmployeeNetSalary,
     calculateSSSContribution,
     calculatePhilHealthContribution,
     calculatePagIBIGContribution,
     calculateWithholdingTax,
 } from '@/utils/calculations.js';
-import EmployeeDetailsModal from './partials/EmployeeDetailsModal.vue';
-import PendingRequestModal from './partials/PendingRequestModal.vue';
-import AddEmployeeModal from './partials/AddEmployeeModal.vue';
-import EditEmployeeModal from './partials/EditEmployeeModal.vue';
-import PositionModal from './partials/PositionModal.vue';
-import EditPositionModal from './partials/EditPositionModal.vue';
-import DeletePositionModal from './partials/DeletePositionModal.vue';
-import DeleteEmployeeModal from './partials/DeleteEmployeeModal.vue';
+import EmployeeDetailsModal from './partials/manage-employees/EmployeeDetailsModal.vue';
+import PendingRequestModal from './partials/manage-employees/PendingRequestModal.vue';
+import AddEmployeeModal from './partials/manage-employees/AddEmployeeModal.vue';
+import EditEmployeeModal from './partials/manage-employees/EditEmployeeModal.vue';
+import PositionModal from './partials/manage-employees/PositionModal.vue';
+import EditPositionModal from './partials/manage-employees/EditPositionModal.vue';
+import DeletePositionModal from './partials/manage-employees/DeletePositionModal.vue';
+import DeleteEmployeeModal from './partials/manage-employees/DeleteEmployeeModal.vue';
 import Modal from '@/components/Modal.vue';
 
 export default {
@@ -126,11 +122,8 @@ export default {
     },
     methods: {
         // Expose imported functions to the template
-        calculateNetSalary,
-        calculateRequestNetSalary,
+
         calculateNewEmployeeNetSalary,
-        calculateTotalEarnings,
-        calculateTotalDeductions,
         calculateSSSContribution,
         calculatePhilHealthContribution,
         calculatePagIBIGContribution,
@@ -454,9 +447,7 @@ export default {
                                     <td class="px-4 py-2">
                                        ₱{{ (employee.hourlyRate && !isNaN(employee.hourlyRate) ? employee.hourlyRate : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                                     </td>
-                                    <td class="px-4 py-2">
-                                        ₱{{ (calculateNetSalary(employee) || 0).toLocaleString() }}
-                                    </td>
+                                
                                     <td class="px-4 py-2 text-right flex justify-end gap-1">
                                         <button @click="viewEmployeeDetails(employee)"
                                             class="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-100">

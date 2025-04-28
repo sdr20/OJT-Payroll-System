@@ -91,7 +91,6 @@
                                     <option value="Sick">Sick</option>
                                     <option value="Personal">Personal</option>
                                     <option value="Family">Family</option>
-                                    <option value="Bereavement">Bereavement</option>
                                 </select>
                             </div>
                             

@@ -129,7 +129,7 @@ watch(() => employee.salary, (newSalary) => {
                             <div class="space-y-1">
                                 <label class="text-xs font-medium text-gray-600">Employee Number *</label>
                                 <input v-model="employee.empNo"
-                                    class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100" readonly
+                                    class="w-full p-1.5 text-sm border border-gray-300 rounded-md bg-gray-100"
                                     required />
                             </div>
                             <div class="space-y-1">

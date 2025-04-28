@@ -3,7 +3,7 @@
         <div class="max-w-8xl mx-auto">
             <!-- Header Section -->
             <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
                     <div class="relative">
                         <span class="material-icons absolute left-2 top-2 text-gray-400 text-sm">search</span>
                         <input v-model="searchQuery" type="text" placeholder="Search employee by name..."
@@ -32,6 +32,12 @@
                         :disabled="isLoading">
                         <span class="material-icons text-sm">edit</span>
                         Update Position
+                    </button>
+                    <button @click="showDeductionModal"
+                        class="flex items-center justify-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-sm py-2 px-4 rounded-md"
+                        :disabled="isLoading">
+                        <span class="material-icons text-sm">money_off</span>
+                        Deduction
                     </button>
                 </div>
             </div>
