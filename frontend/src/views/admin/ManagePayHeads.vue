@@ -1,720 +1,433 @@
 <template>
-    <div class="min-h-screen p-1">
-        <div class="max-w-8xl mx-auto">
-            <!-- Header Section -->
-            <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-                <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
-                    <div class="relative">
-                        <span class="material-icons absolute left-2 top-2 text-gray-400 text-sm">search</span>
-                        <input v-model="searchQuery" type="text" placeholder="Search employee by name..."
-                            class="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
-                    </div>
-                    <button @click="refreshData"
-                        class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-md"
-                        :disabled="isLoading">
-                        <span class="material-icons text-sm">{{ isLoading ? 'sync' : 'refresh' }}</span>
-                        {{ isLoading ? 'Refreshing...' : 'Refresh Data' }}
-                    </button>
-                    <button @click="generateAllPayslips"
-                        class="flex items-center justify-center gap-1 bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-4 rounded-md"
-                        :disabled="isLoading || isGeneratingAll">
-                        <span class="material-icons text-sm">{{ isGeneratingAll ? 'sync' : 'description' }}</span>
-                        {{ isGeneratingAll ? 'Generating...' : 'Generate All' }}
-                    </button>
-                    <button @click="showPrintModal"
-                        class="flex items-center justify-center gap-1 bg-purple-500 hover:bg-purple-600 text-white text-sm py-2 px-4 rounded-md"
-                        :disabled="isLoading">
-                        <span class="material-icons text-sm">print</span>
-                        Print All
-                    </button>
-                    <button @click="showUpdatePositionModal"
-                        class="flex items-center justify-center gap-1 bg-orange-500 hover:bg-orange-600 text-white text-sm py-2 px-4 rounded-md"
-                        :disabled="isLoading">
-                        <span class="material-icons text-sm">edit</span>
-                        Update Position
-                    </button>
-                    <button @click="showDeductionModal"
-                        class="flex items-center justify-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-sm py-2 px-4 rounded-md"
-                        :disabled="isLoading">
-                        <span class="material-icons text-sm">money_off</span>
-                        Deduction
-                    </button>
-                </div>
-            </div>
-
-            <!-- Employee List -->
-            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 mb-4">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">person</span>
-                                        Name
-                                    </div>
-                                </th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">badge</span>
-                                        Employee ID
-                                    </div>
-                                </th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">work</span>
-                                        Position
-                                    </div>
-                                </th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">payments</span>
-                                        Hourly Rate
-                                    </div>
-                                </th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                                    <div class="flex items-center gap-1">
-                                        <span class="material-icons text-gray-400 text-sm">account_balance_wallet</span>
-                                        Basic Salary
-                                    </div>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-for="employee in paginatedEmployees" :key="employee.id"
-                                class="hover:bg-blue-50 transition-colors cursor-pointer"
-                                @click="showPayslipHistory(employee)">
-                                <td class="px-4 py-3 text-sm text-gray-900">{{ employee.name }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-500">{{ employee.empNo }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-500">
-                                    {{ getPositionName(employee.position) }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900">
-                                    ₱{{ getHourlyRate(employee.position).toLocaleString() }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-blue-600">
-                                    ₱{{ getPositionSalary(employee.position).toLocaleString() }}
-                                </td>
-                            </tr>
-                            <tr v-if="paginatedEmployees.length === 0 && !isLoading">
-                                <td colspan="5" class="px-4 py-8 text-center">
-                                    <div class="flex flex-col items-center gap-2">
-                                        <span class="material-icons text-gray-400 text-3xl">search_off</span>
-                                        <p class="text-sm text-gray-500">No employees found.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr v-if="isLoading">
-                                <td colspan="5" class="px-4 py-8 text-center">
-                                    <div class="flex flex-col items-center gap-2">
-                                        <span class="material-icons text-blue-500 animate-spin text-3xl">sync</span>
-                                        <p class="text-sm text-gray-500">Loading employees...</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="flex items-center justify-between px-4 py-3 bg-gray-50">
-                    <div class="text-xs text-gray-700">
-                        Showing page {{ currentPage }} of {{ totalPages }}
-                    </div>
-                    <div class="flex gap-2">
-                        <button @click="prevPage" :disabled="currentPage === 1 || isLoading"
-                            class="inline-flex items-center px-3 py-1 text-xs bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
-                            <span class="material-icons text-sm mr-1">chevron_left</span>
-                            Previous
-                        </button>
-                        <button @click="nextPage" :disabled="currentPage === totalPages || isLoading"
-                            class="inline-flex items-center px-3 py-1 text-xs bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
-                            Next
-                            <span class="material-icons text-sm ml-1">chevron_right</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Payslip History Modal -->
-            <div v-if="showHistoryModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl h-[80vh] flex flex-col">
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
-                            <span class="material-icons text-sm">history</span>
-                            Payslip History - {{ selectedEmployee?.name }}
-                        </h2>
-                        <div class="flex items-center gap-2">
-                            <button @click.stop="generatePayslipNow(selectedEmployee)"
-                                class="flex items-center justify-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-2 px-4 rounded-md"
-                                :disabled="isLoading || payslipGenerationStatus.generating">
-                                <span class="material-icons text-sm">play_arrow</span>
-                                {{ payslipGenerationStatus.generating ? 'Generating...' : 'Generate Now' }}
-                            </button>
-                            <button @click="showHistoryModal = false" class="p-1 hover:bg-gray-100 rounded-full">
-                                <span class="material-icons text-sm">close</span>
+    <div>
+        <!-- Main Content -->
+        <main class="flex-1 max-w-9xl mx-auto px-2 sm:px-4 lg:px-6 py-1">
+            <!-- Controls Section -->
+            <div class="bg-white rounded-lg shadow-sm p-3 mb-4 border border-gray-100">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <!-- Search Input -->
+                    <div class="md:col-span-5 relative">
+                        <label for="search" class="block text-xs font-medium text-gray-700 mb-0.5">Search</label>
+                        <div class="relative">
+                            <span
+                                class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-base">
+                                search
+                            </span>
+                            <input id="search" v-model="searchQuery" type="text"
+                                placeholder="Search by name or description..." class="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 
+                      focus:border-blue-500 outline-none transition-all text-sm" />
+                            <button v-if="searchQuery" @click="searchQuery = ''"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                                title="Clear Search">
+                                <span class="material-icons text-base">clear</span>
                             </button>
                         </div>
                     </div>
-                    <div class="flex flex-1 overflow-hidden">
-                        <div class="w-1/2 p-4 overflow-y-auto border-r">
-                            <!-- Previous Position Payslips (Initial Position) -->
-                            <h3 class="text-sm font-medium text-gray-700 mb-2">Previous Position Payslips</h3>
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50 sticky top-0">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 cursor-pointer"
-                                            @click="sortPreviousPayslips('payDate')">
-                                            Pay Date <span class="material-icons text-xs">{{ sortPreviousField ===
-                                                'payDate' ?
-                                                (sortPreviousAsc ? 'arrow_upward' : 'arrow_downward') : '' }}</span>
-                                        </th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 cursor-pointer"
-                                            @click="sortPreviousPayslips('position')">
-                                            Position <span class="material-icons text-xs">{{ sortPreviousField ===
-                                                'position' ?
-                                                (sortPreviousAsc ? 'arrow_upward' : 'arrow_downward') : '' }}</span>
-                                        </th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Salary</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    <tr v-for="payslip in sortedPreviousPayslips"
-                                        :key="`${payslip.salaryMonth}-${payslip.paydayType}`"
-                                        class="hover:bg-blue-50 cursor-pointer"
-                                        :class="{ 'bg-blue-100': selectedPayslip?.salaryMonth === payslip.salaryMonth && selectedPayslip?.paydayType === payslip.paydayType }"
-                                        @click="selectPayslip(payslip)">
-                                        <td class="px-4 py-2 text-sm text-gray-900">
-                                            {{ payslip.paydayType === 'mid-month' ?
-                                                payslip.expectedPaydays.midMonthPayday :
-                                                payslip.expectedPaydays.endMonthPayday }}
-                                        </td>
-                                        <td class="px-4 py-2 text-sm text-gray-500">
-                                            {{ getPositionName(payslip.position) }}
-                                        </td>
-                                        <td class="px-4 py-2 text-sm text-gray-500">
-                                            ₱{{ payslip.salary.toLocaleString() }}
-                                        </td>
-                                        <td class="px-4 py-2 text-sm text-gray-500">
-                                            {{ payslip.payslipDataUrl ? 'Generated' : 'Pending' }}
-                                        </td>
-                                        <td class="px-4 py-2">
-                                            <button v-if="!payslip.payslipDataUrl"
-                                                @click.stop="generatePayslip(payslip)"
-                                                class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                                                :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating">
-                                                <span class="material-icons text-sm">description</span>
-                                                {{
-                                                    payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating
-                                                        ? 'Generating...' : 'Generate'
-                                                }}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="sortedPreviousPayslips.length === 0">
-                                        <td colspan="5" class="px-4 py-4 text-center text-sm text-gray-500">No previous
-                                            payslips available.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
 
-                            <!-- New Position Payslips (Only After Update) -->
-                            <div v-if="hasUpdatedPosition">
-                                <h3 class="text-sm font-medium text-gray-700 mt-6 mb-2">New Position Payslips</h3>
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50 sticky top-0">
-                                        <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 cursor-pointer"
-                                                @click="sortNewPayslips('payDate')">
-                                                Pay Date <span class="material-icons text-xs">{{ sortNewField ===
-                                                    'payDate' ? (sortNewAsc ?
-                                                        'arrow_upward' : 'arrow_downward') : '' }}</span>
-                                            </th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 cursor-pointer"
-                                                @click="sortNewPayslips('position')">
-                                                Position <span class="material-icons text-xs">{{ sortNewField ===
-                                                    'position' ? (sortNewAsc ?
-                                                        'arrow_upward' : 'arrow_downward') : '' }}</span>
-                                            </th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Salary
-                                            </th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Status
-                                            </th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Action
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-200">
-                                        <tr v-for="payslip in sortedNewPayslips"
-                                            :key="`${payslip.salaryMonth}-${payslip.paydayType}`"
-                                            class="hover:bg-blue-50 cursor-pointer"
-                                            :class="{ 'bg-blue-100': selectedPayslip?.salaryMonth === payslip.salaryMonth && selectedPayslip?.paydayType === payslip.paydayType }"
-                                            @click="selectPayslip(payslip)">
-                                            <td class="px-4 py-2 text-sm text-gray-900">
-                                                {{ payslip.paydayType === 'mid-month' ?
-                                                    payslip.expectedPaydays.midMonthPayday :
-                                                    payslip.expectedPaydays.endMonthPayday }}
-                                            </td>
-                                            <td class="px-4 py-2 text-sm text-gray-500">
-                                                {{ getPositionName(payslip.position) }}
-                                            </td>
-                                            <td class="px-4 py-2 text-sm text-gray-500">
-                                                ₱{{ payslip.salary.toLocaleString() }}
-                                            </td>
-                                            <td class="px-4 py-2 text-sm text-gray-500">
-                                                {{ payslip.payslipDataUrl ? 'Generated' : 'Pending' }}
-                                            </td>
-                                            <td class="px-4 py-2">
-                                                <button v-if="!payslip.payslipDataUrl"
-                                                    @click.stop="generatePayslip(payslip)"
-                                                    class="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                                                    :disabled="!canGeneratePayslip(payslip) || payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating">
-                                                    <span class="material-icons text-sm">description</span>
-                                                    {{
-                                                        payslipGenerationStatus[`${payslip.salaryMonth}-${payslip.paydayType}`]?.generating
-                                                            ? 'Generating...' : 'Generate'
-                                                    }}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr v-if="sortedNewPayslips.length === 0">
-                                            <td colspan="5" class="px-4 py-4 text-center text-sm text-gray-500">No new
-                                                payslips available.
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                    <!-- Filter Dropdown -->
+                    <div class="md:col-span-3">
+                        <label for="filter" class="block text-xs font-medium text-gray-700 mb-0.5">Filter Type</label>
+                        <div class="relative">
+                            <span
+                                class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-base">
+                                filter_list
+                            </span>
+                            <select id="filter" v-model="filterType" class="w-full pl-8 pr-7 py-1.5 border border-gray-300 rounded-md appearance-none focus:ring-1 
+                      focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                                <option value="">All Types</option>
+                                <option value="Earnings">Earnings</option>
+                                <option value="Deductions">Deductions</option>
+                                <option value="Recurring Deductions">Recurring Deductions</option>
+                            </select>
+                            <span
+                                class="material-icons absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-base">
+                                arrow_drop_down
+                            </span>
                         </div>
-                        <div class="w-1/2 p-4 overflow-y-auto">
-                            <h3 class="text-sm font-medium text-gray-700 mb-2">Payslip Preview</h3>
-                            <div v-if="selectedPayslip && selectedPayslip.payslipDataUrl" class="flex flex-col h-full">
-                                <div class="mb-4">
-                                    <p class="text-sm text-gray-600">
-                                        Position: {{ getPositionName(selectedPayslip.position) }} |
-                                        Salary: ₱{{ selectedPayslip.salary.toLocaleString() }}
-                                    </p>
+                    </div>
+
+                    <!-- View Toggle -->
+                    <div class="md:col-span-4">
+                        <label class="block text-xs font-medium text-gray-700 mb-0.5">View</label>
+                        <div class="flex rounded-md bg-gray-100 p-0.5 shadow-inner">
+                            <button v-for="tab in ['payheads', 'employees']" :key="tab" @click="activeTab = tab"
+                                class="flex-1 px-3 py-1.5 rounded-sm text-xs font-medium transition-all"
+                                :class="activeTab === tab ? 'bg-white text-blue-600 shadow' : 'text-gray-600 hover:text-gray-900'">
+                                <div class="flex items-center justify-center gap-1">
+                                    <span class="material-icons text-xs">
+                                        {{ tab === 'payheads' ? 'payments' : 'people' }}
+                                    </span>
+                                    {{ tab.charAt(0).toUpperCase() + tab.slice(1) }}
                                 </div>
-                                <iframe :src="selectedPayslip.payslipDataUrl"
-                                    class="w-full h-[50vh] rounded border mb-4" @load="onIframeLoad"
-                                    @error="onIframeError"></iframe>
-                                <button @click="downloadPayslip"
-                                    class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-md">
-                                    <span class="material-icons text-sm">download</span>
-                                    Download PDF
-                                </button>
-                                <div v-if="iframeError"
-                                    class="mt-3 p-3 bg-red-50 text-red-700 rounded text-sm flex items-center gap-1">
-                                    <span class="material-icons text-sm">error</span>
-                                    Error loading payslip. Please try again.
-                                </div>
-                            </div>
-                            <div v-else class="text-sm text-gray-500 text-center mt-4">
-                                Select a payslip from the list to preview.
-                            </div>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Update Position Modal -->
-            <div v-if="showUpdateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                    <h2 class="text-base font-medium text-gray-800 mb-4 flex items-center gap-1">
-                        <span class="material-icons text-sm">edit</span>
-                        Update Employee Position
+            <!-- Loading State -->
+            <div v-if="isLoading" class="bg-white rounded-lg shadow-sm flex justify-center items-center p-10">
+                <div class="flex flex-col items-center">
+                    <div class="loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-8 w-8 mb-2"></div>
+                    <h2 class="text-center text-gray-600 text-base font-semibold">Loading...</h2>
+                    <p class="w-full text-center text-gray-500 text-xs">Please wait while we fetch the data</p>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="(activeTab === 'payheads' && filteredPayHeads.length === 0) ||
+                (activeTab === 'employees' && filteredEmployees.length === 0)"
+                class="bg-white rounded-lg shadow-sm border border-gray-100">
+                <div class="flex flex-col items-center justify-center py-8 px-3 sm:px-4 lg:px-6">
+                    <div class="rounded-full bg-blue-100 p-2 mb-2">
+                        <span class="material-icons text-blue-600 text-lg">search_off</span>
+                    </div>
+                    <h3 class="text-base font-medium text-gray-900">No {{ activeTab }} found</h3>
+                    <p class="mt-1 text-gray-500 text-center max-w-sm text-xs">
+                        {{ activeTab === 'payheads' ?
+                            'No pay heads exist yet. Add a new pay head to get started.' :
+                            'No employees match your criteria. Try adjusting your filters.' }}
+                    </p>
+                    <!-- Add buttons for payheads empty state -->
+                    <div v-if="activeTab === 'payheads'" class="mt-4 flex gap-2">
+                        <button @click="showAddModal = true"
+                            class="inline-flex items-center px-2 py-0.5 bg-blue-600 text-white rounded-sm 
+                            text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-1 
+                            focus:ring-offset-1 focus:ring-blue-500 transition-all shadow-sm transform hover:scale-105">
+                            <span class="material-icons text-xs mr-1">add</span>
+                            New Pay Head
+                        </button>
+                        <button @click="showRecurringDeductionModal = true"
+                            class="inline-flex items-center px-2 py-0.5 bg-green-600 text-white rounded-sm 
+                            text-xs font-medium hover:bg-green-700 focus:outline-none focus:ring-1 
+                            focus:ring-offset-1 focus:ring-green-500 transition-all shadow-sm transform hover:scale-105">
+                            <span class="material-icons text-xs mr-1">repeat</span>
+                            Add Recurring Deduction
+                        </button>
+                    </div>
+                    <button v-if="activeTab === 'employees'" @click="resetFilters"
+                        class="mt-2 p-1.5 rounded-sm text-gray-700 hover:text-gray-900 bg-white border border-gray-300 shadow-sm 
+                        focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500 transition-all transform hover:scale-105" title="Reset Filters">
+                        <span class="material-icons text-base">refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Data Table Section -->
+            <div v-else class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
+                <!-- Table Header -->
+                <div class="px-4 py-2 border-b border-gray-300 bg-gray-50 flex items-center justify-between">
+                    <h2 class="text-base font-medium text-gray-900">
+                        {{ activeTab === 'payheads' ? 'Pay Heads' : 'Employees' }}
                     </h2>
-                    <div class="mb-4">
-                        <label class="block text-sm text-gray-700 mb-1">Select Employee</label>
-                        <select v-model="selectedEmployeeForUpdate" class="w-full p-2 border rounded text-sm">
-                            <option value="" disabled>Select an employee</option>
-                            <option v-for="emp in employees" :key="emp.id" :value="emp.id">
-                                {{ emp.name }} ({{ getPositionName(emp.position) }})
-                            </option>
-                        </select>
+                    <div class="flex items-center space-x-2">
+                        <div v-if="activeTab === 'payheads'" class="text-xs text-gray-500">
+                            Showing {{ filteredPayHeads.length }} {{ filteredPayHeads.length === 1 ? 'item' : 'items' }}
+                        </div>
+
+                        <div v-if="activeTab === 'employees'" class="text-xs text-gray-500">
+                            Showing {{ filteredEmployees.length }} {{ filteredEmployees.length === 1 ? 'employee' :
+                                'employees' }}
+                        </div>
+
+                        <!-- Always show buttons when activeTab is 'payheads' -->
+                        <div v-if="activeTab === 'payheads'" class="flex items-center space-x-2">
+                            <button @click="showAddModal = true"
+                                class="inline-flex items-center px-2 py-0.5 bg-blue-600 text-white rounded-sm 
+                            text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-1 
+                            focus:ring-offset-1 focus:ring-blue-500 transition-all shadow-sm transform hover:scale-105">
+                                <span class="material-icons text-xs mr-1">add</span>
+                                New Pay Head
+                            </button>
+                            <button @click="showRecurringDeductionModal = true"
+                                class="inline-flex items-center px-2 py-0.5 bg-green-600 text-white rounded-sm 
+                            text-xs font-medium hover:bg-green-700 focus:outline-none focus:ring-1 
+                            focus:ring-offset-1 focus:ring-green-500 transition-all shadow-sm transform hover:scale-105">
+                                <span class="material-icons text-xs mr-1">repeat</span>
+                                Add Recurring Deduction
+                            </button>
+                        </div>
+
+                        <!-- Always show buttons when activeTab is 'employees' -->
+                        <div v-if="activeTab === 'employees'">
+                            <button @click="showAddPayheadsToEmployeesModal = true"
+                                class=" tribunals-flex items-center px-2 py-0.5 bg-green-600 text-white rounded-sm 
+                            text-xs font-medium hover:bg-green-700 focus:outline-none focus:ring-1 
+                            focus:ring-offset-1 focus:ring-green-500 transition-all shadow-sm transform hover:scale-105">
+                                <span class="material-icons text-xs mr-1">group_add</span>
+                                Add All Payheads to Employees
+                            </button>
+                        </div>
                     </div>
-                    <div class="mb-4">
-                        <label class="block text-sm text-gray-700 mb-1">New Position</label>
-                        <select v-model="newPosition" class="w-full p-2 border rounded text-sm">
-                            <option value="" disabled>Select a position</option>
-                            <option v-for="pos in positions" :key="pos.name" :value="pos.name">
-                                {{ pos.name }} (₱{{ pos.salary.toLocaleString() }})
-                            </option>
-                        </select>
+                </div>
+
+                <!-- Table Content -->
+                <div class="overflow-x-auto">
+                    <component :is="activeTab === 'payheads' ? 'PayHeadTable' : 'EmployeePayrollTable'"
+                        :payHeads="filteredPayHeads" :employees="paginatedEmployees" @update="showUpdatePayHeadModal"
+                        @delete="confirmDeletePayHead" @addPayhead="openAddPayheadModal" />
+                </div>
+
+                <!-- Pagination -->
+                <div v-if="activeTab === 'employees' && totalPages > 1"
+                    class="flex items-center justify-between px-4 py-2 bg-gray-50 border-t">
+                    <div class="text-xs text-gray-700">
+                        Showing <span class="font-medium">{{ ((currentPage - 1) * itemsPerPage) + 1 }}</span> to
+                        <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, filteredEmployees.length)
+                        }}</span> of
+                        <span class="font-medium">{{ filteredEmployees.length }}</span> entries
                     </div>
-                    <div class="flex justify-end gap-2">
-                        <button @click="showUpdateModal = false"
-                            class="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
-                            Cancel
+
+                    <div class="flex items-center space-x-1">
+                        <button @click="prevPage" :disabled="currentPage === 1"
+                            class="p-1 rounded-md hover:bg-blue-100 transition-all disabled:opacity-50 disabled:hover:bg-transparent"
+                            :class="currentPage === 1 ? 'text-gray-400' : 'text-gray-700'" title="Previous Page">
+                            <span class="material-icons text-base">chevron_left</span>
                         </button>
-                        <button @click="updateEmployeePosition"
-                            class="flex items-center gap-1 px-4 py-2 text-sm text-white bg-orange-500 rounded hover:bg-orange-600"
-                            :disabled="!selectedEmployeeForUpdate || !newPosition || isLoading">
-                            <span class="material-icons text-sm">save</span>
-                            Update
+
+                        <div class="flex items-center gap-0.5">
+                            <template v-for="page in displayedPages" :key="page">
+                                <button v-if="typeof page === 'number'" @click="currentPage = page"
+                                    class="min-w-[24px] h-6 rounded-md text-xs font-medium transition-all"
+                                    :class="currentPage === page ? 'bg-blue-600 text-white' : 'hover:bg-blue-100 text-gray-700'">
+                                    {{ page }}
+                                </button>
+                                <span v-else-if="page === '...'" class="px-1 text-gray-500 text-xs">...</span>
+                            </template>
+                        </div>
+
+                        <button @click="nextPage" :disabled="currentPage === totalPages"
+                            class="p-1 rounded-md hover:bg-blue-100 transition-all disabled:opacity-50 disabled:hover:bg-transparent"
+                            :class="currentPage === totalPages ? 'text-gray-400' : 'text-gray-700'" title="Next Page">
+                            <span class="material-icons text-base">chevron_right</span>
                         </button>
                     </div>
                 </div>
             </div>
+        </main>
 
-            <!-- Deduction Modal -->
-            <div v-if="showDeductionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl h-[80vh] flex flex-col">
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
-                            <span class="material-icons text-sm">money_off</span>
-                            Manage Deductions
-                        </h2>
-                        <button @click="showDeductionModal = false" class="p-1 hover:bg-gray-100 rounded-full">
-                            <span class="material-icons text-sm">close</span>
-                        </button>
-                    </div>
-                    <div class="flex flex-1 overflow-hidden">
-                        <!-- Available Deductions -->
-                        <div class="w-1/3 p-4 overflow-y-auto border-r">
-                            <h3 class="text-sm font-medium text-gray-700 mb-2">Available Deductions</h3>
-                            <div v-if="availableDeductions.length > 0" class="mb-4">
-                                <label class="flex items-center">
-                                    <input type="checkbox" v-model="selectAllDeductions" @change="toggleSelectAllDeductions"
-                                        class="large-checkbox mr-2" />
-                                    <span class="text-sm text-gray-900 font-medium">Select All</span>
-                                </label>
+        <!-- Modals -->
+        <transition name="modal-fade">
+            <PayHeadModal v-if="showAddModal" :payHead="newPayHead" title="Add New Pay Head"
+                @close="showAddModal = false" @save="addPayHead" />
+        </transition>
+
+        <transition name="modal-fade">
+            <PayHeadModal v-if="showUpdateModal" :payHead="selectedPayHead" :isUpdate="true" title="Update Pay Head"
+                @close="showUpdateModal = false" @save="updatePayHead" />
+        </transition>
+
+        <transition name="modal-fade">
+            <AddPayheadModal v-if="showAddPayheadModal" :availablePayheads="availablePayheads"
+                :selectedEmployeePayheads="selectedEmployeePayheads" :selectedEmployee="selectedEmployee"
+                :totalPayableSalary="totalPayableSalary" @close="showAddPayheadModal = false" @save="savePayheads"
+                @addPayhead="addPayheadToEmployee" @removePayhead="removePayheadFromEmployee"
+                @updatePayhead="updatePayheadInEmployee" />
+        </transition>
+
+        <transition name="modal-fade">
+            <RecurringDeductionModal v-if="showRecurringDeductionModal"
+                :availableDeductions="filteredPayHeads.filter(p => p.type === 'Deductions' && p.isRecurring)"
+                :employees="employees" @close="showRecurringDeductionModal = false" @save="saveRecurringDeductions" />
+        </transition>
+
+        <transition name="modal-fade">
+            <AddPayheadsToEmployeesModal v-if="showAddPayheadsToEmployeesModal" :payheads="payHeads"
+                :employees="employees" @close="showAddPayheadsToEmployeesModal = false" @save="saveBulkPayheads" />
+        </transition>
+
+        <!-- Toast Notifications -->
+        <div class="fixed bottom-2 right-2 z-50 space-y-2">
+            <TransitionGroup enter-active-class="transform ease-out duration-300 transition"
+                enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+                enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+                leave-active-class="transition ease-in duration-100" leave-from-class="opacity-100"
+                leave-to-class="opacity-0" move-class="transition duration-500">
+                <div v-if="statusMessage" :key="statusMessage" class="max-w-xs w-full bg-white rounded-md shadow-lg pointer-events-auto
+                ring-1 ring-black ring-opacity-5 overflow-hidden">
+                    <div class="p-2">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <span class="material-icons text-base"
+                                    :class="statusMessage.includes('success') ? 'text-green-500' : 'text-red-500'">
+                                    {{ statusMessage.includes('success') ? 'check_circle' : 'error' }}
+                                </span>
                             </div>
-                            <div v-if="availableDeductions.length > 0">
-                                <div v-for="deduction in availableDeductions" :key="deduction._id"
-                                    class="flex items-center py-2 border-b">
-                                    <input type="checkbox" v-model="selectedDeductions" :value="deduction"
-                                        class="large-checkbox mr-2" />
-                                    <span class="text-sm text-gray-900">{{ deduction.name }} (₱{{ deduction.amount.toLocaleString() }})</span>
-                                </div>
+                            <div class="ml-2 flex-1">
+                                <p class="text-xs font-medium text-gray-900">
+                                    {{ statusMessage }}
+                                </p>
                             </div>
-                            <div v-else class="text-sm text-gray-500 text-center py-4">
-                                No deductions available.
-                            </div>
+                            <button @click="statusMessage = ''" class="ml-2 flex-shrink-0 rounded-sm text-gray-400 hover:text-gray-500 
+                      focus:outline-none focus:ring-1 focus:ring-blue-500" title="Close Notification">
+                                <span class="material-icons text-base">close</span>
+                            </button>
                         </div>
-                        <!-- Employee List with Lates/Absences -->
-                        <div class="w-2/3 p-4 overflow-y-auto">
-                            <h3 class="text-sm font-medium text-gray-700 mb-2">Employees</h3>
-                            <div v-if="employeesWithAttendance.length > 0" class="mb-4">
-                                <label class="flex items-center">
-                                    <input type="checkbox" v-model="selectAllEmployees" @change="toggleSelectAllEmployees"
-                                        class="large-checkbox mr-2" />
-                                    <span class="text-sm text-gray-900 font-medium">Select All</span>
-                                </label>
-                            </div>
-                            <table v-if="employeesWithAttendance.length > 0" class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50 sticky top-0">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Select</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Name</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Position</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Total Lates (min)</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Absences (days)</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    <tr v-for="emp in employeesWithAttendance" :key="emp.id">
-                                        <td class="px-4 py-2">
-                                            <input type="checkbox" v-model="selectedEmployeesForDeduction" :value="emp"
-                                                class="large-checkbox" />
-                                        </td>
-                                        <td class="px-4 py-2 text-sm text-gray-900">{{ emp.name }}</td>
-                                        <td class="px-4 py-2 text-sm text-gray-500">{{ getPositionName(emp.position) }}</td>
-                                        <td class="px-4 py-2 text-sm text-gray-500">{{ emp.totalLates || 0 }}</td>
-                                        <td class="px-4 py-2 text-sm text-gray-500">{{ emp.absences?.days || 0 }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <div v-else class="text-sm text-gray-500 text-center py-4">
-                                No employees available.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-4 border-t flex justify-end gap-2">
-                        <button @click="showDeductionModal = false"
-                            class="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
-                            Cancel
-                        </button>
-                        <button @click="saveDeductions"
-                            class="flex items-center gap-1 px-4 py-2 text-sm text-white bg-teal-500 rounded hover:bg-teal-600"
-                            :disabled="selectedDeductions.length === 0 || selectedEmployeesForDeduction.length === 0 || isLoading">
-                            <span class="material-icons text-sm">save</span>
-                            Apply Deductions
-                        </button>
                     </div>
                 </div>
-            </div>
-
-            <!-- Print All Modal -->
-            <div v-if="showPrintAllModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h2 class="text-base font-medium text-gray-800 flex items-center gap-1">
-                            <span class="material-icons text-sm">print</span>
-                            Print Payslips
-                        </h2>
-                        <button @click="showPrintAllModal = false" class="p-1 hover:bg-gray-100 rounded-full">
-                            <span class="material-icons text-sm">close</span>
-                        </button>
-                    </div>
-                    <div class="p-4 overflow-y-auto">
-                        <h3 class="text-sm font-medium text-gray-700 mb-2">Select Employees to Print</h3>
-                        <div v-if="employeesWithPayslips.length > 0" class="mb-4">
-                            <label class="flex items-center">
-                                <input type="checkbox" v-model="selectAll" @change="toggleSelectAll"
-                                    class="large-checkbox mr-2" />
-                                <span class="text-sm text-gray-900 font-medium">Select All</span>
-                            </label>
-                        </div>
-                        <div v-if="employeesWithPayslips.length > 0">
-                            <div v-for="emp in employeesWithPayslips" :key="emp.id"
-                                class="flex items-center py-2 border-b">
-                                <input type="checkbox" v-model="selectedEmployeesForPrint" :value="emp.id"
-                                    class="large-checkbox mr-2" />
-                                <span class="text-sm text-gray-900">{{ emp.name }} - Most Recent: {{
-                                    emp.latestPayslipDate }}</span>
-                            </div>
-                        </div>
-                        <div v-else class="text-sm text-gray-500 text-center py-4">
-                            No employees with generated payslips found in history.
-                        </div>
-                    </div>
-                    <div class="p-4 border-t flex justify-end gap-2">
-                        <button @click="showPrintAllModal = false"
-                            class="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
-                            Cancel
-                        </button>
-                        <button @click="printSelectedPayslips"
-                            class="flex items-center gap-1 px-4 py-2 text-sm text-white bg-purple-500 rounded hover:bg-purple-600"
-                            :disabled="selectedEmployeesForPrint.length === 0 || isPrinting">
-                            <span class="material-icons text-sm">print</span>
-                            {{ isPrinting ? 'Printing...' : 'Print Selected' }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Toast Messages -->
-            <div v-if="statusMessage" :class="[
-                statusMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
-                'fixed bottom-4 right-4 p-3 rounded shadow-lg z-50 flex items-center gap-1 animate-fade-in text-sm'
-            ]">
-                <span class="material-icons text-sm">
-                    {{ statusMessage.includes('successfully') ? 'check_circle' : 'error' }}
-                </span>
-                {{ statusMessage }}
-            </div>
+            </TransitionGroup>
         </div>
     </div>
 </template>
 
 <script>
 import axios from 'axios';
-import jsPDF from 'jspdf';
-import { applyPlugin } from 'jspdf-autotable';
-import moment from 'moment';
-import { BASE_API_URL } from '@/utils/constants.js';
+import { BASE_API_URL } from '@/utils/constants';
 import { useAuthStore } from '@/stores/auth.store.js';
-
-applyPlugin(jsPDF);
+import PayHeadModal from './partials/payheads/PayHeadModal.vue';
+import PayHeadTable from './partials/payheads/PayHeadTable.vue';
+import EmployeePayrollTable from './partials/payheads/EmployeePayrollTable.vue';
+import AddPayheadModal from './partials/payheads/AddPayheadModal.vue';
+import RecurringDeductionModal from './partials/payheads/RecurringDeductionModal.vue';
+import AddPayheadsToEmployeesModal from './partials/payheads/AddPayheadsToEmployeesModal.vue';
 
 export default {
-    name: 'SalarySlips',
+    name: 'ManagePayHeads',
+    components: {
+        PayHeadModal,
+        PayHeadTable,
+        EmployeePayrollTable,
+        AddPayheadModal,
+        RecurringDeductionModal,
+        AddPayheadsToEmployeesModal,
+    },
+
     data() {
         return {
-            employees: [],
-            positions: [],
             payHeads: [],
-            availableDeductions: [],
+            employees: [],
+            newPayHead: {
+                name: '',
+                amount: 0,
+                type: 'Earnings',
+                description: '',
+                isRecurring: false,
+                isAttendanceAffected: false,
+                appliedThisCycle: false,
+            },
+            selectedPayHead: {
+                id: '',
+                name: '',
+                amount: 0,
+                type: 'Earnings',
+                description: '',
+                isRecurring: false,
+                isAttendanceAffected: false,
+                appliedThisCycle: false,
+            },
+            showAddModal: false,
+            showUpdateModal: false,
+            showAddPayheadModal: false,
+            showRecurringDeductionModal: false,
+            showAddPayheadsToEmployeesModal: false,
+            selectedEmployee: null,
+            selectedEmployeePayheads: [],
+            availablePayheads: [],
+            statusMessage: '',
             searchQuery: '',
+            filterType: '',
+            activeTab: 'payheads',
             currentPage: 1,
             itemsPerPage: 10,
-            payslipGenerationStatus: {},
             isLoading: false,
-            isGeneratingAll: false,
-            statusMessage: '',
-            showHistoryModal: false,
-            showDeductionModal: false,
-            selectedEmployee: null,
-            selectedPayslip: null,
-            payslipHistory: [],
-            allPayslipHistories: {},
-            iframeError: false,
-            showPrintAllModal: false,
-            employeesWithPayslips: [],
-            selectedEmployeesForPrint: [],
-            isPrinting: false,
-            selectAll: false,
-            showUpdateModal: false,
-            selectedEmployeeForUpdate: '',
-            newPosition: '',
-            selectedDeductions: [],
-            selectedEmployeesForDeduction: [],
-            selectAllDeductions: false,
-            selectAllEmployees: false,
-            employeesWithAttendance: [],
-            sortPreviousField: 'payDate',
-            sortPreviousAsc: true,
-            sortNewField: 'payDate',
-            sortNewAsc: true,
-            currentDate: new Date().toISOString().split('T')[0],
-            config: {
-                minimumWage: 610,
-                deMinimisLimit: 10000,
-                regularHolidays: [],
-                specialNonWorkingDays: [],
-            },
         };
     },
-    setup() {
-        const authStore = useAuthStore();
-        return { authStore };
-    },
+
     computed: {
+        filteredPayHeads() {
+            let filtered = [...this.payHeads];
+            if (this.searchQuery) {
+                const query = this.searchQuery.toLowerCase();
+                filtered = filtered.filter(p =>
+                    (p.name || '').toLowerCase().includes(query) ||
+                    (p.description || '').toLowerCase().includes(query)
+                );
+            }
+            if (this.filterType) {
+                filtered = filtered.filter(p =>
+                    p.type === this.filterType ||
+                    (this.filterType === 'Recurring Deductions' && p.isRecurring)
+                );
+            }
+            return filtered;
+        },
+
         filteredEmployees() {
-            return this.employees.filter((employee) => {
-                const name = employee && employee.name ? employee.name : '';
-                return name.toLowerCase().includes(this.searchQuery.toLowerCase());
-            });
+            let filtered = [...this.employees];
+            if (this.searchQuery) {
+                const query = this.searchQuery.toLowerCase();
+                filtered = filtered.filter(e =>
+                    (e.name || '').toLowerCase().includes(query) ||
+                    (e.position || '').toLowerCase().includes(query)
+                );
+            }
+            if (this.filterType) {
+                filtered = filtered.filter(e => {
+                    const earnings = this.calculateEarnings(e.payheads);
+                    const deductions = this.calculateDeductions(e.payheads);
+                    const recurringDeductions = this.calculateRecurringDeductions(e.payheads);
+                    if (this.filterType === 'Earnings') return earnings > 0;
+                    if (this.filterType === 'Deductions') return deductions > 0;
+                    if (this.filterType === 'Recurring Deductions') return recurringDeductions > 0;
+                    return true;
+                });
+            }
+            return filtered;
         },
-        totalPages() {
-            return Math.ceil(this.filteredEmployees.length / this.itemsPerPage) || 1;
-        },
+
         paginatedEmployees() {
             const start = (this.currentPage - 1) * this.itemsPerPage;
             const end = start + this.itemsPerPage;
-            return this.filteredEmployees.slice(start, end).sort((a, b) => {
-                return a.position.localeCompare(b.position);
-            });
+            return this.filteredEmployees.slice(start, end);
         },
-        sortedPositionHistory() {
-            if (!this.selectedEmployee || !this.selectedEmployee.positionHistory) {
-                return [{
-                    position: this.selectedEmployee?.position || 'N/A',
-                    salary: this.selectedEmployee?.salary || 0,
-                    startDate: this.selectedEmployee?.hireDate || this.currentDate,
-                    endDate: null
-                }];
-            }
-            return [...this.selectedEmployee.positionHistory].sort((a, b) =>
-                new Date(a.startDate) - new Date(b.startDate)
-            );
-        },
-        initialPosition() {
-            return this.sortedPositionHistory[0];
-        },
-        latestPosition() {
-            return this.sortedPositionHistory[this.sortedPositionHistory.length - 1];
-        },
-        hasUpdatedPosition() {
-            return this.sortedPositionHistory.length > 1;
-        },
-        sortedPreviousPayslips() {
-            const previousPayslips = this.payslipHistory.filter(payslip =>
-                payslip.position === this.initialPosition.position
-            );
-            return previousPayslips.sort((a, b) => {
-                if (this.sortPreviousField === 'payDate') {
-                    const dateA = moment(a.payDate, 'YYYY-MM-DD');
-                    const dateB = moment(b.payDate, 'YYYY-MM-DD');
-                    return this.sortPreviousAsc ? dateA - dateB : dateB - dateA;
-                } else if (this.sortPreviousField === 'position') {
-                    const posA = this.getPositionName(a.position);
-                    const posB = this.getPositionName(b.position);
-                    return this.sortPreviousAsc ? posA.localeCompare(posB) : posB.localeCompare(posA);
-                }
-                return 0;
-            });
-        },
-        sortedNewPayslips() {
-            const newPayslips = this.payslipHistory.filter(payslip =>
-                payslip.position === this.latestPosition.position &&
-                this.hasUpdatedPosition &&
-                moment(payslip.salaryMonth, 'YYYY-MM').isSameOrAfter(moment(this.latestPosition.startDate, 'YYYY-MM-DD'), 'month')
-            );
-            return newPayslips.sort((a, b) => {
-                if (this.sortNewField === 'payDate') {
-                    const dateA = moment(a.payDate, 'YYYY-MM-DD');
-                    const dateB = moment(b.payDate, 'YYYY-MM-DD');
-                    return this.sortNewAsc ? dateA - dateB : dateB - dateA;
-                } else if (this.sortNewField === 'position') {
-                    const posA = this.getPositionName(a.position);
-                    const posB = this.getPositionName(b.position);
-                    return this.sortNewAsc ? posA.localeCompare(posB) : posB.localeCompare(posA);
-                }
-                return 0;
-            });
-        }
-    },
-    async created() {
-        if (!this.authStore.isAuthenticated) {
-            console.error('User is not authenticated. Redirecting to login...');
-            this.showErrorMessage('Please log in to access this page.');
-            this.$router.push(this.authStore.userRole === 'employee' ? '/employee-login' : '/admin-login');
-            return;
-        }
 
-        this.isLoading = true;
-        try {
-            await Promise.all([
-                this.fetchPositionsWithRetry(),
-                this.fetchEmployees(),
-                this.fetchPayHeads()
-            ]);
-        } catch (error) {
-            console.error('Error in created hook:', error);
-            this.showErrorMessage('Failed to initialize component. Please try again.');
-        } finally {
-            this.isLoading = false;
+        totalPages() {
+            return Math.ceil(this.filteredEmployees.length / this.itemsPerPage) || 1;
+        },
+
+        displayedPages() {
+            const total = this.totalPages;
+            const current = this.currentPage;
+            const pages = [];
+            if (total <= 7) {
+                for (let i = 1; i <= total; i++) pages.push(i);
+            } else {
+                if (current <= 3) {
+                    for (let i = 1; i <= 5; i++) pages.push(i);
+                    pages.push('...', total);
+                } else if (current >= total - 2) {
+                    pages.push(1, '...');
+                    for (let i = total - 4; i <= total; i++) pages.push(i);
+                } else {
+                    pages.push(1, '...');
+                    for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+                    pages.push('...', total);
+                }
+            }
+            return pages;
+        },
+
+        totalPayableSalary() {
+            if (!this.selectedEmployee) return 0;
+            const baseSalary = Number(this.selectedEmployee.salary || 0);
+            const earnings = this.calculateEarnings(this.selectedEmployeePayheads);
+            const deductions = this.calculateDeductions(this.selectedEmployeePayheads);
+            const recurringDeductions = this.calculateRecurringDeductions(this.selectedEmployeePayheads);
+            return baseSalary + earnings - deductions - recurringDeductions;
         }
     },
+
     methods: {
-        async fetchPositionsWithRetry(retries = 3, delay = 1000) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const userId = this.authStore.admin?._id || localStorage.getItem('userId') || '';
-                    const token = this.authStore.accessToken || localStorage.getItem('token') || '';
-                    if (!token) throw new Error('No authentication token found');
-
-                    const headers = {
-                        'Authorization': `Bearer ${token}`,
-                        'user-role': 'admin'
-                    };
-
-                    if (userId) {
-                        headers['user-id'] = userId;
-                    }
-
-                    console.log('Fetching positions with:', { userId, token: token.slice(0, 20) + '...' });
-                    const response = await axios.get(`${BASE_API_URL}/api/positions`, { headers });
-
-                    this.positions = response.data.map(position => ({
-                        name: position.name,
-                        salary: position.salary
-                    }));
-                    return;
-                } catch (error) {
-                    console.error(`Attempt ${i + 1} to fetch positions failed:`, error);
-                    if (i === retries - 1) {
-                        this.showErrorMessage('Failed to load positions after multiple attempts.');
-                    } else {
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    }
-                }
-            }
-        },
         async fetchPayHeads() {
             this.isLoading = true;
+            const authStore = useAuthStore();
             try {
-                const token = this.authStore.accessToken || localStorage.getItem('token');
-                const userId = this.authStore.admin?._id || localStorage.getItem('userId') || '';
                 const response = await axios.get(`${BASE_API_URL}/api/payheads`, {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        'Authorization': `Bearer ${authStore.accessToken}`,
                         'user-role': 'admin',
-                        'user-id': userId
-                    }
+                        'user-id': authStore.admin?.id || authStore.employee?.id,
+                    },
                 });
                 this.payHeads = response.data.map(item => ({
                     _id: item._id,
@@ -722,907 +435,537 @@ export default {
                     name: item.name,
                     amount: Number(item.amount || 0),
                     type: item.type,
+                    description: item.description || '',
                     isRecurring: item.isRecurring || false,
-                    appliedThisCycle: item.appliedThisCycle || false
+                    isAttendanceAffected: item.isAttendanceAffected || false,
+                    appliedThisCycle: item.appliedThisCycle || false,
                 }));
-                this.availableDeductions = this.payHeads.filter(p => p.type === 'Deductions');
+                this.availablePayheads = [...this.payHeads];
                 console.log('Fetched payHeads:', this.payHeads);
             } catch (error) {
                 console.error('Error fetching pay heads:', error.response?.data || error.message);
-                this.showErrorMessage('Failed to load deductions.');
+                this.showErrorMessage('Failed to load pay heads: ' + (error.response?.data?.message || error.message));
                 this.payHeads = [];
-                this.availableDeductions = [];
             } finally {
                 this.isLoading = false;
             }
         },
-        getPositionName(positionName) {
-            const position = this.positions.find(p => p.name.trim().toLowerCase() === positionName?.trim().toLowerCase());
-            return position ? position.name : positionName || 'Unknown Position';
-        },
-        getPositionSalary(positionName) {
-            const position = this.positions.find(p => p.name.trim().toLowerCase() === positionName?.trim().toLowerCase());
-            return position ? position.salary : 0;
-        },
-        getHourlyRate(positionName) {
-            const salary = this.getPositionSalary(positionName);
-            return Number((salary / (8 * 22)).toFixed(2));
-        },
+
         async fetchEmployees() {
             this.isLoading = true;
-            this.statusMessage = '';
-            const userId = this.authStore.admin?._id || localStorage.getItem('userId') || '';
-            const token = this.authStore.accessToken || localStorage.getItem('token') || '';
-            console.log('Fetching employees with:', { userId, token: token.slice(0, 20) + '...' });
+            const authStore = useAuthStore();
+            console.log('Auth State:', {
+                token: authStore.accessToken,
+                role: authStore.userRole,
+                id: authStore.admin?.id || authStore.employee?.id,
+            });
             try {
-                if (!token) throw new Error('No authentication token found');
                 const response = await axios.get(`${BASE_API_URL}/api/employees`, {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        'Authorization': `Bearer ${authStore.accessToken}`,
                         'user-role': 'admin',
-                        'user-id': userId,
+                        'user-id': authStore.admin?.id || authStore.employee?.id,
                     },
                 });
                 this.employees = response.data
-                    .filter(employee => employee.status !== 'pending' && employee.status !== 'trashed')
-                    .map((employee) => {
-                        const latestPosition = this.getLatestPosition(employee);
-                        const name = `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 'Unnamed Employee';
-                        const payheads = (employee.payheads || []).map(ph => ({
+                    .filter(emp => emp.status !== 'pending' && emp.status !== 'archived')
+                    .map(emp => {
+                        const payheads = (emp.payheads || []).map(ph => ({
                             _id: ph._id,
                             id: ph.id || -1,
                             name: ph.name || 'Unknown',
                             amount: Number(ph.amount || 0),
                             type: ph.type || 'Earnings',
+                            description: ph.description || '',
                             isRecurring: ph.isRecurring || false,
+                            isAttendanceAffected: ph.isAttendanceAffected || false,
                             appliedThisCycle: ph.appliedThisCycle || false,
                             uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         }));
-                        const mappedEmployee = {
-                            ...employee,
-                            id: employee._id,
-                            name,
-                            position: latestPosition.position,
-                            salary: latestPosition.salary,
+                        return {
+                            ...emp,
+                            name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Unknown Employee',
+                            position: emp.position || 'N/A',
+                            salary: Number(emp.salary || 0),
                             payheads,
-                            totalLates: employee.lates?.totalMinutes || 0,
-                            positionHistory: Array.isArray(employee.positionHistory) && employee.positionHistory.length > 0 ? employee.positionHistory : [{
-                                position: employee.position || 'N/A',
-                                salary: employee.salary || 0,
-                                startDate: employee.hireDate || this.currentDate,
-                                endDate: null
-                            }],
-                            createdAt: employee.createdAt || employee.hireDate,
-                            updatedAt: employee.updatedAt
+                            totalEarnings: this.calculateEarnings(payheads),
+                            totalDeduction: this.calculateDeductions(payheads),
+                            totalRecurringDeduction: this.calculateRecurringDeductions(payheads),
+                            totalSalary: Number(emp.salary || 0) +
+                                this.calculateEarnings(payheads) -
+                                this.calculateDeductions(payheads) -
+                                this.calculateRecurringDeductions(payheads),
                         };
-                        if (employee._id === '67e4d967fc64c58822e13774') {
-                            console.log('Position history for employee 67e4d967fc64c58822e13774:', mappedEmployee.positionHistory);
-                        }
-                        return mappedEmployee;
                     });
-                this.showSuccessMessage('Employees loaded successfully!');
+                console.log('Fetched employees:', this.employees);
+                this.showSuccessMessage('Data loaded successfully!');
             } catch (error) {
-                console.error('Error fetching employees:', error);
-                this.showErrorMessage(`Failed to load employees: ${error.message}`);
+                console.error('Error fetching employees:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to load employees: ' + (error.response?.data?.message || error.message));
+                this.employees = [];
             } finally {
                 this.isLoading = false;
             }
         },
-        async refreshData() {
-            this.isLoading = true;
+
+        async fetchAttendance(employeeId, cycle = 'monthly') {
+            const authStore = useAuthStore();
             try {
-                await Promise.all([
-                    this.fetchPositionsWithRetry(),
-                    this.fetchEmployees(),
-                    this.fetchPayHeads()
-                ]);
-                if (this.showHistoryModal && this.selectedEmployee) {
-                    await this.showPayslipHistory(this.selectedEmployee);
+                const response = await axios.get(`${BASE_API_URL}/api/attendance/${employeeId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authStore.accessToken}`,
+                        'user-role': 'admin',
+                        'user-id': authStore.admin?.id || authStore.employee?.id,
+                    },
+                    params: { cycle }, // Pass cycle (monthly or bi-weekly) to filter attendance
+                });
+                return response.data; // Expected: { lateCount: number, absentDays: number }
+            } catch (error) {
+                console.error('Error fetching attendance:', error.response?.data || error.message);
+                return { lateCount: 0, absentDays: 0 }; // Fallback to avoid breaking calculations
+            }
+        },
+
+        async calculateAttendanceDeductions(payheads = [], employeeId, cycle = 'monthly') {
+            if (!employeeId) return 0;
+            const attendance = await this.fetchAttendance(employeeId, cycle);
+            const { lateCount = 0, absentDays = 0 } = attendance;
+
+            return payheads
+                .filter(p => p.type === 'Deductions' && p.isAttendanceAffected)
+                .reduce((sum, p) => {
+                    const lateDeduction = (p.amount / 2) * lateCount; // Half amount per late
+                    const absentDeduction = p.amount * absentDays; // Full amount per absent day
+                    return sum + lateDeduction + absentDeduction;
+                }, 0);
+        },
+
+        async initializeData() {
+            await Promise.all([this.fetchPayHeads(), this.fetchEmployees()]);
+        },
+
+        async addPayHead(payHead) {
+            try {
+                this.isLoading = true;
+                const payload = {
+                    name: payHead.name,
+                    amount: Number(payHead.amount || 0),
+                    type: payHead.type,
+                    description: payHead.description || '',
+                    isRecurring: payHead.isRecurring || false,
+                    isAttendanceAffected: payHead.isAttendanceAffected || false,
+                };
+                const response = await axios.post(`${BASE_API_URL}/api/payheads`, payload, {
+                    headers: { 'user-role': 'admin' },
+                });
+                this.payHeads.push({
+                    _id: response.data._id,
+                    id: response.data.id,
+                    name: response.data.name,
+                    amount: Number(response.data.amount),
+                    type: response.data.type,
+                    description: response.data.description || '',
+                    isRecurring: response.data.isRecurring || false,
+                    isAttendanceAffected: response.data.isAttendanceAffected || false,
+                    appliedThisCycle: false,
+                });
+                this.availablePayheads = [...this.payHeads];
+                this.showAddModal = false;
+                this.showSuccessMessage('Pay head added successfully!');
+                await this.fetchPayHeads();
+            } catch (error) {
+                console.error('Error adding pay head:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to add pay head: ' + (error.response?.data?.message || error.message));
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        showUpdatePayHeadModal(payHead) {
+            this.selectedPayHead = { ...payHead };
+            this.showUpdateModal = true;
+        },
+
+        async updatePayHead(updatedPayHead) {
+            try {
+                this.isLoading = true;
+                const payload = {
+                    name: updatedPayHead.name,
+                    amount: Number(updatedPayHead.amount || 0),
+                    type: updatedPayHead.type,
+                    description: updatedPayHead.description || '',
+                    isRecurring: updatedPayHead.isRecurring || false,
+                    isAttendanceAffected: updatedPayHead.isAttendanceAffected || false,
+                };
+                const response = await axios.put(
+                    `${BASE_API_URL}/api/payheads/${updatedPayHead.id}`,
+                    payload,
+                    { headers: { 'user-role': 'admin' } }
+                );
+                const index = this.payHeads.findIndex(ph => ph.id === updatedPayHead.id);
+                if (index !== -1) {
+                    this.payHeads[index] = {
+                        _id: response.data._id,
+                        id: response.data.id,
+                        name: response.data.name,
+                        amount: Number(response.data.amount),
+                        type: response.data.type,
+                        description: response.data.description || '',
+                        isRecurring: response.data.isRecurring || false,
+                        isAttendanceAffected: response.data.isAttendanceAffected || false,
+                        appliedThisCycle: false,
+                    };
+                    this.availablePayheads = [...this.payHeads];
+                    this.showUpdateModal = false;
+                    this.showSuccessMessage('Pay head updated successfully!');
+                    await this.fetchEmployees();
                 }
             } catch (error) {
-                console.error('Error refreshing data:', error);
-                this.showErrorMessage(`Failed to refresh data: ${error.message}`);
+                console.error('Error updating pay head:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to update pay head: ' + (error.response?.data?.message || error.message));
             } finally {
                 this.isLoading = false;
             }
         },
-        showDeductionModal() {
-            this.selectedDeductions = [];
-            this.selectedEmployeesForDeduction = [];
-            this.selectAllDeductions = false;
-            this.selectAllEmployees = false;
-            this.employeesWithAttendance = this.employees.map(emp => ({
-                ...emp,
-                totalLates: emp.lates?.totalMinutes || 0,
-                absences: emp.absences || { days: 0 }
-            }));
-            this.showDeductionModal = true;
-        },
-        toggleSelectAllDeductions() {
-            if (this.selectAllDeductions) {
-                this.selectedDeductions = [...this.availableDeductions];
-            } else {
-                this.selectedDeductions = [];
+
+        async confirmDeletePayHead(id) {
+            if (confirm('Are you sure you want to delete this pay head?')) {
+                await this.deletePayHead(id);
             }
         },
-        toggleSelectAllEmployees() {
-            if (this.selectAllEmployees) {
-                this.selectedEmployeesForDeduction = [...this.employeesWithAttendance];
-            } else {
-                this.selectedEmployeesForDeduction = [];
-            }
-        },
-        async saveDeductions() {
-            if (this.selectedDeductions.length === 0 || this.selectedEmployeesForDeduction.length === 0) return;
-            this.isLoading = true;
+
+        async deletePayHead(id) {
             try {
-                const token = this.authStore.accessToken || localStorage.getItem('token');
-                if (!token) throw new Error('No authentication token available');
-                for (const employee of this.selectedEmployeesForDeduction) {
-                    const existingPayheads = this.employees.find(e => e.id === employee.id)?.payheads || [];
+                this.isLoading = true;
+                await axios.delete(`${BASE_API_URL}/api/payheads/${id}`, {
+                    headers: { 'user-role': 'admin' },
+                });
+                this.payHeads = this.payHeads.filter(ph => ph.id !== id);
+                this.availablePayheads = [...this.payHeads];
+                this.showSuccessMessage('Pay head deleted successfully!');
+                await this.fetchEmployees();
+            } catch (error) {
+                console.error('Error deleting pay head:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to delete pay head: ' + (error.response?.data?.message || error.message));
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        openAddPayheadModal(employee) {
+            this.selectedEmployee = { ...employee, salary: Number(employee.salary || 0) };
+            this.selectedEmployeePayheads = [...employee.payheads];
+            this.showAddPayheadModal = true;
+        },
+
+        addPayheadToEmployee(payhead) {
+            const newPayhead = {
+                _id: payhead._id,
+                id: payhead.id,
+                name: payhead.name,
+                amount: Number(payhead.amount || 0),
+                type: payhead.type,
+                description: payhead.description || '',
+                isRecurring: payhead.isRecurring || false,
+                isAttendanceAffected: payhead.isAttendanceAffected || false,
+                appliedThisCycle: false,
+                uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            };
+            this.selectedEmployeePayheads.push(newPayhead);
+        },
+
+        removePayheadFromEmployee(payhead) {
+            this.selectedEmployeePayheads = this.selectedEmployeePayheads.filter(
+                p => p.uniqueId !== payhead.uniqueId
+            );
+        },
+
+        updatePayheadInEmployee(updatedPayhead) {
+            const index = this.selectedEmployeePayheads.findIndex(
+                p => p.uniqueId === updatedPayhead.uniqueId
+            );
+            if (index !== -1) {
+                this.selectedEmployeePayheads[index] = {
+                    ...updatedPayhead,
+                    amount: Number(updatedPayhead.amount || 0),
+                };
+            }
+        },
+
+        async savePayheads() {
+            try {
+                this.isLoading = true;
+                const authStore = useAuthStore();
+                const payheadsForBackend = this.selectedEmployeePayheads.map(ph => ({
+                    _id: ph._id,
+                    id: ph.id,
+                    name: ph.name,
+                    amount: Number(ph.amount || 0),
+                    type: ph.type,
+                    description: ph.description || '',
+                    isRecurring: ph.isRecurring || false,
+                    isAttendanceAffected: ph.isAttendanceAffected || false,
+                    appliedThisCycle: ph.appliedThisCycle || false,
+                }));
+                const updatedEmployee = {
+                    payheads: payheadsForBackend,
+                    salary: Number(this.selectedEmployee.salary || 0) +
+                        this.calculateEarnings(this.selectedEmployeePayheads) -
+                        this.calculateDeductions(this.selectedEmployeePayheads) -
+                        this.calculateRecurringDeductions(this.selectedEmployeePayheads),
+                };
+
+                console.log('Saving payheads for employee:', this.selectedEmployee._id, updatedEmployee);
+
+                await axios.put(
+                    `${BASE_API_URL}/api/employees/update/${this.selectedEmployee._id}`,
+                    updatedEmployee,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${authStore.accessToken}`,
+                            'user-role': 'admin',
+                            'user-id': authStore.admin?.id || authStore.employee?.id,
+                        }
+                    }
+                );
+
+                const employeeIndex = this.employees.findIndex(e => e._id === this.selectedEmployee._id);
+                if (employeeIndex !== -1) {
+                    this.employees[employeeIndex] = {
+                        ...this.employees[employeeIndex],
+                        payheads: [...this.selectedEmployeePayheads],
+                        salary: updatedEmployee.salary,
+                    };
+                }
+
+                this.showAddPayheadModal = false;
+                this.showSuccessMessage('Payheads saved successfully!');
+            } catch (error) {
+                console.error('Error saving payheads:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to save payheads: ' + (error.response?.data?.message || error.message));
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async saveBulkPayheads({ payheads, employees }) {
+            try {
+                this.isLoading = true;
+                const authStore = useAuthStore();
+                for (const employee of employees) {
+                    const existingPayheads = this.employees.find(e => e._id === employee._id)?.payheads || [];
                     const updatedPayheads = [...existingPayheads];
-                    for (const deduction of this.selectedDeductions) {
-                        if (!updatedPayheads.some(ph => ph._id === deduction._id && !ph.isRecurring)) {
+
+                    for (const payhead of payheads) {
+                        if (!updatedPayheads.some(ph => ph._id === payhead._id)) {
+                            updatedPayheads.push({
+                                _id: payhead._id,
+                                id: payhead.id,
+                                name: payhead.name,
+                                amount: Number(payhead.amount || 0),
+                                type: payhead.type,
+                                description: payhead.description || '',
+                                isRecurring: payhead.isRecurring || false,
+                                isAttendanceAffected: payhead.isAttendanceAffected || false,
+                                appliedThisCycle: false,
+                                uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            });
+                        }
+                    }
+
+                    const payheadsForBackend = updatedPayheads.map(ph => ({
+                        _id: ph._id,
+                        id: ph.id,
+                        name: ph.name,
+                        amount: Number(ph.amount || 0),
+                        type: ph.type,
+                        description: ph.description || '',
+                        isRecurring: ph.isRecurring || false,
+                        isAttendanceAffected: ph.isAttendanceAffected || false,
+                        appliedThisCycle: ph.appliedThisCycle || false,
+                    }));
+                    const updatedEmployee = {
+                        payheads: payheadsForBackend,
+                        salary: Number(employee.salary || 0) +
+                            this.calculateEarnings(updatedPayheads) -
+                            this.calculateDeductions(updatedPayheads) -
+                            this.calculateRecurringDeductions(updatedPayheads),
+                    };
+
+                    await axios.put(
+                        `${BASE_API_URL}/api/employees/update/${employee._id}`,
+                        updatedEmployee,
+                        {
+                            headers: {
+                                'Authorization': `Bearer ${authStore.accessToken}`,
+                                'user-role': 'admin',
+                                'user-id': authStore.admin?.id || authStore.employee?.id,
+                            }
+                        }
+                    );
+
+                    const employeeIndex = this.employees.findIndex(e => e._id === employee._id);
+                    if (employeeIndex !== -1) {
+                        this.employees[employeeIndex] = {
+                            ...this.employees[employeeIndex],
+                            payheads: updatedPayheads,
+                            salary: updatedEmployee.salary,
+                        };
+                    }
+                }
+                this.showAddPayheadsToEmployeesModal = false;
+                this.showSuccessMessage('Payheads assigned successfully!');
+                await this.fetchEmployees();
+            } catch (error) {
+                console.error('Error assigning payheads:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to assign payheads: ' + (error.response?.data?.message || error.message));
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async saveRecurringDeductions({ deductions, employees, periods }) {
+            try {
+                this.isLoading = true;
+                const authStore = useAuthStore();
+                for (const employee of employees) {
+                    const existingPayheads = this.employees.find(e => e._id === employee._id)?.payheads || [];
+                    const updatedPayheads = [...existingPayheads];
+
+                    for (const deduction of deductions) {
+                        if (!updatedPayheads.some(ph => ph._id === deduction._id && ph.isRecurring)) {
                             updatedPayheads.push({
                                 _id: deduction._id,
                                 id: deduction.id,
                                 name: deduction.name,
                                 amount: Number(deduction.amount || 0),
                                 type: deduction.type,
-                                isRecurring: false,
+                                description: deduction.description || '',
+                                isRecurring: true,
+                                isAttendanceAffected: deduction.isAttendanceAffected || false,
                                 appliedThisCycle: false,
-                                uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+                                uniqueId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                             });
                         }
                     }
-                    const payheadsForBackend = updatedPayheads.map(ph => ph._id).filter(id => id);
+
+                    const payheadsForBackend = updatedPayheads.map(ph => ({
+                        _id: ph._id,
+                        id: ph.id,
+                        name: ph.name,
+                        amount: Number(ph.amount || 0),
+                        type: ph.type,
+                        description: ph.description || '',
+                        isRecurring: ph.isRecurring || false,
+                        isAttendanceAffected: ph.isAttendanceAffected || false,
+                        appliedThisCycle: ph.appliedThisCycle || false,
+                    }));
                     const updatedEmployee = {
                         payheads: payheadsForBackend,
                         salary: Number(employee.salary || 0) +
                             this.calculateEarnings(updatedPayheads) -
                             this.calculateDeductions(updatedPayheads) -
-                            this.calculateRecurringDeductions(updatedPayheads)
+                            this.calculateRecurringDeductions(updatedPayheads),
                     };
-                    console.log('Saving deductions for employee:', employee.id, updatedEmployee);
+
+                    console.log('Saving recurring deductions for employee:', employee._id, updatedEmployee);
+
                     await axios.put(
-                        `${BASE_API_URL}/api/employees/update/${employee.id}`,
+                        `${BASE_API_URL}/api/employees/update/${employee._id}`,
                         updatedEmployee,
                         {
                             headers: {
-                                'Authorization': `Bearer ${token}`,
+                                'Authorization': `Bearer ${authStore.accessToken}`,
                                 'user-role': 'admin',
-                                'user-id': this.authStore.admin?._id || localStorage.getItem('userId') || ''
+                                'user-id': authStore.admin?.id || authStore.employee?.id,
                             }
                         }
                     );
-                    const employeeIndex = this.employees.findIndex(e => e.id === employee.id);
+
+                    const employeeIndex = this.employees.findIndex(e => e._id === employee._id);
                     if (employeeIndex !== -1) {
                         this.employees[employeeIndex] = {
                             ...this.employees[employeeIndex],
                             payheads: updatedPayheads,
-                            salary: updatedEmployee.salary
+                            salary: updatedEmployee.salary,
                         };
                     }
                 }
-                this.showDeductionModal = false;
-                this.showSuccessMessage('Deductions applied successfully!');
-                await this.fetchEmployees();
+                this.showRecurringDeductionModal = false;
+                this.showSuccessMessage('Recurring deductions saved successfully!');
+                await this.fetchPayHeads();
             } catch (error) {
-                console.error('Error saving deductions:', error.response?.data || error.message);
-                this.showErrorMessage('Failed to apply deductions: ' + (error.response?.data?.message || error.message));
+                console.error('Error saving recurring deductions:', error.response?.data || error.message);
+                this.showErrorMessage('Failed to save recurring deductions: ' + (error.response?.data?.message || error.message));
             } finally {
                 this.isLoading = false;
             }
         },
-        async showPayslipHistory(employee) {
-            this.isLoading = true;
-            if (!employee?.id || !employee?.empNo) {
-                this.showErrorMessage('Invalid employee data');
-                console.error('Invalid employee:', employee);
-                this.isLoading = false;
-                return;
-            }
 
-            const token = this.authStore.accessToken || localStorage.getItem('token');
-            if (!token) {
-                this.showErrorMessage('Authentication required. Please log in.');
-                this.$router.push('/admin-login');
-                return;
-            }
-
-            this.selectedEmployee = {
-                ...employee,
-                positionHistory: Array.isArray(employee.positionHistory) && employee.positionHistory.length > 0
-                    ? employee.positionHistory
-                    : [{
-                        position: employee.position || 'N/A',
-                        salary: employee.salary || 0,
-                        startDate: employee.hireDate || this.currentDate,
-                        endDate: null
-                    }]
-            };
-
-            const today = moment(this.currentDate);
-            const hireDate = moment(this.selectedEmployee.hireDate || this.currentDate);
-            let backendPayslips = [];
-            try {
-                const response = await axios.get(`${BASE_API_URL}/api/payslips/${this.selectedEmployee.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'user-role': 'admin',
-                    },
-                });
-                backendPayslips = response.data || [];
-            } catch (error) {
-                console.error('Error fetching payslips:', error);
-            }
-
-            const payslipHistory = [];
-            let currentDate = hireDate.clone().startOf('month');
-
-            while (currentDate.isSameOrBefore(today, 'day')) {
-                const salaryMonth = currentDate.format('YYYY-MM');
-                const expectedPaydays = this.getExpectedPayday(hireDate.toDate(), salaryMonth);
-
-                // Mid-month payslip (15th)
-                const midMonthDate = moment(`${salaryMonth}-15`, 'YYYY-MM-DD');
-                if (midMonthDate.isSameOrAfter(hireDate, 'day')) {
-                    const midPosition = this.getActivePositionForDate(this.selectedEmployee.positionHistory, midMonthDate);
-                    const midPayslip = backendPayslips.find(p =>
-                        p.salaryMonth === salaryMonth && p.paydayType === 'mid-month'
-                    ) || {};
-
-                    payslipHistory.push({
-                        salaryMonth,
-                        paydayType: 'mid-month',
-                        payDate: midMonthDate.format('YYYY-MM-DD'),
-                        position: midPosition.position,
-                        salary: midPosition.salary,
-                        totalSalary: midPayslip.salary ? this.calculateNetSalary({
-                            ...this.selectedEmployee,
-                            position: midPosition.position,
-                            salary: midPosition.salary
-                        }) : null,
-                        payslipDataUrl: midPayslip.payslipData ? `data:application/pdf;base64,${midPayslip.payslipData}` : null,
-                        employee: {
-                            ...this.selectedEmployee,
-                            position: midPosition.position,
-                            salary: midPosition.salary,
-                            salaryMonth: salaryMonth
-                        },
-                        expectedPaydays
-                    });
-                }
-
-                // End-month payslip (last day of the month)
-                const endMonthDate = moment(salaryMonth).endOf('month');
-                if (endMonthDate.isSameOrAfter(hireDate, 'day')) {
-                    const endPosition = this.getActivePositionForDate(this.selectedEmployee.positionHistory, endMonthDate);
-                    const endPayslip = backendPayslips.find(p =>
-                        p.salaryMonth === salaryMonth && p.paydayType === 'end-of-month'
-                    ) || {};
-
-                    payslipHistory.push({
-                        salaryMonth,
-                        paydayType: 'end-of-month',
-                        payDate: endMonthDate.format('YYYY-MM-DD'),
-                        position: endPosition.position,
-                        salary: endPosition.salary,
-                        totalSalary: endPayslip.salary ? this.calculateNetSalary({
-                            ...this.selectedEmployee,
-                            position: endPosition.position,
-                            salary: endPosition.salary
-                        }) : null,
-                        payslipDataUrl: endPayslip.payslipData ? `data:application/pdf;base64,${endPayslip.payslipData}` : null,
-                        employee: {
-                            ...this.selectedEmployee,
-                            position: endPosition.position,
-                            salary: endPosition.salary,
-                            salaryMonth: salaryMonth
-                        },
-                        expectedPaydays
-                    });
-                }
-
-                currentDate.add(15, 'days').startOf('day');
-                if (currentDate.date() > 15) {
-                    currentDate.startOf('month').add(1, 'month');
-                }
-            }
-
-            this.allPayslipHistories[this.selectedEmployee.id] = payslipHistory;
-            this.payslipHistory = payslipHistory;
-            this.selectedPayslip = payslipHistory.find(p => p.payslipDataUrl) || payslipHistory[0] || null;
-            this.showHistoryModal = true;
-            this.isLoading = false;
-
-            for (const payslip of payslipHistory) {
-                if (!payslip.payslipDataUrl && today.isSameOrAfter(moment(payslip.payDate), 'day')) {
-                    await this.generatePayslip(payslip);
-                }
-            }
-        },
-        canGeneratePayslip(payslip) {
-            const today = moment(this.currentDate);
-            const payDate = moment(payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday, 'D MMMM YYYY');
-            return today.isSameOrAfter(payDate, 'day') && !payslip.payslipDataUrl;
-        },
-        async generatePayslip(payslip) {
-            const employee = payslip.employee;
-            if (!employee?.id || !employee?.empNo) {
-                this.showErrorMessage('Employee data is incomplete.');
-                return;
-            }
-
-            const payDate = moment(payslip.payDate, 'YYYY-MM-DD');
-            const positionHistory = Array.isArray(employee.positionHistory) ? employee.positionHistory : [];
-            const activePosition = this.getActivePositionForDate(positionHistory, payDate);
-
-            if (!activePosition?.position || activePosition.salary === undefined) {
-                this.showErrorMessage('Invalid position or salary for this date.');
-                return;
-            }
-
-            const updatedEmployee = { ...employee, position: activePosition.position, salary: activePosition.salary };
-            const key = `${payslip.salaryMonth}-${payslip.paydayType}`;
-            this.payslipGenerationStatus[key] = { generating: true };
-
-            try {
-                const payslipData = this.createPayslipData(updatedEmployee);
-                const pdfBlob = await this.generatePdf(payslipData);
-                const base64Data = await this.blobToBase64(pdfBlob);
-                const url = URL.createObjectURL(pdfBlob);
-
-                const payload = {
-                    employeeId: employee.id,
-                    empNo: String(employee.empNo),
-                    payslipData: base64Data.split(',')[1],
-                    salaryMonth: payslip.salaryMonth,
-                    paydayType: payslip.paydayType,
-                    position: activePosition.position,
-                    salary: Number(activePosition.salary),
-                    payDate: payDate.format('YYYY-MM-DD')
-                };
-
-                const token = this.authStore.accessToken || localStorage.getItem('token');
-                if (!token) throw new Error('No authentication token available');
-
-                console.log('Generating payslip with payload:', payload);
-
-                const response = await axios.post(`${BASE_API_URL}/api/payslips/generate`, payload, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'user-role': 'admin'
-                    },
-                });
-
-                if (response.status === 201 || response.status === 200) {
-                    payslip.payslipDataUrl = url;
-                    payslip.position = activePosition.position;
-                    payslip.salary = activePosition.salary;
-                    payslip.totalSalary = this.calculateNetSalary(updatedEmployee);
-                    this.selectedPayslip = payslip;
-
-                    const employeeHistory = this.allPayslipHistories[employee.id] || [];
-                    const updatedHistory = employeeHistory.map(p =>
-                        p.salaryMonth === payslip.salaryMonth && p.paydayType === payslip.paydayType ? payslip : p
-                    );
-                    if (!employeeHistory.some(p => p.salaryMonth === payslip.salaryMonth && p.paydayType === payslip.paydayType)) {
-                        updatedHistory.push(payslip);
-                    }
-                    this.allPayslipHistories[employee.id] = updatedHistory;
-                    this.payslipHistory = updatedHistory;
-
-                    this.showSuccessMessage(`Payslip generated for ${employee.name} - ${payslip.paydayType === 'mid-month' ? payslip.expectedPaydays.midMonthPayday : payslip.expectedPaydays.endMonthPayday}!`);
-                }
-            } catch (error) {
-                console.error('Error generating payslip:', error.response?.data || error.message);
-                this.showErrorMessage(`Failed to generate payslip: ${error.response?.data?.message || error.message}`);
-            } finally {
-                this.payslipGenerationStatus[key] = { generating: false };
-            }
-        },
-        async generateAllPayslips() {
-            this.isGeneratingAll = true;
-            this.statusMessage = '';
-            try {
-                for (const employee of this.employees) {
-                    if (!this.allPayslipHistories[employee.id]) {
-                        await this.showPayslipHistory(employee);
-                        this.showHistoryModal = false;
-                    }
-                }
-
-                const payslipsToGenerate = [];
-                for (const employee of this.employees) {
-                    const history = this.allPayslipHistories[employee.id] || [];
-                    const duePayslips = history.filter(payslip => this.canGeneratePayslip(payslip));
-                    payslipsToGenerate.push(...duePayslips);
-                }
-
-                if (payslipsToGenerate.length === 0) {
-                    this.showErrorMessage('No payslips are due for generation.');
-                    return;
-                }
-
-                for (const payslip of payslipsToGenerate) {
-                    await this.generatePayslip(payslip);
-                }
-
-                this.showSuccessMessage(`Generated ${payslipsToGenerate.length} payslips successfully!`);
-            } catch (error) {
-                console.error('Error generating all payslips:', error);
-                this.showErrorMessage(`Failed to generate all payslips: ${error.message}`);
-            } finally {
-                this.isGeneratingAll = false;
-            }
-        },
-        async generatePayslipNow(employee) {
-            this.payslipGenerationStatus.generating = true;
-            try {
-                const today = moment(this.currentDate);
-                const salaryMonth = today.format('YYYY-MM');
-                const lastDayOfMonth = today.clone().endOf('month').date();
-                const payDate = today.isBefore(moment(`${salaryMonth}-15`, 'YYYY-MM-DD').endOf('day'))
-                    ? moment(`${salaryMonth}-15`, 'YYYY-MM-DD')
-                    : moment(`${salaryMonth}-${lastDayOfMonth}`, 'YYYY-MM-DD');
-                const activePosition = this.getActivePositionForDate(employee.positionHistory, payDate);
-                if (!activePosition || !activePosition.position || activePosition.salary === undefined) {
-                    this.showErrorMessage('No valid position for current date.');
-                    console.error('Invalid activePosition:', activePosition);
-                    return;
-                }
-                const updatedEmployee = { ...employee, position: activePosition.position, salary: activePosition.salary };
-                const expectedPaydays = this.getExpectedPayday(employee.hireDate, salaryMonth);
-
-                const paydayType = payDate.date() === 15 ? 'mid-month' : 'end-of-month';
-                const employeeSalaryMonth = `${salaryMonth}-${paydayType === 'mid-month' ? '15' : lastDayOfMonth}`;
-
-                let payslipData = {
-                    salaryMonth,
-                    paydayType,
-                    position: activePosition.position,
-                    salary: activePosition.salary,
-                    employee: { ...updatedEmployee, salaryMonth: employeeSalaryMonth },
-                    expectedPaydays,
-                    payDate: payDate.format('YYYY-MM-DD')
-                };
-
-                const pdfPayslipData = this.createPayslipData(payslipData.employee);
-                const pdfBlob = await this.generatePdf(pdfPayslipData);
-                const base64Data = await this.blobToBase64(pdfBlob);
-                const url = URL.createObjectURL(pdfBlob);
-
-                const payload = {
-                    employeeId: employee.id,
-                    empNo: String(employee.empNo),
-                    payslipData: base64Data.split(',')[1],
-                    salaryMonth: payslipData.salaryMonth,
-                    paydayType: payslipData.paydayType,
-                    position: activePosition.position,
-                    salary: Number(activePosition.salary),
-                    payDate: payDate.format('YYYY-MM-DD')
-                };
-
-                const token = this.authStore.accessToken || localStorage.getItem('token');
-                if (!token) throw new Error('No authentication token available');
-
-                console.log('Sending payload to backend (generatePayslipNow):', payload);
-
-                const response = await axios.post(`${BASE_API_URL}/api/payslips/generate`, payload, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'user-role': 'admin'
-                    },
-                });
-
-                if (response.status === 201 || response.status === 200) {
-                    payslipData.payslipDataUrl = url;
-                    payslipData.totalSalary = this.calculateNetSalary(updatedEmployee);
-
-                    const employeeHistory = this.allPayslipHistories[employee.id] || [];
-                    const updatedHistory = employeeHistory.map(p =>
-                        p.salaryMonth === payslipData.salaryMonth && p.paydayType === payslipData.paydayType ? payslipData : p
-                    );
-                    if (!employeeHistory.some(p => p.salaryMonth === payslipData.salaryMonth && p.paydayType === payslipData.paydayType)) {
-                        updatedHistory.push(payslipData);
-                    }
-                    this.allPayslipHistories[employee.id] = updatedHistory;
-                    this.payslipHistory = updatedHistory;
-                    this.selectedPayslip = payslipData;
-
-                    this.showSuccessMessage(`Payslip generated for ${employee.name} - ${payslipData.paydayType === 'mid-month' ? payslipData.expectedPaydays.midMonthPayday : payslipData.expectedPaydays.endMonthPayday}!`);
-                }
-            } catch (error) {
-                console.error('Error generating payslip now:', error.response?.data || error.message);
-                this.showErrorMessage(`Failed to generate payslip: ${error.response?.data?.message || error.message}`);
-            } finally {
-                this.payslipGenerationStatus.generating = false;
-            }
-        },
-        getLatestPosition(employee) {
-            if (!Array.isArray(employee.positionHistory) || employee.positionHistory.length === 0) {
-                return {
-                    position: employee.position || 'N/A',
-                    salary: employee.salary || 0,
-                    startDate: employee.hireDate || this.currentDate
-                };
-            }
-            const sortedHistory = [...employee.positionHistory].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-            return sortedHistory.find(h => !h.endDate) || sortedHistory[0];
-        },
-        getActivePositionForDate(positionHistory, date) {
-            if (!Array.isArray(positionHistory) || positionHistory.length === 0) {
-                return {
-                    position: 'N/A',
-                    salary: 0,
-                    startDate: this.selectedEmployee?.hireDate || this.currentDate
-                };
-            }
-            const targetDate = moment(date);
-            const sortedHistory = [...positionHistory].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-            const activePosition = sortedHistory.find(history => {
-                const startDate = moment(history.startDate);
-                const endDate = history.endDate ? moment(history.endDate) : moment('9999-12-31');
-                return targetDate.isSameOrAfter(startDate, 'day') && targetDate.isSameOrBefore(endDate, 'day');
-            });
-            return activePosition || sortedHistory[sortedHistory.length - 1];
-        },
         calculateEarnings(payheads = []) {
             return payheads
-                .filter(ph => ph.type === 'Earnings' && Number(ph.amount) > 0)
-                .reduce((sum, ph) => sum + Number(ph.amount || 0), 0);
+                .filter(p => p.type === 'Earnings')
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
         },
-        calculateDeductions(payheads = []) {
-            return payheads
-                .filter(ph => ph.type === 'Deductions' && !ph.isRecurring && Number(ph.amount) > 0)
-                .reduce((sum, ph) => sum + Number(ph.amount || 0), 0);
+
+        async calculateDeductions(payheads = [], employeeId, cycle = 'monthly') {
+            const standardDeductions = payheads
+                .filter(p => p.type === 'Deductions' && !p.isRecurring && !p.isAttendanceAffected)
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+            const attendanceDeductions = await this.calculateAttendanceDeductions(payheads, employeeId, cycle);
+            return standardDeductions + attendanceDeductions;
         },
-        calculateRecurringDeductions(payheads = []) {
-            return payheads
-                .filter(ph => ph.type === 'Deductions' && ph.isRecurring && Number(ph.amount) > 0)
-                .reduce((sum, ph) => sum + Number(ph.amount || 0), 0);
-        },
-        calculateNonTaxableIncome(employee) {
-            const deMinimis = Math.min(this.calculateEarnings(employee.payheads), this.config.deMinimisLimit);
-            return deMinimis;
-        },
-        calculateTax(employee) {
-            const monthlySalary = Number(employee.salary || 0);
-            const nonTaxable = this.calculateNonTaxableIncome(employee);
-            const taxableIncome = Math.max(0, monthlySalary + this.calculateEarnings(employee.payheads) - nonTaxable - this.calculateDeductions(employee.payheads) - this.calculateRecurringDeductions(employee.payheads));
 
-            // Simplified Philippine tax brackets (2025, monthly)
-            const taxBrackets = [
-                { threshold: 20833, taxRate: 0, baseTax: 0 }, // Up to 250,000 annually
-                { threshold: 33333, taxRate: 0.15, baseTax: 0 }, // 250,001 - 400,000
-                { threshold: 66667, taxRate: 0.20, baseTax: 2250 }, // 400,001 - 800,000
-                { threshold: 166667, taxRate: 0.25, baseTax: 10250 }, // 800,001 - 2,000,000
-                { threshold: 666667, taxRate: 0.30, baseTax: 40250 }, // 2,000,001 - 8,000,000
-                { threshold: Infinity, taxRate: 0.35, baseTax: 220250 } // Above 8,000,000
-            ];
-
-            for (const bracket of taxBrackets) {
-                if (taxableIncome <= bracket.threshold) {
-                    return Number((bracket.baseTax + (taxableIncome - (bracket.threshold === Infinity ? 0 : taxBrackets[taxBrackets.indexOf(bracket) - 1]?.threshold || 0)) * bracket.taxRate).toFixed(2));
-                }
-            }
-            return 0;
-        },
-        calculateNetSalary(employee) {
-            const basicSalary = Number(employee.salary || 0);
-            const earnings = this.calculateEarnings(employee.payheads);
-            const deductions = this.calculateDeductions(employee.payheads);
-            const recurringDeductions = this.calculateRecurringDeductions(employee.payheads);
-            const tax = this.calculateTax(employee);
-
-            // Adjust for lates and absences
-            const hourlyRate = this.getHourlyRate(employee.position);
-            const lateDeduction = (employee.totalLates || 0) * (hourlyRate / 60);
-            const absenceDeduction = (employee.absences?.days || 0) * (basicSalary / 22);
-
-            const netSalary = basicSalary + earnings - deductions - recurringDeductions - tax - lateDeduction - absenceDeduction;
-            return Number(netSalary.toFixed(2));
-        },
-        createPayslipData(employee) {
-            const payDate = moment(employee.salaryMonth.split('-').slice(0, 2).join('-') + '-15').endOf('month').format('YYYY-MM-DD');
-            const earnings = this.calculateEarnings(employee.payheads);
-            const deductions = this.calculateDeductions(employee.payheads);
-            const recurringDeductions = this.calculateRecurringDeductions(employee.payheads);
-            const tax = this.calculateTax(employee);
-            const netSalary = this.calculateNetSalary(employee);
-
-            return {
-                employeeName: employee.name,
-                employeeId: employee.empNo,
-                position: this.getPositionName(employee.position),
-                payPeriod: employee.salaryMonth,
-                payDate,
-                basicSalary: Number(employee.salary || 0),
-                earnings: employee.payheads
-                    .filter(ph => ph.type === 'Earnings')
-                    .map(ph => ({ name: ph.name, amount: Number(ph.amount || 0) })),
-                deductions: employee.payheads
-                    .filter(ph => ph.type === 'Deductions')
-                    .map(ph => ({ name: ph.name, amount: Number(ph.amount || 0), isRecurring: ph.isRecurring })),
-                tax,
-                netSalary,
-                totalEarnings: earnings,
-                totalDeductions: deductions + recurringDeductions,
-                lateDeduction: (employee.totalLates || 0) * (this.getHourlyRate(employee.position) / 60),
-                absenceDeduction: (employee.absences?.days || 0) * (Number(employee.salary || 0) / 22)
-            };
-        },
-        async generatePdf(payslipData) {
-            const doc = new jsPDF();
-            doc.setFontSize(12);
-            doc.text('Payslip', 105, 20, { align: 'center' });
-            doc.setFontSize(10);
-            doc.text(`Employee: ${payslipData.employeeName}`, 20, 30);
-            doc.text(`Employee ID: ${payslipData.employeeId}`, 20, 40);
-            doc.text(`Position: ${payslipData.position}`, 20, 50);
-            doc.text(`Pay Period: ${payslipData.payPeriod}`, 20, 60);
-            doc.text(`Pay Date: ${payslipData.payDate}`, 20, 70);
-
-            const tableY = 80;
-            const earningsTable = payslipData.earnings.map(e => [e.name, `₱${e.amount.toLocaleString()}`]);
-            earningsTable.unshift(['Basic Salary', `₱${payslipData.basicSalary.toLocaleString()}`]);
-
-            doc.autoTable({
-                startY: tableY,
-                head: [['Earnings', 'Amount']],
-                body: earningsTable,
-                theme: 'grid',
-                margin: { left: 20, right: 100 },
-                styles: { fontSize: 8 }
-            });
-
-            const deductionsTable = payslipData.deductions.map(d => [d.name, `₱${d.amount.toLocaleString()}`]);
-            if (payslipData.lateDeduction > 0) {
-                deductionsTable.push(['Lates', `₱${payslipData.lateDeduction.toFixed(2)}`]);
-            }
-            if (payslipData.absenceDeduction > 0) {
-                deductionsTable.push(['Absences', `₱${payslipData.absenceDeduction.toFixed(2)}`]);
-            }
-            deductionsTable.push(['Tax', `₱${payslipData.tax.toFixed(2)}`]);
-
-            doc.autoTable({
-                startY: tableY,
-                head: [['Deductions', 'Amount']],
-                body: deductionsTable,
-                theme: 'grid',
-                margin: { left: 110, right: 20 },
-                styles: { fontSize: 8 }
-            });
-
-            const finalY = Math.max(
-                doc.lastAutoTable.finalY || tableY,
-                doc.lastAutoTable.finalY || tableY
+        async calculateRecurringDeductions(payheads = [], employeeId, cycle = 'monthly') {
+            const standardRecurringDeductions = payheads
+                .filter(p => p.isRecurring && !p.appliedThisCycle && !p.isAttendanceAffected)
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+            const attendanceRecurringDeductions = await this.calculateAttendanceDeductions(
+                payheads.filter(p => p.isRecurring && !p.appliedThisCycle),
+                employeeId,
+                cycle
             );
+            return standardRecurringDeductions + attendanceRecurringDeductions;
+        },
 
-            doc.text(`Total Earnings: ₱${payslipData.totalEarnings.toLocaleString()}`, 20, finalY + 10);
-            doc.text(`Total Deductions: ₱${payslipData.totalDeductions.toLocaleString()}`, 20, finalY + 20);
-            doc.text(`Net Pay: ₱${payslipData.netSalary.toLocaleString()}`, 20, finalY + 30);
+        prevPage() {
+            if (this.currentPage > 1) this.currentPage--;
+        },
 
-            return doc.output('blob');
+        nextPage() {
+            if (this.currentPage < this.totalPages) this.currentPage++;
         },
-        getExpectedPayday(hireDate, salaryMonth) {
-            const midMonthPayday = moment(`${salaryMonth}-15`).format('D MMMM YYYY');
-            const endMonthPayday = moment(salaryMonth).endOf('month').format('D MMMM YYYY');
-            return { midMonthPayday, endMonthPayday };
+
+        resetFilters() {
+            this.searchQuery = '';
+            this.filterType = '';
         },
-        async blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        },
+
         showSuccessMessage(message) {
             this.statusMessage = message;
-            setTimeout(() => { this.statusMessage = ''; }, 5000);
+            setTimeout(() => { this.statusMessage = ''; }, 3000);
         },
+
         showErrorMessage(message) {
             this.statusMessage = message;
-            setTimeout(() => { this.statusMessage = ''; }, 5000);
+            setTimeout(() => { this.statusMessage = ''; }, 3000);
         },
-        prevPage() {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-            }
-        },
-        nextPage() {
-            if (this.currentPage < this.totalPages) {
-                this.currentPage++;
-            }
-        },
-        selectPayslip(payslip) {
-            this.selectedPayslip = payslip;
-            this.iframeError = false;
-        },
-        onIframeLoad() {
-            this.iframeError = false;
-        },
-        onIframeError() {
-            this.iframeError = true;
-        },
-        showPrintModal() {
-            this.selectedEmployeesForPrint = [];
-            this.selectAll = false;
-            this.employeesWithPayslips = this.employees
-                .filter(emp => this.allPayslipHistories[emp.id]?.some(p => p.payslipDataUrl))
-                .map(emp => ({
-                    id: emp.id,
-                    name: emp.name,
-                    latestPayslipDate: this.allPayslipHistories[emp.id]
-                        .filter(p => p.payslipDataUrl)
-                        .sort((a, b) => moment(b.payDate).diff(moment(a.payDate)))[0]?.payDate
-                }));
-            this.showPrintAllModal = true;
-        },
-        toggleSelectAll() {
-            if (this.selectAll) {
-                this.selectedEmployeesForPrint = this.employeesWithPayslips.map(emp => emp.id);
-            } else {
-                this.selectedEmployeesForPrint = [];
-            }
-        },
-        async printSelectedPayslips() {
-            this.isPrinting = true;
-            try {
-                for (const empId of this.selectedEmployeesForPrint) {
-                    const payslip = this.allPayslipHistories[empId]
-                        ?.filter(p => p.payslipDataUrl)
-                        .sort((a, b) => moment(b.payDate).diff(moment(a.payDate)))[0];
-                    if (payslip) {
-                        const iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.src = payslip.payslipDataUrl;
-                        document.body.appendChild(iframe);
-                        iframe.contentWindow.print();
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        document.body.removeChild(iframe);
-                    }
-                }
-                this.showSuccessMessage('Payslips sent to printer successfully!');
-                this.showPrintAllModal = false;
-            } catch (error) {
-                console.error('Error printing payslips:', error);
-                this.showErrorMessage('Failed to print payslips.');
-            } finally {
-                this.isPrinting = false;
-            }
-        },
-        downloadPayslip() {
-            if (!this.selectedPayslip?.payslipDataUrl) {
-                this.showErrorMessage('No payslip selected for download.');
-                return;
-            }
-            const link = document.createElement('a');
-            link.href = this.selectedPayslip.payslipDataUrl;
-            link.download = `payslip_${this.selectedPayslip.employee.name}_${this.selectedPayslip.salaryMonth}_${this.selectedPayslip.paydayType}.pdf`;
-            link.click();
-        },
-        showUpdatePositionModal() {
-            this.selectedEmployeeForUpdate = '';
-            this.newPosition = '';
-            this.showUpdateModal = true;
-        },
-        async updateEmployeePosition() {
-            if (!this.selectedEmployeeForUpdate || !this.newPosition) {
-                this.showErrorMessage('Please select an employee and a new position.');
-                return;
-            }
-            this.isLoading = true;
-            try {
-                const employee = this.employees.find(emp => emp.id === this.selectedEmployeeForUpdate);
-                if (!employee) throw new Error('Employee not found.');
-                const newPositionData = this.positions.find(pos => pos.name === this.newPosition);
-                if (!newPositionData) throw new Error('Position not found.');
 
-                const token = this.authStore.accessToken || localStorage.getItem('token');
-                if (!token) throw new Error('No authentication token available');
-
-                // Prepare updated position history
-                const positionHistory = Array.isArray(employee.positionHistory) ? [...employee.positionHistory] : [{
-                    position: employee.position || 'N/A',
-                    salary: employee.salary || 0,
-                    startDate: employee.hireDate || this.currentDate,
-                    endDate: null
-                }];
-
-                // Close the current position by setting an end date
-                const currentPosition = positionHistory.find(pos => !pos.endDate);
-                if (currentPosition) {
-                    currentPosition.endDate = moment(this.currentDate).format('YYYY-MM-DD');
-                }
-
-                // Add the new position
-                const newPositionEntry = {
-                    position: newPositionData.name,
-                    salary: Number(newPositionData.salary),
-                    startDate: moment(this.currentDate).format('YYYY-MM-DD'),
-                    endDate: null
-                };
-                positionHistory.push(newPositionEntry);
-
-                // Prepare updated employee data
-                const updatedEmployeeData = {
-                    position: newPositionData.name,
-                    salary: Number(newPositionData.salary),
-                    positionHistory,
-                    payheads: employee.payheads.map(ph => ph._id).filter(id => id),
-                    updatedAt: new Date().toISOString()
-                };
-
-                // Update employee in backend
-                console.log('Updating employee:', employee.id, updatedEmployeeData);
-                const response = await axios.put(
-                    `${BASE_API_URL}/api/employees/update/${employee.id}`,
-                    updatedEmployeeData,
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'user-role': 'admin',
-                            'user-id': this.authStore.admin?._id || localStorage.getItem('userId') || ''
-                        }
-                    }
-                );
-
-                if (response.status === 200) {
-                    // Update local employee data
-                    const employeeIndex = this.employees.findIndex(e => e.id === employee.id);
-                    if (employeeIndex !== -1) {
-                        this.employees[employeeIndex] = {
-                            ...this.employees[employeeIndex],
-                            position: newPositionData.name,
-                            salary: Number(newPositionData.salary),
-                            positionHistory,
-                            updatedAt: new Date().toISOString()
-                        };
-                    }
-
-                    // Refresh payslip history if the employee is currently selected
-                    if (this.selectedEmployee?.id === employee.id) {
-                        this.selectedEmployee = {
-                            ...this.selectedEmployee,
-                            position: newPositionData.name,
-                            salary: Number(newPositionData.salary),
-                            positionHistory
-                        };
-                        await this.showPayslipHistory(this.selectedEmployee);
-                    }
-
-                    this.showSuccessMessage(`Position updated successfully for ${employee.name}!`);
-                    this.showUpdateModal = false;
-                    this.selectedEmployeeForUpdate = '';
-                    this.newPosition = '';
-                }
-            } catch (error) {
-                console.error('Error updating employee position:', error.response?.data || error.message);
-                this.showErrorMessage(`Failed to update position: ${error.response?.data?.message || error.message}`);
-            } finally {
-                this.isLoading = false;
-            }
+        resetPayheadsCycle() {
+            this.employees = this.employees.map(emp => ({
+                ...emp,
+                payheads: emp.payheads.map(ph => ({
+                    ...ph,
+                    appliedThisCycle: ph.isRecurring ? false : ph.appliedThisCycle,
+                })),
+            }));
         },
-        sortPreviousPayslips(field) {
-            if (this.sortPreviousField === field) {
-                this.sortPreviousAsc = !this.sortPreviousAsc;
-            } else {
-                this.sortPreviousField = field;
-                this.sortPreviousAsc = true;
-            }
-        },
-        sortNewPayslips(field) {
-            if (this.sortNewField === field) {
-                this.sortNewAsc = !this.sortNewAsc;
-            } else {
-                this.sortNewField = field;
-                this.sortNewAsc = true;
-            }
-        }
-    }
+    },
+
+    created() {
+        this.initializeData();
+        setInterval(() => this.resetPayheadsCycle(), 24 * 60 * 60 * 1000);
+    },
 };
 </script>
 

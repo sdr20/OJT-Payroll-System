@@ -32,10 +32,18 @@
                     <textarea v-model="localPayHead.description" placeholder="Enter description"
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Recurring</label>
-                    <input v-model="localPayHead.isRecurring" type="checkbox"
-                        class="h-4 w-4 text-blue-600 border focus:ring-blue-500 border-gray-300 rounded" />
+                <div class="flex items-center space-x-8">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Recurring</label>
+                        <input v-model="localPayHead.isRecurring" type="checkbox"
+                            class="h-4 w-4 text-blue-600 border focus:ring-blue-500 border-gray-300 rounded" />
+                    </div>
+                    <div v-if="localPayHead.type === 'Deductions'">
+                        <label class="block text-sm font-medium text-gray-700">Affected by Attendance</label>
+                        <input v-model="localPayHead.isAttendanceAffected" type="checkbox"
+                            class="h-4 w-4 text-blue-600 border focus:ring-blue-500 border-gray-300 rounded" />
+                       
+                    </div>
                 </div>
             </div>
 
@@ -74,12 +82,18 @@ export default {
     },
     data() {
         return {
-            localPayHead: { ...this.payHead },
+            localPayHead: { 
+                ...this.payHead,
+                isAttendanceAffected: this.payHead.isAttendanceAffected || false
+            },
         };
     },
     watch: {
         payHead(newVal) {
-            this.localPayHead = { ...newVal };
+            this.localPayHead = { 
+                ...newVal,
+                isAttendanceAffected: newVal.isAttendanceAffected || false
+            };
         },
     },
 };
